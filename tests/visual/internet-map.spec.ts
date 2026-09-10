@@ -143,6 +143,8 @@ test("Internet map supports keyboard selection and stops replay offscreen", asyn
   await country.focus();
   await page.keyboard.press("Enter");
   await expect(map.locator(".internet-country-name")).toHaveText("Japan");
+  await expect(map).toHaveAttribute("aria-busy", "false");
+  await expect(map.getByRole("slider")).toBeEnabled();
   await map.getByRole("button", { name: "View disruption 1" }).click();
   await expect(map.getByRole("slider")).toBeFocused();
   await page.keyboard.press("ArrowRight");

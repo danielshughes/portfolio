@@ -14,6 +14,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     env:
       CI: true
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
@@ -22,18 +24,28 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Check changed files
+        id: filter
+        run: node scripts/ci-changes.mjs
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.filter.outputs.code == 'true'
         with:
           node-version: "24"
           package-manager-cache: false
       - run: npm ci
+        if: steps.filter.outputs.code == 'true'
       - run: npm run lint:workflows
+        if: steps.filter.outputs.code == 'true'
       - run: npx playwright install --with-deps chromium firefox webkit
+        if: steps.filter.outputs.code == 'true'
       - run: npm run quality
+        if: steps.filter.outputs.code == 'true'
         env:
           PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
       - run: npm audit --audit-level=low
+        if: steps.filter.outputs.code == 'true'
       - name: Redacted secret scan of history and deliverables
+        if: steps.filter.outputs.code == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +58,7 @@ jobs:
             "$scanner_dir/gitleaks" dir --redact=100 "$path"
           done
   deploy-development:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && github.repository == 'danielshughes/portfolio'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && github.repository == 'danielshughes/portfolio' && needs.quality.outputs.code == 'true'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15

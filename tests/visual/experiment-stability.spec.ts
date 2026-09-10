@@ -37,7 +37,9 @@ for (const [width, textSize] of [
       expect.soft(expanded.width).toBeCloseTo(frame.width, 1);
       expect.soft(expanded.height).toBeCloseTo(frame.height, 1);
       const openTarget = (await summary.boundingBox())!;
-      expect.soft(openTarget.y).toBeCloseTo(target.y, 1);
+      // Scroll anchoring rounds to whole CSS pixels in Firefox. A one-pixel
+      // offset preserves the target; the second click below tests that too.
+      expect.soft(Math.abs(openTarget.y - target.y)).toBeLessThanOrEqual(1);
       expect.soft(openTarget.height).toBeCloseTo(target.height, 1);
       expect
         .soft(

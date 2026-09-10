@@ -93,4 +93,5 @@ This public repository contains the website source and deployable configuration 
 - `develop` is the persistent development environment.
 - Production promotion uses a pull request from `develop` to `main`.
 - Do not push directly to protected branches, force-push or bypass required checks.
+- The required `quality` job always reports a result. `scripts/ci-changes.mjs` skips expensive steps for recognised documentation-only changes; unknown paths, site content, assets, tests and configuration require the full gate. Development deployment requires the job's `code` output. Do not use workflow-level PR path filters that leave required checks pending. Failed change detection must fail the required job.
 - Keep deployment workflows least-privileged and pin third-party actions to reviewed commit SHAs.
