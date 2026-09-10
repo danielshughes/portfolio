@@ -50,7 +50,7 @@ The work is organised around broader engineering practices, with contribution st
 
 Light, dark and system themes share semantic colour tokens. A small, unframed icon cycles between system, light and dark within a full touch target, with monitor, sun and moon icons and accessible state/action labels. An explicit selection is remembered locally; unavailable browser storage does not prevent switching. Every primary route is checked in both palettes.
 
-Expanded copy remains subject to publication review. Cloudflare deployment, previews and analytics are planned, not yet live.
+Current copy is approved for public development. Production publication, previews and analytics remain separate future work. Deployment status is verified independently of the configuration below.
 
 The Internet atlas loads observed Cloudflare Radar data automatically through a same-origin Worker route. Traffic, Bots, Devices and Protocols tabs share a country picker, with source dates and reading guides below the map and chart. Traffic is a within-country relative index, not uptime; the other views are shares of observed HTTP requests. Missing readings remain gaps and failures never substitute sample data. The no-JavaScript fallback is explicitly an authored sample. Geography uses a bundled public-domain Natural Earth outline, without tiles or visitor geolocation.
 
