@@ -1,0 +1,51 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#f3f5f7" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <a class="site-mark" href="/" aria-label="Dan Hughes portfolio home">
+        <span aria-hidden="true">DH</span>
+        <span class="site-mark__divider" aria-hidden="true"></span>
+        <span>Systems notebook</span>
+      </a>
+
+      <a
+        class="source-link"
+        href="https://github.com/danielshughes/portfolio"
+        rel="me noreferrer"
+      >
+        View source
+        <span aria-hidden="true">↗</span>
+      </a>
+    </header>
+
+    <main id="main-content">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>Designed as a small, inspectable system.</p>
+      <p class="site-footer__state"><span aria-hidden="true"></span> Static output</p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "dan-hughes-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "npm run test:static",
+    "test:static": "node --test tests/static-output.test.mjs"
+  },
+  "devDependencies": {
+    "astro": "7.3.2",
+    "typescript": "7.0.2"
+  }
+}

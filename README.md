@@ -38,7 +38,23 @@ Both long-lived branches require pull requests and reject deletion and force pus
 
 ## Current status
 
-The repository foundation, branch model and security controls are in place. The next delivery step is the static Astro scaffold; there is not yet a deployed website or a supported local-development command.
+The repository foundation, branch model, security controls and static Astro shell are in place. The next delivery step is the publication-gated evidence model; there is not yet a deployed website.
+
+## Local development
+
+Use Node 24 and npm:
+
+```sh
+npm ci
+npm run dev
+```
+
+Run the static-output contract and production build before opening a pull request:
+
+```sh
+npm test
+npm run build
+```
 
 ## Repository guidance
 
