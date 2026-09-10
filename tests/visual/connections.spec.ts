@@ -9,9 +9,10 @@ for (const reducedMotion of ["reduce", "no-preference"] as const)
     await page.goto("/");
     const field = page.locator(".connection-field");
     await field.getByRole("button").click();
-    await expect(field).toHaveAttribute("data-motion", "idle", {
-      timeout: 4000,
-    });
+    await expect(field).toHaveAttribute(
+      "data-motion",
+      reducedMotion === "reduce" ? "idle" : "running",
+    );
     const geometry = await field.locator("svg").evaluate((svg) => {
       const bounds = (svg as SVGSVGElement).viewBox.baseVal;
       const outside = (x: number, y: number, width: number, height: number) =>
@@ -116,7 +117,7 @@ test("connection edges form unequal branches independently of node positions", a
   expect(structure.branches).toEqual([1, 2, 7]);
 });
 
-for (const width of [390, 1440])
+for (const width of [390, 900, 1440])
   for (const theme of ["light", "dark"]) {
     test(`connection graphic fits the ${width}px ${theme} hero`, async ({
       page,
@@ -127,8 +128,7 @@ for (const width of [390, 1440])
       await setTheme(page, theme);
       const copy = (await page.locator(".opening-copy").boundingBox())!;
       const graphic = (await page.locator(".connection-field").boundingBox())!;
-      if (width === 1440)
-        expect(graphic.x).toBeGreaterThan(copy.x + copy.width);
+      if (width > 720) expect(graphic.x).toBeGreaterThan(copy.x + copy.width);
       else expect(graphic.y).toBeGreaterThanOrEqual(copy.y + copy.height);
       expect(graphic.x + graphic.width).toBeLessThanOrEqual(width);
       await expect(page.locator(".connection-field")).toHaveAttribute(
@@ -155,7 +155,7 @@ test("homepage has a distinct connection graphic, not a duplicate experiment", a
   await expect(page.locator(".signal-field")).toHaveCount(1);
 });
 
-test("keyboard pulses are finite and cancel when motion is reduced or offscreen", async ({
+test("keyboard pulses cancel when motion is reduced or offscreen", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -169,7 +169,6 @@ test("keyboard pulses are finite and cancel when motion is reduced or offscreen"
     "opacity",
     "1",
   );
-  await expect(field).toHaveAttribute("data-motion", "idle", { timeout: 4000 });
   await page.keyboard.press("Space");
   await expect(field).toHaveAttribute("data-motion", "running");
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -192,18 +191,65 @@ test("keyboard pulses are finite and cancel when motion is reduced or offscreen"
   await expect(field).toHaveAttribute("data-motion", "idle");
 });
 
-test("arrival pulse settles and does not restart when revisiting the hero", async ({
+test("visible connections keep pulsing from different nodes and resume after suspension", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
   await page.goto("/");
   const field = page.locator(".connection-field");
   await field.scrollIntoViewIfNeeded();
   await expect(field).toHaveAttribute("data-motion", "running");
-  await expect(field).toHaveAttribute("data-motion", "idle", { timeout: 4000 });
+  await page.evaluate(() => {
+    const graphic = document.querySelector(".connection-field")!;
+    const origins: string[] = [];
+    Object.assign(window, { connectionOrigins: origins });
+    new MutationObserver(() => {
+      const origin = graphic
+        .querySelector("[data-active]")
+        ?.getAttribute("data-junction");
+      if (origin && origin !== origins.at(-1)) origins.push(origin);
+    }).observe(graphic, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["data-active"],
+    });
+  });
+  await page.clock.runFor(9000);
+  const origins = await page.evaluate(
+    () =>
+      (window as unknown as { connectionOrigins: string[] }).connectionOrigins,
+  );
+  expect(origins.length).toBeGreaterThanOrEqual(3);
+  expect(new Set(origins).size).toBeGreaterThanOrEqual(2);
+  await expect(field).toHaveAttribute("data-motion", "running");
   await page.locator("#contact").scrollIntoViewIfNeeded();
-  await field.scrollIntoViewIfNeeded();
   await expect(field).toHaveAttribute("data-motion", "idle");
+  const paused = await field
+    .locator(".connection-pulse")
+    .evaluateAll((dots) => dots.map((dot) => dot.getAttribute("opacity")));
+  expect(paused.every((value) => value === "0")).toBe(true);
+  await page.clock.runFor(6000);
+  await expect(field).toHaveAttribute("data-motion", "idle");
+  await field.scrollIntoViewIfNeeded();
+  await expect(field).toHaveAttribute("data-motion", "running");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await page.clock.runFor(6000);
+  await expect(field).toHaveAttribute("data-motion", "idle");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: false,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(field).toHaveAttribute("data-motion", "running");
 });
 
 test("connection graphic is static without JavaScript", async ({ browser }) => {

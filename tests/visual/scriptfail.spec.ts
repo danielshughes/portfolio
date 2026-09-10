@@ -75,7 +75,7 @@ test("failed optional chunk offers a functional page reload", async ({
     await expect(card.getByRole("button", { name: "Reload page" })).toHaveCount(
       0,
     );
-    await expect(page.locator(".preview-toggle")).toBeVisible();
+    await expect(page.locator(".preview-toggle")).toHaveCount(0);
     if (
       !(await card
         .locator(".experiment-settings")

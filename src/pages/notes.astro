@@ -8,16 +8,12 @@ import { portfolioContent } from "../content/portfolio";
   title="Notes | Dan Hughes"
   description="Engineering decisions across Kubernetes, infrastructure as code, observability, incident learning and AI tooling."
 >
-  <section class="notes-intro">
-    <a class="text-link" href="/">
-      ← Back home
-    </a>
-    <p class="eyebrow">Notes</p>
-    <h1>
-      A closer <br />
-      <em>look.</em>
+  <section class="notes-intro page-intro" aria-labelledby="notes-title">
+    <p class="eyebrow">A few things worth sharing</p>
+    <h1 id="notes-title">
+      A closer <em>look.</em>
     </h1>
-    <p>
+    <p class="intro-description">
       Decisions across observability, Kubernetes, infrastructure as code and AI
       tooling. The trade-offs, the failures worth understanding and the work
       around the code.
@@ -44,7 +40,7 @@ import { portfolioContent } from "../content/portfolio";
           <h2>{note.title}</h2>
           <p class="contribution">{note.contribution}</p>
           <figure class="decision-figure">
-            {note.id === "freshness" ? (
+            {note.id === "observability" ? (
               <div class="health-comparison">
                 <p class="diagram-condition">
                   Collection has stopped. The process is still running.
@@ -60,7 +56,7 @@ import { portfolioContent } from "../content/portfolio";
                   <small>Freshness check fails</small>
                 </div>
               </div>
-            ) : note.id === "agents" ? (
+            ) : note.id === "ai-tooling" ? (
               <div class="request-comparison">
                 <div>
                   <span>Sequential scan</span>
@@ -112,9 +108,6 @@ import { portfolioContent } from "../content/portfolio";
       title="Opens in a new tab."
     >
       Connect on LinkedIn ↗
-    </a>
-    <a class="text-link" href="/">
-      Back home
     </a>
   </section>
 </BaseLayout>

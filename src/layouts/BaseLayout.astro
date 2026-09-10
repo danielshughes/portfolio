@@ -59,6 +59,7 @@ const structuredData = JSON.stringify({
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="description" content={description} />
     {environment.name === "development" ? (
       <meta name="robots" content="noindex, nofollow" />
@@ -125,7 +126,7 @@ const structuredData = JSON.stringify({
     </main>
     <footer class="site-footer">
       <a href="/">Dan Hughes</a>
-      <span>Always something to tinker with.</span>
+      <span>Always tinkering.</span>
       <a
         href={portfolioContent.github}
         target="_blank"
@@ -139,5 +140,10 @@ const structuredData = JSON.stringify({
       </span>
     </footer>
     <Motion />
+    <script>
+      import { mountSignature } from "../scripts/signature";
+      const mark = document.querySelector<HTMLElement>(".site-mark");
+      if (mark) mountSignature(mark);
+    </script>
   </body>
 </html>

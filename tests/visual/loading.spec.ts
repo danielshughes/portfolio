@@ -33,7 +33,7 @@ test("late fonts do not move already-readable content", async ({ page }) => {
   expect(await positions()).toEqual(before);
 });
 
-for (const route of ["/", "/notes/#agents"]) {
+for (const route of ["/", "/notes/#ai-tooling"]) {
   test(`${route} loads and refreshes without an entrance animation`, async ({
     page,
   }) => {
@@ -41,9 +41,16 @@ for (const route of ["/", "/notes/#agents"]) {
     await page.addInitScript(() => {
       const seen: string[] = [];
       Object.assign(window, { entranceAnimations: seen });
-      document.addEventListener("animationstart", (event) =>
-        seen.push(event.animationName),
-      );
+      document.addEventListener("animationstart", (event) => {
+        // The requested caret blink is not a page/content entrance animation.
+        if (
+          event.animationName === "subtitle-blink" &&
+          event.target instanceof Element &&
+          event.target.matches(".subtitle-live .subtitle-caret")
+        )
+          return;
+        seen.push(event.animationName);
+      });
       const animate = Element.prototype.animate;
       Element.prototype.animate = function (...args) {
         seen.push(this.tagName);

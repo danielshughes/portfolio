@@ -1,38 +1,38 @@
 ---
 const junctions = [
-  [34, 230],
-  [128, 210],
-  [214, 145],
-  [188, 52],
-  [316, 178],
-  [375, 106],
-  [469, 141],
-  [568, 66],
-  [360, 267],
-  [468, 285],
-  [421, 42],
+  [28, 144],
+  [132, 132],
+  [223, 84],
+  [198, 22],
+  [333, 107],
+  [402, 61],
+  [484, 88],
+  [574, 28],
+  [372, 162],
+  [490, 177],
+  [450, 18],
 ];
 // A short offshoot and a longer branching chain leave deliberate open space.
 const links = [
-  { from: 0, to: 1, d: "M34 230C68 240 95 202 128 210" },
-  { from: 1, to: 2, d: "M128 210C183 224 168 159 214 145" },
-  { from: 2, to: 3, d: "M214 145C227 105 171 94 188 52" },
-  { from: 2, to: 4, d: "M214 145C261 122 272 193 316 178" },
-  { from: 4, to: 5, d: "M316 178C348 164 327 110 375 106" },
-  { from: 5, to: 6, d: "M375 106C415 98 420 159 469 141" },
-  { from: 6, to: 7, d: "M469 141C522 128 506 60 568 66" },
-  { from: 4, to: 8, d: "M316 178C341 213 330 247 360 267" },
-  { from: 8, to: 9, d: "M360 267C392 298 430 271 468 285" },
-  { from: 5, to: 10, d: "M375 106C412 105 428 81 421 42" },
+  { from: 0, to: 1, d: "M28 144C67 154 94 125 132 132" },
+  { from: 1, to: 2, d: "M132 132C185 144 176 96 223 84" },
+  { from: 2, to: 3, d: "M223 84C236 58 182 51 198 22" },
+  { from: 2, to: 4, d: "M223 84C271 67 289 117 333 107" },
+  { from: 4, to: 5, d: "M333 107C366 98 352 64 402 61" },
+  { from: 5, to: 6, d: "M402 61C440 54 444 101 484 88" },
+  { from: 6, to: 7, d: "M484 88C527 82 516 24 574 28" },
+  { from: 4, to: 8, d: "M333 107C358 132 339 151 372 162" },
+  { from: 8, to: 9, d: "M372 162C405 187 443 169 490 177" },
+  { from: 5, to: 10, d: "M402 61C443 67 458 47 450 18" },
 ];
 ---
 
 <figure class="connection-field" data-motion="idle">
   <div class="connection-surface">
-    <svg viewBox="0 0 600 330" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 600 200" fill="none" aria-hidden="true">
       <g class="connection-guides">
         <path
-          d="M79 149C99 49 293 5 365 52M169 294C259 330 520 279 554 178"
+          d="M79 87C99 22 293 5 365 31M169 171C259 199 520 167 554 103"
           stroke-dasharray="2 8"
         />
       </g>
@@ -52,7 +52,7 @@ const links = [
         />
       ))}
       <g class="connection-ticks">
-        <path d="M35 45H45M40 40V50M555 290H565M560 285V295" />
+        <path d="M35 28H45M40 23V33M555 174H565M560 169V179" />
       </g>
     </svg>
     <button
@@ -74,10 +74,14 @@ const links = [
 <style>
   .connection-field {
     min-width: 0;
+    width: 100%;
+    max-width: 30rem;
     margin: 0;
+    justify-self: center;
   }
   .connection-surface {
     position: relative;
+    width: 100%;
   }
   svg {
     display: block;
@@ -92,11 +96,13 @@ const links = [
   .connection-wire {
     stroke: var(--muted);
     stroke-width: 1.3;
+    vector-effect: non-scaling-stroke;
   }
   .connection-junction {
     fill: var(--paper);
     stroke: var(--ink);
     stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
   }
   .connection-junction[data-junction="2"],
   .connection-junction[data-active] {
@@ -129,15 +135,15 @@ const links = [
     align-items: center;
     justify-content: space-between;
     gap: var(--control-gap) var(--space-sm);
-    font-size: 0.8rem;
+    font-size: var(--type-caption);
     color: var(--muted);
   }
   figcaption .text-link {
     color: var(--ink);
   }
   @media (max-width: 600px) {
-    .connection-surface {
-      margin-inline: -0.3rem;
+    .connection-field {
+      max-width: 24rem;
     }
   }
 </style>
@@ -164,7 +170,8 @@ const links = [
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
     let visible = false;
-    let greeted = false;
+    let pageActive = true;
+    let origin = -1;
     let lastNode = -1;
     let lastSent = 0;
     trigger.hidden = false;
@@ -176,12 +183,28 @@ const links = [
       edges.forEach((edge) => edge.dot.setAttribute("opacity", "0"));
     }
 
-    function pulse(origin: number) {
+    function canAnimate() {
+      return visible && pageActive && !reduced.matches && !document.hidden;
+    }
+
+    function randomOrigin() {
+      if (origin < 0) return Math.floor(Math.random() * nodes.length);
+      const choice = Math.floor(Math.random() * (nodes.length - 1));
+      return choice >= origin ? choice + 1 : choice;
+    }
+
+    function sync() {
+      if (!canAnimate()) stop();
+      else if (!frame) pulse(randomOrigin());
+    }
+
+    function pulse(nextOrigin: number) {
       stop();
+      origin = nextOrigin;
       nodes.forEach((node, index) =>
         node.toggleAttribute("data-active", index === origin),
       );
-      if (reduced.matches || document.hidden || !visible) return;
+      if (!canAnimate()) return;
       // Hop distances only choreograph this abstract graphic. They are not telemetry.
       const hops = nodes.map(() => Infinity);
       hops[origin] = 0;
@@ -208,6 +231,10 @@ const links = [
       lastSent = start;
       field!.dataset.motion = "running";
       function tick(now: number) {
+        if (!canAnimate()) {
+          stop();
+          return;
+        }
         const elapsed = now - start;
         for (const edge of edges) {
           const forward = hops[edge.from] <= hops[edge.to];
@@ -227,7 +254,7 @@ const links = [
           }
         }
         if (elapsed < duration) frame = requestAnimationFrame(tick);
-        else stop();
+        else pulse(randomOrigin());
       }
       frame = requestAnimationFrame(tick);
     }
@@ -270,17 +297,17 @@ const links = [
     });
     new IntersectionObserver((entries) => {
       visible = entries[0].isIntersecting;
-      if (!visible) stop();
-      else if (!greeted) {
-        greeted = true;
-        pulse(2);
-      }
+      sync();
     }).observe(field);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) stop();
+    document.addEventListener("visibilitychange", sync);
+    reduced.addEventListener("change", sync);
+    window.addEventListener("pagehide", () => {
+      pageActive = false;
+      sync();
     });
-    reduced.addEventListener("change", () => {
-      if (reduced.matches) stop();
+    window.addEventListener("pageshow", () => {
+      pageActive = true;
+      sync();
     });
   }
 </script>

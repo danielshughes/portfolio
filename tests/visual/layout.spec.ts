@@ -1,6 +1,43 @@
 import { expect, test } from "@playwright/test";
 import { openSignal } from "./helpers";
 
+test("Notes and Experiments share the same opening heading style", async ({
+  page,
+}) => {
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const styles = [];
+    for (const route of ["/notes/", "/experiments/"]) {
+      await page.goto(route);
+      const heading = page.getByRole("heading", { level: 1 });
+      await expect(heading.locator("br")).toHaveCount(0);
+      if (route === "/notes/") {
+        await expect(page.locator(".notes-intro .eyebrow")).toHaveText(
+          "A few things worth sharing",
+        );
+        await expect(page.getByRole("link", { name: /Back home/ })).toHaveCount(
+          0,
+        );
+      }
+      styles.push(
+        await heading.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            font: style.font,
+            letterSpacing: style.letterSpacing,
+            marginTop: style.marginTop,
+            marginBottom: style.marginBottom,
+            introBorder: getComputedStyle(element.closest("section")!)
+              .borderBottom,
+          };
+        }),
+      );
+    }
+    expect(styles[0]).toEqual(styles[1]);
+    expect(styles[0].introBorder).toMatch(/^1px solid /);
+  }
+});
+
 test("notes index numbers stay together at every layout and text size", async ({
   page,
 }) => {
@@ -36,7 +73,7 @@ test("professional positioning leads the homepage, with the name secondary", asy
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Observability & SRE Leader",
+    "Observability, SRE & AI Leader",
   );
   const hierarchy = await page.evaluate(() => ({
     headline: parseFloat(
@@ -67,7 +104,8 @@ test("notes flow into contact without overlap or percentage-sized vertical gaps"
           body = rect(".notes-body");
         return {
           contained: body.bottom <= rect(".notes-layout").bottom + 1,
-          overlap: rect("#people").bottom - rect(".notes-contact").top,
+          overlap:
+            rect("#technical-leadership").bottom - rect(".notes-contact").top,
           gap: body.top >= nav.bottom ? body.top - nav.bottom : 0,
         };
       });

@@ -16,6 +16,9 @@ test("Experiments is the only experiment route, with no legacy forwarding", asyn
   ).toHaveAttribute("aria-current", "page");
   for (const route of ["/", "/notes/", "/experiments/"]) {
     await page.goto(route);
+    await expect(page.locator(".site-footer")).toContainText(
+      "Always tinkering.",
+    );
     await expect(
       page.locator('a[href*="/playground"],a[href^="/work/"]'),
     ).toHaveCount(0);

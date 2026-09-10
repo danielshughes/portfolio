@@ -1,6 +1,6 @@
 export const notes = [
   {
-    id: "freshness",
+    id: "observability",
     label: "Observability & reliability",
     title: "Observability that holds up in operations.",
     teaser:
@@ -20,7 +20,7 @@ export const notes = [
       "Health-check logic, simplified: a running process must not hide stale collection.",
   },
   {
-    id: "agents",
+    id: "ai-tooling",
     label: "AI tooling & developer experience",
     title: "Engineering the tools around the agent.",
     teaser:
@@ -40,7 +40,7 @@ export const notes = [
       "Concurrent work shortens the scan; a bound limits how many upstream requests run at once.",
   },
   {
-    id: "onboarding",
+    id: "kubernetes-iac",
     label: "Kubernetes & infrastructure as code",
     title: "Kubernetes and IaC, through to production.",
     teaser:
@@ -66,7 +66,7 @@ export const notes = [
       "Simplified onboarding path: publication waits for the required network rules, not merely a successful render.",
   },
   {
-    id: "people",
+    id: "technical-leadership",
     label: "Technical leadership & incident learning",
     title: "Build the capability, not just the change.",
     teaser:

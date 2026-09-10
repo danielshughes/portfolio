@@ -115,6 +115,8 @@ test("engineering examples identify contribution and visualise decisions", async
   await page.goto("/notes/");
   await expect(page.locator(".contribution")).toHaveCount(4);
   await expect(page.locator(".decision-figure")).toHaveCount(4);
-  await expect(page.locator("#freshness")).toContainText("Python");
-  await expect(page.locator("#agents")).toContainText("shared MCP framework");
+  await expect(page.locator("#observability")).toContainText("Python");
+  await expect(page.locator("#ai-tooling")).toContainText(
+    "shared MCP framework",
+  );
 });

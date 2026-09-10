@@ -8,7 +8,9 @@ import {
 } from "../experiments/internet-model";
 import "../styles/internet-map.css";
 import RadarTabs from "./RadarTabs.astro";
+import { radarViews } from "../experiments/radar-tabs";
 const week = sampleWeek("GB");
+const descriptions = Object.values(radarViews);
 ---
 
 <section id="internet" class="internet" aria-labelledby="internet-title">
@@ -122,10 +124,28 @@ const week = sampleWeek("GB");
     </div>
     <div class="internet-reading">
       <div class="internet-reading-heading">
-        <span>Sample / traffic index</span>
+        <span class="radar-text-slot">
+          <span data-radar-reading-label>Sample / traffic index</span>
+          <span
+            class="radar-text-sizer"
+            data-copy="Observed / traffic index"
+            aria-hidden="true"
+            inert
+          />
+        </span>
         <span class="internet-country-code">GB</span>
       </div>
-      <h3 class="internet-country-name">United Kingdom</h3>
+      <div class="internet-country-heading radar-text-slot">
+        <h3 class="internet-country-name">United Kingdom</h3>
+        {countries.map((country) => (
+          <span
+            class="radar-text-sizer"
+            data-copy={country.name}
+            aria-hidden="true"
+            inert
+          />
+        ))}
+      </div>
       <div
         id="radar-panel"
         tabindex="0"
@@ -139,12 +159,29 @@ const week = sampleWeek("GB");
           <div class="internet-measure">
             <strong class="internet-value">{week.values[0]}</strong>
             <span>
-              / 100<span class="internet-timestamp">Day 1, 00:00</span>
+              / 100
+              <span class="internet-timestamp-slot radar-text-slot">
+                <span class="internet-timestamp">Day 1, 00:00</span>
+                <span
+                  class="radar-text-sizer"
+                  data-copy="30 Sept 2026, 23:00 UTC"
+                  aria-hidden="true"
+                  inert
+                />
+              </span>
             </span>
           </div>
-          <p class="internet-event-status">
-            No example disruption at this time.
-          </p>
+          <div class="internet-event-caption-slot radar-text-slot">
+            <p class="internet-event-caption">
+              No example disruption at this time.
+            </p>
+            <span
+              class="radar-text-sizer"
+              data-copy="No reported disruption at this time."
+              aria-hidden="true"
+              inert
+            />
+          </div>
           <figure class="internet-history">
             <svg
               viewBox="-4 -8 648 176"
@@ -165,10 +202,17 @@ const week = sampleWeek("GB");
               <path class="internet-chart-line" d={chartPath(week.values)} />
               <path class="internet-chart-cursor" d="M0 0V160" />
             </svg>
-            <figcaption>
-              <span>Day 1</span>
-              <span>Sample week</span>
-              <span>Day 7</span>
+            <figcaption class="radar-text-slot">
+              <span class="internet-week-labels">
+                <span>Day 1</span>
+                <span>Sample week</span>
+                <span>Day 7</span>
+              </span>
+              <span class="internet-week-labels-sizer" aria-hidden="true" inert>
+                <span>30 Sept 2026, 23:00 UTC</span>
+                <span>Hourly · UTC</span>
+                <span>30 Sept 2026, 23:00 UTC</span>
+              </span>
             </figcaption>
           </figure>
           <div class="internet-time-controls" hidden>
@@ -195,6 +239,12 @@ const week = sampleWeek("GB");
               </button>
             </div>
           </div>
+          <details class="internet-event-details" hidden>
+            <summary>Disruption at the selected time</summary>
+            <p class="internet-event-status">
+              No example disruption at this time.
+            </p>
+          </details>
         </div>
       </div>
       <p
@@ -204,58 +254,90 @@ const week = sampleWeek("GB");
       ></p>
     </div>
   </div>
-  <div class="radar-explanation">
-    <p class="radar-description" id="radar-description">
-      The daily rhythm of HTTP requests seen by Cloudflare.
-    </p>
-    <p class="radar-guide" id="radar-guide">
-      <strong>How to read it</strong>
-      <span>
-        Read the shape, not the size. Each country's peak is 100; a dip alone
-        does not establish an outage.
-      </span>
-    </p>
-  </div>
-  <div class="internet-bottom">
-    <div class="internet-event-list">
-      <h3>In this sample</h3>
-      <p>Day 4, 00:00–06:00 · Illustrative disruption</p>
-      <button type="button" data-internet-event hidden>
-        Go to example disruption
-      </button>
+  <div class="internet-footer">
+    <div class="internet-footer-context">
+      <div class="radar-description-slot radar-text-slot">
+        <p class="radar-description" id="radar-description">
+          The daily rhythm of HTTP requests seen by Cloudflare.
+        </p>
+        {descriptions.map((view) => (
+          <span
+            class="radar-text-sizer"
+            data-copy={view.description}
+            aria-hidden="true"
+            inert
+          />
+        ))}
+      </div>
+      <div class="internet-bottom radar-text-slot">
+        <div class="internet-traffic-context internet-footer-view">
+          <div class="internet-event-slot radar-text-slot">
+            <div class="internet-event-list">
+              <h3>In this sample</h3>
+              <p>Day 4, 00:00–06:00 · Illustrative disruption</p>
+              <button type="button" data-internet-event hidden>
+                Go to example disruption
+              </button>
+            </div>
+            <div class="internet-event-reserve" aria-hidden="true" inert>
+              <h3>Reported disruptions</h3>
+              <p>No reported events returned for this country and week.</p>
+            </div>
+          </div>
+          <p class="internet-disclaimer">
+            An authored example, not observed traffic. With JavaScript, this
+            atlas requests data from Cloudflare Radar.
+          </p>
+        </div>
+        <div class="internet-summary-context internet-footer-view" hidden inert>
+          <h3>About these shares</h3>
+          <p>
+            Shares of HTTP requests observed by Cloudflare, not a census of the
+            entire Internet.
+          </p>
+          <p>Percentages describe requests, not unique people.</p>
+        </div>
+      </div>
     </div>
-    <p class="internet-disclaimer">
-      An authored example, not observed traffic. With JavaScript, this atlas
-      requests data from{" "}
-      <a
-        href="https://radar.cloudflare.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Cloudflare Radar<span class="sr-only"> (opens in a new tab)</span>
-      </a>
-      .
-    </p>
+    <div class="internet-footer-guide">
+      <p class="radar-guide" id="radar-guide">
+        <strong>How to read it</strong>
+        <span class="radar-text-slot">
+          <span data-radar-guide>
+            Read the shape, not the size. Each country's peak is 100; a dip
+            alone does not establish an outage.
+          </span>
+          {descriptions.map((view) => (
+            <span
+              class="radar-text-sizer"
+              data-copy={view.guide}
+              aria-hidden="true"
+              inert
+            />
+          ))}
+        </span>
+      </p>
+      <p class="internet-attribution">
+        Data:{" "}
+        <a
+          href="https://radar.cloudflare.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Cloudflare Radar<span class="sr-only"> (opens in a new tab)</span>
+        </a>
+        {" · "}
+        <a
+          href="https://creativecommons.org/licenses/by-nc/4.0/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          CC BY-NC 4.0<span class="sr-only"> (opens in a new tab)</span>
+        </a>
+        {" · "}Custom visualisation; traffic normalised by country.
+      </p>
+    </div>
   </div>
-  <p class="internet-attribution">
-    Data:{" "}
-    <a
-      href="https://radar.cloudflare.com/"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Cloudflare Radar<span class="sr-only"> (opens in a new tab)</span>
-    </a>
-    .
-    <a
-      href="https://creativecommons.org/licenses/by-nc/4.0/"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      CC BY-NC 4.0<span class="sr-only"> (opens in a new tab)</span>
-    </a>
-    . Custom visualisation; traffic normalised by country.
-  </p>
 </section>
 
 <script>

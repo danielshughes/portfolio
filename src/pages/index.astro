@@ -1,13 +1,14 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ConnectionField from "../components/ConnectionField.astro";
+import TerminalSubtitle from "../components/TerminalSubtitle.astro";
 import { portfolioContent as copy } from "../content/portfolio";
 import { noteById } from "../content/notes";
-const [discipline, role] = copy.headline.split(" & ");
+const [discipline, role] = copy.headline.split(", ");
 ---
 
 <BaseLayout
-  title="Dan Hughes | Observability, SRE & AI engineering"
+  title={`Dan Hughes | ${copy.headline}`}
   description={copy.introduction}
 >
   <section class="opening" aria-labelledby="page-title">
@@ -15,16 +16,12 @@ const [discipline, role] = copy.headline.split(" & ");
       <span class="intro-name">Dan Hughes</span>
     </div>
     <h1 id="page-title">
-      {discipline}
-      <span class="headline-continuation">{` & ${role}`}</span>
+      {`${discipline}, `}
+      <span class="headline-continuation">{role}</span>
     </h1>
+    <TerminalSubtitle />
     <div class="hero-bottom">
       <div class="opening-copy">
-        <h2>
-          From the code
-          <br />
-          <em>to the people running it.</em>
-        </h2>
         <p>
           Building observability platforms on Kubernetes, managing
           infrastructure as code and engineering the tools around AI. Helping
@@ -48,7 +45,7 @@ const [discipline, role] = copy.headline.split(" & ");
     </h2>
     <div class="project-grid">
       <a
-        href="/notes/#freshness"
+        href="/notes/#observability"
         class="project project-observe"
         aria-labelledby="observe-title"
         data-reveal
@@ -78,10 +75,10 @@ const [discipline, role] = copy.headline.split(" & ");
           <br />
           the dashboard.
         </h3>
-        <p>{noteById("freshness").teaser}</p>
+        <p>{noteById("observability").teaser}</p>
       </a>
       <a
-        href="/notes/#agents"
+        href="/notes/#ai-tooling"
         class="project project-ai ai-section"
         aria-labelledby="agents-title"
         data-reveal
@@ -115,10 +112,10 @@ const [discipline, role] = copy.headline.split(" & ");
           <br />
           prompt window.
         </h3>
-        <p>{noteById("agents").teaser}</p>
+        <p>{noteById("ai-tooling").teaser}</p>
       </a>
       <a
-        href="/notes/#onboarding"
+        href="/notes/#kubernetes-iac"
         class="project project-infra"
         aria-labelledby="infra-title"
         data-reveal
@@ -146,10 +143,10 @@ const [discipline, role] = copy.headline.split(" & ");
           <br />
           Through to production.
         </h3>
-        <p>{noteById("onboarding").teaser}</p>
+        <p>{noteById("kubernetes-iac").teaser}</p>
       </a>
       <a
-        href="/notes/#people"
+        href="/notes/#technical-leadership"
         class="project project-people"
         aria-labelledby="people-title"
         data-reveal
@@ -176,7 +173,7 @@ const [discipline, role] = copy.headline.split(" & ");
           <br />
           to the next person.
         </h3>
-        <p>{noteById("people").teaser}</p>
+        <p>{noteById("technical-leadership").teaser}</p>
       </a>
     </div>
     <a class="pill-link" href="/notes/">

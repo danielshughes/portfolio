@@ -6,13 +6,24 @@
   --line: #d5d8ce;
   --orange: #df3e15;
   --display: "Space Grotesk Variable", sans-serif;
+  --body: "Manrope Variable", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --type-body: 1rem;
+  --type-reading: 1.1rem;
+  --type-small: 0.875rem;
+  --type-caption: 0.8125rem;
+  --type-micro: 0.75rem;
   --space-xs: 0.5rem;
   --space-sm: 1rem;
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
-  --section-space: var(--space-xl);
-  --heading-gap: var(--space-md);
+  --section-space: var(--space-lg);
+  --heading-gap: var(--space-sm);
   --copy-gap: var(--space-sm);
   --control-gap: var(--space-xs);
   --type-role: clamp(2.25rem, 7.2vw, 7.5rem);
@@ -23,7 +34,8 @@
   --type-subheading: clamp(1.4rem, 2vw, 2.1rem);
   --type-intro: clamp(1.6rem, 2.4vw, 2.4rem);
   --type-contact: clamp(3rem, 10vw, 10.5rem);
-  font-family: "Manrope Variable", system-ui, sans-serif;
+  font-family: var(--body);
+  font-weight: var(--weight-regular);
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
@@ -33,6 +45,11 @@
 }
 body {
   margin: 0;
+  --grid-line: color-mix(in srgb, var(--ink) 4%, transparent);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
 }
 ::selection {
   background: #ff6439;
@@ -67,7 +84,7 @@ h1,
 h2,
 h3 {
   font-family: var(--display);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   letter-spacing: -0.065em;
   line-height: 1.03;
 }
@@ -98,8 +115,8 @@ main {
 .signal-caption,
 .note-kicker,
 .notes-nav {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.8125rem;
+  font-family: var(--mono);
+  font-size: var(--type-caption);
   letter-spacing: 0.01em;
 }
 .eyebrow {
@@ -118,10 +135,10 @@ main,
   justify-content: space-between;
   padding-block: 1.5rem;
   border-bottom: 1px solid var(--line);
-  gap: 1.5rem;
+  gap: var(--space-xs) var(--space-md);
 }
 .site-mark {
-  font: 700 2rem var(--display);
+  font: var(--weight-bold) 2rem var(--display);
   letter-spacing: -0.1em;
   text-decoration: none;
   display: flex;
@@ -147,7 +164,7 @@ main,
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
-  font-size: 0.9rem;
+  font-size: var(--type-small);
 }
 .site-header nav a {
   padding-block: 0.7rem;
@@ -177,7 +194,7 @@ main,
   outline-offset: 6px;
 }
 .opening {
-  padding-top: var(--space-lg);
+  padding-top: var(--space-md);
 }
 .intro-line {
   display: flex;
@@ -185,14 +202,14 @@ main,
   gap: 1rem;
 }
 .intro-line > span:first-child {
-  font: 500 1.25rem var(--display);
+  font: var(--weight-medium) 1.25rem var(--display);
   letter-spacing: -0.04em;
 }
 .opening h1 {
   font-size: var(--type-role);
   letter-spacing: -0.07em;
   line-height: 1.05;
-  margin: var(--heading-gap) 0 var(--space-lg);
+  margin: var(--heading-gap) 0 var(--space-md);
 }
 .headline-continuation {
   display: block;
@@ -201,27 +218,22 @@ main,
 .hero-bottom {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
   align-items: center;
   border-top: 1px solid var(--line);
-  padding-block: var(--space-lg);
-}
-.opening-copy h2 {
-  font-size: var(--type-intro);
-  letter-spacing: -0.045em;
-  line-height: 1.16;
+  padding-block: var(--space-md);
 }
 .opening-copy p {
   max-width: 43ch;
-  font-size: 1.02rem;
-  margin: var(--copy-gap) 0;
+  font-size: var(--type-body);
+  margin: 0 0 var(--copy-gap);
 }
 .text-link {
   display: inline-flex;
   align-items: center;
   gap: 1rem;
   padding-block: 0.65rem;
-  font-size: 0.9rem;
+  font-size: var(--type-small);
 }
 .text-link > span,
 .project-meta > span:last-child {
@@ -237,7 +249,7 @@ main,
   gap: 1rem;
 }
 .signal-heading > span:first-child {
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .signal-display {
   height: clamp(14rem, 21vw, 24rem);
@@ -275,7 +287,7 @@ main,
   display: flex;
   gap: 1rem;
   align-items: center;
-  font-size: 0.8125rem;
+  font-size: var(--type-small);
   flex: 1;
 }
 .signal-controls input {
@@ -288,7 +300,7 @@ main,
   border-radius: 2rem;
   background: transparent;
   min-height: 44px;
-  font-size: 0.75rem;
+  font-size: var(--type-small);
   padding: 0.6rem 1rem;
   flex-shrink: 0;
 }
@@ -296,7 +308,7 @@ main,
   border-color: var(--ink);
 }
 .signal-caption {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   color: var(--muted);
 }
 .selected-work {
@@ -310,22 +322,22 @@ main,
 }
 .section-title {
   font-size: var(--type-section);
-  margin: var(--heading-gap) 0 var(--space-lg);
+  margin: var(--heading-gap) 0 var(--space-md);
 }
 .project-grid {
   display: grid;
   grid-template-columns: 1.08fr 0.92fr;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
 }
 .project {
   text-decoration: none;
   display: block;
 }
 .project:nth-child(even) {
-  margin-top: var(--space-xl);
+  margin-top: var(--space-md);
 }
 .project-art {
-  height: clamp(17rem, 29vw, 29rem);
+  height: clamp(15rem, 23vw, 21rem);
   position: relative;
   padding: 1.6rem;
   overflow: hidden;
@@ -334,11 +346,11 @@ main,
   justify-content: space-between;
 }
 .art-label {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.06em;
 }
 .art-caption {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
 }
 .chart-art {
   background: #e5e9dd;
@@ -374,9 +386,7 @@ main,
   justify-content: center;
 }
 .agent-path > span {
-  font:
-    0.875rem ui-monospace,
-    monospace;
+  font: var(--type-small) var(--mono);
   white-space: nowrap;
   font-size: clamp(0.65rem, 3.3cqi, 0.875rem);
 }
@@ -387,7 +397,7 @@ main,
   max-width: 4rem;
 }
 .agent-path b {
-  font: 500 clamp(1.7rem, 12cqi, 4.5rem) var(--display);
+  font: var(--weight-medium) clamp(1.7rem, 12cqi, 4.5rem) var(--display);
   white-space: nowrap;
   flex-shrink: 0;
   color: #d4f599;
@@ -406,9 +416,7 @@ main,
   justify-content: center;
   gap: 1.5rem;
   color: #c0cbb9;
-  font:
-    0.8125rem ui-monospace,
-    monospace;
+  font: var(--type-caption) var(--mono);
 }
 .pipeline-art {
   background: var(--infra-bg);
@@ -442,11 +450,11 @@ main,
   background: #dcdaf3;
   container-type: inline-size;
   height: auto;
-  min-height: clamp(17rem, 29vw, 29rem);
-  gap: 2rem;
+  min-height: clamp(15rem, 23vw, 21rem);
+  gap: var(--space-sm);
 }
 .type-art {
-  font: 500 24cqi/0.85 var(--display);
+  font: var(--weight-medium) clamp(1.6rem, 16cqi, 3rem)/0.9 var(--display);
   letter-spacing: -0.08em;
   align-self: center;
   transform: rotate(-7deg);
@@ -468,7 +476,7 @@ main,
   font-size: var(--type-card);
 }
 .project p {
-  font-size: 1rem;
+  font-size: var(--type-body);
   color: var(--muted);
   max-width: 45ch;
   margin-top: var(--copy-gap);
@@ -523,7 +531,7 @@ main,
 }
 .off-tinkering p {
   margin-top: var(--copy-gap);
-  font-size: 1.1rem;
+  font-size: var(--type-reading);
   line-height: 1.7;
 }
 .contact-section {
@@ -536,7 +544,7 @@ main,
   outline-color: currentColor;
 }
 .contact-title {
-  font: 500 var(--type-contact)/1.3 var(--display);
+  font: var(--weight-medium) var(--type-contact)/1.3 var(--display);
   letter-spacing: -0.08em;
   display: flex;
   justify-content: space-between;
@@ -553,7 +561,7 @@ main,
   gap: 2rem;
   border-top: 1px solid #a53917;
   padding-top: 1.5rem;
-  font-size: 0.9rem;
+  font-size: var(--type-small);
 }
 .site-footer {
   display: flex;
@@ -561,37 +569,38 @@ main,
   align-items: center;
   gap: 1.5rem;
   padding-block: 2rem;
-  font-size: 0.8125rem;
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .site-footer a {
   padding-block: 0.7rem;
 }
-.notes-intro {
-  padding: var(--section-space) 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--heading-gap) var(--space-xl);
+.page-intro {
+  padding-block: var(--section-space);
+  border-bottom: 1px solid var(--line);
+}
+.page-intro h1 {
+  font: var(--weight-medium) var(--type-page)/1.03 var(--display);
+  letter-spacing: -0.06em;
+  margin-block: var(--heading-gap) var(--space-lg);
   max-width: none;
 }
-.notes-intro .eyebrow {
-  margin: 1rem 0 0;
+.page-intro h1 em {
+  color: var(--orange);
+  font-style: normal;
+  display: inline-block;
 }
-.notes-intro h1 {
-  font-size: var(--type-page);
+.intro-description {
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
 }
-.notes-intro > p:last-child {
-  font-size: 1.2rem;
-  max-width: 45ch;
-  align-self: center;
-  margin: 0;
+.notes-intro .intro-description {
+  max-width: 60ch;
 }
 .notes-layout {
   display: grid;
   grid-template-columns: 1fr 3fr;
   column-gap: 8%;
   row-gap: 0;
-  border-top: 1px solid var(--line);
 }
 .notes-nav {
   align-self: start;
@@ -635,7 +644,7 @@ main,
   margin: var(--heading-gap) 0 var(--space-lg);
 }
 .engineering-note p {
-  font-size: 1.1rem;
+  font-size: var(--type-reading);
   max-width: 65ch;
   margin-top: var(--copy-gap);
 }
@@ -653,36 +662,9 @@ main,
 .notes-contact h2 {
   font-size: var(--type-section);
 }
-.notes-contact .text-link {
-  margin-left: 2rem;
-}
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
-  }
-  .site-mark:is(:hover, :focus-visible) .signature-trace path {
-    animation: trace-signature 650ms ease-out;
-  }
-  .site-mark:is(:hover, :focus-visible) .signature-trace circle {
-    animation: trace-endpoint 650ms step-end;
-  }
-  @keyframes trace-endpoint {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes trace-signature {
-    from {
-      stroke-dasharray: 100;
-      stroke-dashoffset: 100;
-    }
-    to {
-      stroke-dasharray: 100;
-      stroke-dashoffset: 0;
-    }
   }
   .project {
     --preview-engaged: 0;
@@ -765,25 +747,22 @@ main,
 }
 @media (max-width: 45rem) {
   :root {
-    --section-space: var(--space-lg);
+    --section-space: var(--space-md);
   }
   .site-header {
     padding-block: 1rem;
   }
   .site-header nav {
     gap: 1rem;
-    font-size: 0.8125rem;
+    font-size: var(--type-caption);
   }
   .opening h1 {
-    margin: var(--heading-gap) 0 var(--space-lg);
+    margin: var(--heading-gap) 0 var(--space-md);
   }
   .hero-bottom {
     grid-template-columns: 1fr;
     gap: var(--space-md);
-    padding-bottom: var(--space-lg);
-  }
-  .opening-copy h2 {
-    font-size: var(--type-intro);
+    padding-block: var(--space-sm);
   }
   .opening-copy p {
     max-width: none;
@@ -808,7 +787,7 @@ main,
     margin-top: 0;
   }
   .project-art {
-    height: 21rem;
+    height: 15rem;
     padding: 1.2rem;
   }
   .project h3 {
@@ -818,11 +797,11 @@ main,
     padding-block: var(--section-space);
   }
   .section-title {
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-md);
   }
   .people-art {
     height: auto;
-    min-height: 21rem;
+    min-height: 15rem;
   }
   .off-clock {
     grid-template-columns: 1fr;
@@ -848,17 +827,13 @@ main,
     width: 100%;
   }
   .notes-nav {
-    font-size: 0.8rem;
+    font-size: var(--type-caption);
   }
   .engineering-note {
     padding-bottom: var(--section-space);
   }
   .note-kicker {
-    font-size: 0.75rem;
-  }
-  .notes-contact .text-link {
-    display: block;
-    margin: 1rem 0 0;
+    font-size: var(--type-caption);
   }
 }
 @media (max-width: 360px) {
@@ -869,7 +844,7 @@ main,
     padding-inline: 0.7rem;
   }
   .art-label {
-    font-size: 0.7rem;
+    font-size: var(--type-micro);
   }
   .section-top > .mono {
     display: none;
@@ -901,24 +876,12 @@ main,
   padding-bottom: 0.8rem;
 }
 .health-preview span {
-  font-size: 0.875rem;
+  font-size: var(--type-small);
 }
 .health-preview strong {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   font-size: clamp(1.7rem, 12cqi, 4rem);
   letter-spacing: -0.05em;
-}
-.notes-intro > .text-link,
-.notes-intro > .eyebrow {
-  grid-column: 1/-1;
-}
-@media (max-width: 45rem) {
-  .notes-intro {
-    grid-template-columns: 1fr;
-  }
-  .notes-intro > p:last-child {
-    margin-top: 0.5rem;
-  }
 }
 .health-comparison {
   display: grid;
@@ -927,7 +890,7 @@ main,
 }
 .health-comparison .diagram-condition {
   grid-column: 1/-1;
-  font-size: 0.875rem;
+  font-size: var(--type-small);
   margin: 0;
   max-width: none;
 }
@@ -938,16 +901,16 @@ main,
   gap: 0.5rem;
 }
 .health-comparison strong {
-  font: 500 clamp(1.5rem, 3vw, 2.5rem)/1.1 var(--display);
+  font: var(--weight-medium) clamp(1.5rem, 3vw, 2.5rem)/1.1 var(--display);
   letter-spacing: -0.04em;
 }
 .health-comparison small {
-  font-size: 0.8125rem;
+  font-size: var(--type-caption);
   line-height: 1.5;
 }
 .health-comparison > div > span,
 .request-comparison > div > span {
-  font-size: 0.8125rem;
+  font-size: var(--type-caption);
 }
 .request-comparison {
   display: grid;
@@ -976,7 +939,7 @@ main,
   grid-column: calc(round(down, var(--slot) / 2) + 1);
 }
 .request-comparison small {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   line-height: 1.5;
 }
 @media (max-width: 45rem) {
@@ -1107,7 +1070,7 @@ main,
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  font-size: 0.8125rem;
+  font-size: var(--type-caption);
   z-index: 1;
 }
 .noisy-label {
@@ -1164,19 +1127,19 @@ main,
 }
 .decision-figure figcaption {
   margin-top: 1.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--type-caption);
   line-height: 1.6;
   max-width: 70ch;
 }
-#agents .decision-figure {
+#ai-tooling .decision-figure {
   background: #242825;
   color: #d4f599;
 }
-#onboarding .decision-figure {
+#kubernetes-iac .decision-figure {
   background: var(--infra-bg);
   color: var(--infra-ink);
 }
-#people .decision-figure {
+#technical-leadership .decision-figure {
   background: var(--people-bg);
   color: var(--people-ink);
 }
@@ -1191,7 +1154,7 @@ main,
     content: "↓";
   }
   .signal-row-label {
-    font-size: 0.75rem;
+    font-size: var(--type-micro);
   }
   .site-header nav {
     gap: 0.6rem;
@@ -1201,5 +1164,10 @@ main,
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+}
+@media (prefers-contrast: more), (forced-colors: active) {
+  body {
+    background-image: none;
   }
 }
