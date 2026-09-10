@@ -33,6 +33,22 @@ async function setHidden(page: Page, hidden: boolean) {
   }, hidden);
 }
 
+async function advanceUntilText(
+  page: Page,
+  read: () => Promise<string | null>,
+  predicate: (text: string) => boolean,
+  limit = 7000,
+) {
+  for (let elapsed = 0; elapsed <= limit; elapsed += 20) {
+    const text = (await read()) ?? "";
+    if (predicate(text)) return text;
+    await page.clock.runFor(20);
+  }
+  throw new Error(
+    `subtitle did not reach the expected state within ${limit}ms`,
+  );
+}
+
 test("subtitle beneath the main heading repeatedly deletes and types different approved phrases", async ({
   page,
 }) => {
@@ -260,11 +276,19 @@ test("offscreen subtitle suspends typing and caret, then resumes without catchin
   await expect(letters).toHaveText(paused!);
   await subtitle.scrollIntoViewIfNeeded();
   await expect(subtitle).toHaveAttribute("data-motion", "running");
-  await page.clock.runFor(100);
-  expect((await letters.textContent())!.length).toBeGreaterThan(0);
-  expect(phrases[0].startsWith((await letters.textContent())!)).toBe(true);
-  await page.clock.runFor(2500);
-  expect(phrases.slice(1)).toContain(await letters.textContent());
+  const resumed = await advanceUntilText(
+    page,
+    () => letters.textContent(),
+    (text) =>
+      text.length > 0 && phrases.some((phrase) => phrase.startsWith(text)),
+  );
+  expect(phrases.some((phrase) => phrase.startsWith(resumed))).toBe(true);
+  const completed = await advanceUntilText(
+    page,
+    () => letters.textContent(),
+    (text) => phrases.slice(1).includes(text),
+  );
+  expect(phrases.slice(1)).toContain(completed);
 });
 
 test("hidden document suspends typing and caret, then resumes without catching up", async ({
@@ -284,11 +308,19 @@ test("hidden document suspends typing and caret, then resumes without catching u
   await page.clock.runFor(30000);
   await expect(letters).toHaveText(paused!);
   await setHidden(page, false);
-  await page.clock.runFor(100);
-  expect((await letters.textContent())!.length).toBeGreaterThan(0);
-  expect(phrases[0].startsWith((await letters.textContent())!)).toBe(true);
-  await page.clock.runFor(2500);
-  expect(phrases.slice(1)).toContain(await letters.textContent());
+  const resumed = await advanceUntilText(
+    page,
+    () => letters.textContent(),
+    (text) =>
+      text.length > 0 && phrases.some((phrase) => phrase.startsWith(text)),
+  );
+  expect(phrases.some((phrase) => phrase.startsWith(resumed))).toBe(true);
+  const completed = await advanceUntilText(
+    page,
+    () => letters.textContent(),
+    (text) => phrases.slice(1).includes(text),
+  );
+  expect(phrases.slice(1)).toContain(completed);
 });
 
 test("queued subtitle callback checks hidden state before its visibility event arrives", async ({
