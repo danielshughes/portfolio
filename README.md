@@ -34,7 +34,7 @@ The gate covers formatting, lint, types, tests, accessibility and the build acro
 
 ## Deployment
 
-Feature pull requests target `develop`. A trusted push deploys development after CI passes, using environment-scoped GitHub secrets. Initial development deployment is awaiting a passing CI run; the site is not live yet.
+Feature pull requests target `develop`. A trusted push deploys development after CI passes, using environment-scoped GitHub secrets. Development is live at [dev.dlhs.co.uk](https://dev.dlhs.co.uk) and deliberately non-indexable while the portfolio is being reviewed. Production publication is not enabled.
 
 Default builds are development-only and non-indexable. Production publication and automation, pull request previews and analytics are not implemented. Worker configuration lives in [wrangler.jsonc](wrangler.jsonc).
 
