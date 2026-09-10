@@ -1,0 +1,18 @@
+---
+interface Props {
+  items: readonly string[];
+}
+
+const { items } = Astro.props;
+---
+
+<section class="page-section working-focus" id="working-focus" aria-labelledby="focus-title">
+  <header class="section-heading">
+    <p class="eyebrow">Operating range · 02</p>
+    <h2 id="focus-title">Working focus</h2>
+  </header>
+
+  <ul>
+    {items.map((item, index) => <li><span>{String(index + 1).padStart(2, "0")}</span>{item}</li>)}
+  </ul>
+</section>

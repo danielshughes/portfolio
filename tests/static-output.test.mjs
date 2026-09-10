@@ -27,5 +27,12 @@ test("build emits the required static page contract", () => {
 
   assert.match(html, /<h1[^>]*>Observability &amp; SRE Leader<\/h1>/);
   assert.match(html, /<main(?:\s|>)/);
+  assert.ok(/<section[^>]*id="evidence"/.test(html), "missing evidence section");
+  assert.ok(
+    /<section[^>]*id="working-focus"/.test(html),
+    "missing working-focus section",
+  );
+  assert.ok(/<section[^>]*id="contact"/.test(html), "missing contact section");
+  assert.equal(html.match(/<article[^>]*class="evidence-entry"/g)?.length, 3);
   assert.doesNotMatch(html, /<astro-island(?:\s|>)/);
 });

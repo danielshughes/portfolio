@@ -10,7 +10,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "test": "npm run test:static",
+    "test": "npm run test:content && npm run test:static",
+    "test:content": "node --test src/content/portfolio.test.ts",
     "test:static": "node --test tests/static-output.test.mjs"
   },
   "devDependencies": {
