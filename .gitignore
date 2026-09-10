@@ -1,0 +1,24 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# Cloudflare local state
+.wrangler/
+
+# Browser and audit output
+playwright-report/
+test-results/
+.lighthouseci/
+
+# Editor and operating-system files
+.DS_Store
+*.swp
+*.swo
