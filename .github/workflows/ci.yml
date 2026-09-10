@@ -13,7 +13,6 @@ jobs:
     timeout-minutes: 30
     env:
       CI: true
-      PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -25,8 +24,11 @@ jobs:
           node-version: "24"
           package-manager-cache: false
       - run: npm ci
+      - run: npm run lint:workflows
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run quality
+        env:
+          PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
       - run: npm audit --audit-level=low
       - name: Redacted secret scan of history and deliverables
         shell: bash
