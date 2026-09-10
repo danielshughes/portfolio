@@ -1,0 +1,15 @@
+<div class="radar-tabs" role="tablist" aria-label="Radar view" hidden>
+  {["Traffic", "Bots", "Devices", "Protocols"].map((label, index) => (
+    <button
+      type="button"
+      role="tab"
+      id={`radar-tab-${label.toLowerCase()}`}
+      aria-controls="radar-panel"
+      aria-selected={index === 0 ? "true" : "false"}
+      tabindex={index === 0 ? 0 : -1}
+      data-radar-view={label.toLowerCase()}
+    >
+      {label}
+    </button>
+  ))}
+</div>

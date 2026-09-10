@@ -1,38 +1,38 @@
 import assert from "node:assert/strict";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+test("static output includes the narrative and working anchor destinations", () => {
+  const build = spawnSync("npm", ["run", "build"], { encoding: "utf8" });
+  assert.equal(build.status, 0, build.stderr);
+  const html = readFileSync("dist/index.html", "utf8");
+  assert.equal((html.match(/<h1\b/g) || []).length, 1);
+  for (const id of ["main-content", "work", "contact"])
+    assert.ok(html.includes('id="' + id + '"'));
+  assert.ok(html.includes("MCP servers"));
+  assert.ok(!html.includes("<astro-island"));
+  for (const path of [
+    "dist/index.html",
+    "dist/notes/index.html",
+    "dist/experiments/index.html",
+  ]) {
+    const page = readFileSync(path, "utf8");
+    assert.ok(page.includes('lang="en-GB"'));
+    assert.equal((page.match(/<h1\b/g) || []).length, 1);
+    assert.ok(!page.includes("Engineering notes"));
+    assert.ok(
+      !/\u2014|&mdash;|&#0*8212;|&#x0*2014;/i.test(page),
+      "Public copy must not contain em dashes",
+    );
+  }
+});
 
-const buildDirectory = new URL("../dist/", import.meta.url);
-
-test("build emits the required static page contract", () => {
-  rmSync(buildDirectory, { recursive: true, force: true });
-
-  const build = spawnSync("npm", ["run", "build"], {
-    cwd: new URL("..", import.meta.url),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      SITE_URL: "https://portfolio.example.test",
-    },
-  });
-
-  assert.equal(
-    build.status,
-    0,
-    `Astro build failed:\n${build.stdout}\n${build.stderr}`,
-  );
-
-  const html = readFileSync(new URL("index.html", buildDirectory), "utf8");
-
-  assert.match(html, /<h1[^>]*>Observability &amp; SRE Leader<\/h1>/);
-  assert.match(html, /<main(?:\s|>)/);
-  assert.ok(/<section[^>]*id="evidence"/.test(html), "missing evidence section");
-  assert.ok(
-    /<section[^>]*id="working-focus"/.test(html),
-    "missing working-focus section",
-  );
-  assert.ok(/<section[^>]*id="contact"/.test(html), "missing contact section");
-  assert.equal(html.match(/<article[^>]*class="evidence-entry"/g)?.length, 3);
-  assert.doesNotMatch(html, /<astro-island(?:\s|>)/);
+test("public documentation follows the no-em-dash writing rule", () => {
+  for (const path of ["README.md", "AGENTS.md"]) {
+    assert.doesNotMatch(
+      readFileSync(path, "utf8"),
+      /\u2014|&mdash;|&#0*8212;|&#x0*2014;/i,
+      `${path} must not contain em dashes`,
+    );
+  }
 });

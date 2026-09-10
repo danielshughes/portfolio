@@ -1,0 +1,167 @@
+import { expect, test } from "@playwright/test";
+import { radar } from "./radar-fixture";
+
+const summary = (country: string, view: string) => ({
+  ...radar(country),
+  view,
+  categories: [
+    { label: "human", value: 65 },
+    { label: "bot", value: 35 },
+  ],
+});
+
+test("keyboard focus alone warms the intended Radar tab", async ({ page }) => {
+  const calls: string[] = [];
+  await page.route("**/api/radar?*", (route) => {
+    const url = new URL(route.request().url());
+    calls.push(url.search);
+    const country = url.searchParams.get("country")!,
+      view = url.searchParams.get("view");
+    return route.fulfill({
+      json: view ? summary(country, view) : radar(country),
+    });
+  });
+  await page.goto("/experiments/#internet");
+  await expect(page.locator(".internet-value")).toHaveText("50");
+  await page.locator(".internet-atlas").scrollIntoViewIfNeeded();
+  await page.getByRole("tab", { name: "Bots", exact: true }).focus();
+  await expect.poll(() => calls.includes("?country=GB&view=bots")).toBe(true);
+  await expect(
+    page.getByRole("tab", { name: "Traffic", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+});
+
+for (const hint of [
+  { saveData: true },
+  { effectiveType: "2g" },
+  { effectiveType: "3g" },
+])
+  test(`connection hint ${JSON.stringify(hint)} skips speculation but preserves automatic load and selection`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (hint) =>
+        Object.defineProperty(navigator, "connection", {
+          value: Object.assign(new EventTarget(), hint),
+        }),
+      hint,
+    );
+    const calls: string[] = [];
+    await page.route("**/api/radar?*", (route) => {
+      const url = new URL(route.request().url());
+      calls.push(url.search);
+      return route.fulfill({ json: radar(url.searchParams.get("country")!) });
+    });
+    await page.goto("/experiments/#internet");
+    await expect(page.locator(".internet-value")).toHaveText("50");
+    await page.getByRole("button", { name: "Japan", exact: true }).hover();
+    await page.waitForTimeout(100);
+    expect(calls).toEqual(["?country=GB"]);
+    await page.getByRole("button", { name: "Japan", exact: true }).click();
+    await expect(page.locator(".internet-country-name")).toHaveText("Japan");
+    await expect(page.locator(".internet-value")).toHaveText("50");
+    expect(calls).toEqual(["?country=GB", "?country=JP"]);
+  });
+
+test("idle atlas does not speculate; intent caches tabs and hidden state cancels the queue", async ({
+  page,
+}) => {
+  const calls: string[] = [];
+  await page.route("**/api/radar?*", (route) => {
+    const url = new URL(route.request().url());
+    calls.push(url.search);
+    const country = url.searchParams.get("country")!,
+      view = url.searchParams.get("view");
+    return route.fulfill({
+      json: view ? summary(country, view) : radar(country),
+    });
+  });
+  await page.goto("/experiments/");
+  await expect(page.locator(".internet-value")).toHaveText("50");
+  await page.waitForTimeout(100);
+  expect(calls).toEqual(["?country=GB"]);
+  await page.locator(".internet-atlas").scrollIntoViewIfNeeded();
+  await page.getByRole("tab", { name: "Bots", exact: true }).hover();
+  await expect.poll(() => calls.includes("?country=GB&view=bots")).toBe(true);
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
+  await expect(page.locator(".radar-bars")).toContainText("65%");
+  await page.getByRole("tab", { name: "Traffic", exact: true }).click();
+  await page.getByRole("tab", { name: "Bots", exact: true }).click();
+  await expect(page.locator(".radar-bars")).toContainText("65%");
+  expect(calls.filter((call) => call === "?country=GB&view=bots")).toHaveLength(
+    1,
+  );
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  const hiddenCalls = calls.length;
+  await page.waitForTimeout(100);
+  expect(calls.length).toBe(hiddenCalls);
+  expect(calls.length).toBeLessThanOrEqual(14);
+});
+
+for (const width of [390, 1440])
+  test(`pending values keep the chart geometry at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route("**/api/radar?*", async (route) => {
+      await pending;
+      await route.fulfill({ json: radar() });
+    });
+    await page.goto("/experiments/#internet");
+    await expect(page.locator(".internet-value")).toHaveText("Loading");
+    const geometry = () =>
+      page.locator(".internet-reading").evaluate((root) => {
+        const chart = root
+          .querySelector(".internet-history svg")!
+          .getBoundingClientRect();
+        return {
+          top: chart.top - root.getBoundingClientRect().top,
+          height: chart.height,
+          width: chart.width,
+        };
+      });
+    const before = await geometry();
+    release();
+    await expect(page.locator(".internet-value")).toHaveText("50");
+    const after = await geometry();
+    expect(Math.abs(before.top - after.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(before.height - after.height)).toBeLessThanOrEqual(1);
+    expect(after.width).toBe(before.width);
+  });
+
+test("pending readings say Loading, cached country switches reuse validated data", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const calls: string[] = [];
+  await page.route("**/api/radar?*", async (route) => {
+    const url = new URL(route.request().url());
+    calls.push(url.search);
+    if (url.searchParams.get("country") === "GB") await pending;
+    await route.fulfill({ json: radar(url.searchParams.get("country")!) });
+  });
+  await page.goto("/experiments/#internet");
+  await expect(page.locator(".internet-value")).toHaveText("Loading");
+  release();
+  await expect(page.locator(".internet-value")).toHaveText("50");
+  await page.getByRole("button", { name: "Japan", exact: true }).click();
+  await expect(page.locator(".internet-value")).toHaveText("50");
+  await page
+    .getByRole("button", { name: "United Kingdom", exact: true })
+    .click();
+  await expect(page.locator(".internet-value")).toHaveText("50");
+  expect(calls.filter((call) => call === "?country=GB")).toHaveLength(1);
+});

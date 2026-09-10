@@ -1,24 +1,240 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import Contact from "../components/Contact.astro";
-import EvidenceList from "../components/EvidenceList.astro";
-import Hero from "../components/Hero.astro";
-import WorkingFocus from "../components/WorkingFocus.astro";
-import { portfolioContent } from "../content/portfolio";
-
-const title = "Dan Hughes — Observability & SRE Leader";
-const description =
-  "A compact, evidence-led portfolio focused on SRE, infrastructure, observability, incident management and practical uses of AI.";
+import ConnectionField from "../components/ConnectionField.astro";
+import { portfolioContent as copy } from "../content/portfolio";
+import { noteById } from "../content/notes";
+const [discipline, role] = copy.headline.split(" & ");
 ---
 
-<BaseLayout {title} {description}>
-  <Hero
-    headline={portfolioContent.headline}
-    support={portfolioContent.support}
-    signal={portfolioContent.signal}
-    links={portfolioContent.links}
-  />
-  <EvidenceList entries={portfolioContent.evidence} />
-  <WorkingFocus items={portfolioContent.focus} />
-  <Contact copy={portfolioContent.contact} links={portfolioContent.links} />
+<BaseLayout
+  title="Dan Hughes | Observability, SRE & AI engineering"
+  description={copy.introduction}
+>
+  <section class="opening" aria-labelledby="page-title">
+    <div class="intro-line">
+      <span class="intro-name">Dan Hughes</span>
+    </div>
+    <h1 id="page-title">
+      {discipline}
+      <span class="headline-continuation">{` & ${role}`}</span>
+    </h1>
+    <div class="hero-bottom">
+      <div class="opening-copy">
+        <h2>
+          From the code
+          <br />
+          <em>to the people running it.</em>
+        </h2>
+        <p>
+          Building observability platforms on Kubernetes, managing
+          infrastructure as code and engineering the tools around AI. Helping
+          other engineers work through technical decisions, and turning incident
+          findings into changes to code, checks and runbooks.
+        </p>
+        <a class="text-link" href="#work">
+          Take a look around <span aria-hidden="true">↙</span>
+        </a>
+      </div>
+      <ConnectionField />
+    </div>
+  </section>
+
+  <section id="work" class="selected-work" aria-labelledby="work-title">
+    <div class="section-top">
+      <p class="eyebrow">Selected work</p>
+    </div>
+    <h2 class="section-title" id="work-title">
+      Under the <em>surface.</em>
+    </h2>
+    <div class="project-grid">
+      <a
+        href="/notes/#freshness"
+        class="project project-observe"
+        aria-labelledby="observe-title"
+        data-reveal
+      >
+        <div class="project-art chart-art" aria-hidden="true">
+          <span class="art-label">PROCESS ALIVE ≠ DATA FRESH</span>
+          <div class="health-preview">
+            <div>
+              <span>process</span>
+              <strong>running</strong>
+            </div>
+            <div>
+              <span>data</span>
+              <strong>stale</strong>
+            </div>
+          </div>
+          <span class="art-caption">
+            When collection stops, readiness should say so.
+          </span>
+        </div>
+        <div class="project-meta">
+          <span>Observability / Reliability</span>
+          <span aria-hidden="true">↗</span>
+        </div>
+        <h3 id="observe-title">
+          Observability beyond
+          <br />
+          the dashboard.
+        </h3>
+        <p>{noteById("freshness").teaser}</p>
+      </a>
+      <a
+        href="/notes/#agents"
+        class="project project-ai ai-section"
+        aria-labelledby="agents-title"
+        data-reveal
+      >
+        <div class="project-art agent-art" aria-hidden="true">
+          <span class="art-label">CONTEXT MEETS CAPABILITY</span>
+          <div class="agent-path">
+            <span>context</span>
+            <i></i>
+            <b>
+              agent<span>↗</span>
+            </b>
+            <i></i>
+            <span>tools</span>
+          </div>
+          <div class="agent-under">
+            <span>memory</span>
+            <span>limits</span>
+            <span>telemetry</span>
+          </div>
+          <span class="art-caption">
+            MCP servers & the engineering around them.
+          </span>
+        </div>
+        <div class="project-meta">
+          <span>AI tooling / Go / TypeScript</span>
+          <span aria-hidden="true">↗</span>
+        </div>
+        <h3 class="ai-heading" id="agents-title">
+          Beyond the
+          <br />
+          prompt window.
+        </h3>
+        <p>{noteById("agents").teaser}</p>
+      </a>
+      <a
+        href="/notes/#onboarding"
+        class="project project-infra"
+        aria-labelledby="infra-title"
+        data-reveal
+      >
+        <div class="project-art pipeline-art" aria-hidden="true">
+          <span class="art-label">KUBERNETES / TERRAFORM / GITOPS</span>
+          <div class="pipeline">
+            <span>declare</span>
+            <i>↗</i>
+            <span>validate</span>
+            <i>↘</i>
+            <span>publish</span>
+          </div>
+          <div class="pipeline-line"></div>
+          <span class="art-caption">
+            One change. A repeatable path through.
+          </span>
+        </div>
+        <div class="project-meta">
+          <span>Kubernetes / Infrastructure as code</span>
+          <span aria-hidden="true">↗</span>
+        </div>
+        <h3 id="infra-title">
+          Kubernetes & IaC.
+          <br />
+          Through to production.
+        </h3>
+        <p>{noteById("onboarding").teaser}</p>
+      </a>
+      <a
+        href="/notes/#people"
+        class="project project-people"
+        aria-labelledby="people-title"
+        data-reveal
+      >
+        <div class="project-art people-art" aria-hidden="true">
+          <span class="art-label">TECHNICAL LEADERSHIP</span>
+          <div class="type-art">
+            build.
+            <br />
+            <span>share.</span>
+            <br />
+            repeat.
+          </div>
+          <span class="art-caption">
+            Reviews, runbooks and room to ask questions.
+          </span>
+        </div>
+        <div class="project-meta">
+          <span>Leadership / Incident learning</span>
+          <span aria-hidden="true">↗</span>
+        </div>
+        <h3 id="people-title">
+          Make it useful
+          <br />
+          to the next person.
+        </h3>
+        <p>{noteById("people").teaser}</p>
+      </a>
+    </div>
+    <a class="pill-link" href="/notes/">
+      Notes <span aria-hidden="true">↗</span>
+    </a>
+  </section>
+
+  <section class="off-clock" aria-labelledby="off-title" data-reveal>
+    <div>
+      <p class="eyebrow">Not everything needs a runbook</p>
+      <h2 id="off-title">
+        Off the clock.
+        <br />
+        <em>Still curious.</em>
+      </h2>
+    </div>
+    <div class="off-copy">
+      <p>
+        There is life outside a terminal. Theatre, cinema and gaming, for a
+        start.
+      </p>
+      <div class="off-tinkering">
+        <h3>Some side quests do involve a server.</h3>
+        <p>
+          Self-hosted services for family and friends give the tinkering a
+          practical home. A separate Kubernetes and GitOps lab leaves room to
+          explore observability, try things out and get things wrong without
+          interrupting anyone's evening.
+        </p>
+      </div>
+    </div>
+  </section>
+  <section
+    id="contact"
+    class="contact-section"
+    aria-labelledby="contact-title"
+    data-reveal
+  >
+    <h2 id="contact-title">
+      <a
+        href={copy.linkedin}
+        class="contact-title"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Opens in a new tab."
+      >
+        Say hello<span aria-hidden="true">↗</span>
+      </a>
+    </h2>
+    <div class="contact-bottom">
+      <a
+        href={copy.linkedin}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Opens in a new tab."
+      >
+        Connect on LinkedIn
+      </a>
+    </div>
+  </section>
 </BaseLayout>

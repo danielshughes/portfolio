@@ -1,0 +1,45 @@
+---
+import ExperimentPreview from "./ExperimentPreview.astro";
+interface Props {
+  id: string;
+  number: string;
+  title: string;
+  subtitle: string;
+  label: string;
+}
+const { id, number, title, subtitle, label } = Astro.props;
+---
+
+<article
+  class={`experiment experiment-${id}`}
+  id={id}
+  data-experiment={id}
+  aria-labelledby={`${id}-title`}
+>
+  <header class="experiment-card-heading">
+    <span class="experiment-number">{number}</span>
+    <div>
+      <h2 id={`${id}-title`}>{title}</h2>
+      <p>{subtitle}</p>
+    </div>
+  </header>
+  <div class="experiment-stage">
+    <span class="stage-label">{label}</span>
+    <div class="experiment-visual">
+      <ExperimentPreview kind={id} />
+      <div class="interactive-stage" hidden>
+        <slot name="stage" />
+      </div>
+    </div>
+    <span class="preview-caption">Illustrative preview</span>
+  </div>
+  <details class="experiment-settings">
+    <summary>
+      Explore <span class="sr-only">{title}</span>
+      <span aria-hidden="true">↗</span>
+    </summary>
+    <div class="experiment-desk">
+      <slot />
+    </div>
+  </details>
+</article>

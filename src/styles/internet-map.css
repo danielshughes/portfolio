@@ -1,0 +1,491 @@
+.internet {
+  padding-block: var(--section-space);
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 2rem;
+}
+.internet-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-lg);
+}
+.internet-heading h2 {
+  font: 500 var(--type-note)/1.07 var(--display);
+  letter-spacing: -0.055em;
+  margin-block: var(--heading-gap);
+}
+.internet-heading h2 em {
+  font-style: normal;
+  color: var(--orange);
+}
+.internet-source {
+  font: 0.8rem/1.5 monospace;
+  border-bottom: 1px solid var(--small-accent);
+  color: var(--ink);
+  padding-bottom: 0.35rem;
+  white-space: nowrap;
+}
+.internet-connection {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-block: 0.75rem 0.4rem;
+}
+.internet-surface {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  border-block: 1px solid var(--line);
+}
+.internet-map-panel {
+  min-width: 0;
+  background: transparent;
+  padding: clamp(0.75rem, 1.5vw, 1.5rem);
+}
+.internet-map-top,
+.internet-reading-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font: 0.8rem/1.5 monospace;
+}
+.internet-atlas {
+  position: relative;
+  aspect-ratio: 2;
+  margin-block: 1rem;
+}
+.internet-geography {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.internet-land {
+  fill: var(--ink);
+  opacity: 0.2;
+}
+.internet-graticule {
+  stroke: var(--ink);
+  stroke-width: 0.5;
+  opacity: 0.12;
+  fill: none;
+}
+.internet-pin-core {
+  fill: var(--ink);
+}
+.internet-pin-halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 1.5;
+}
+.internet-pin.is-selected .internet-pin-core {
+  fill: var(--small-accent);
+}
+.internet-pin.is-selected .internet-pin-halo {
+  stroke: var(--small-accent);
+}
+.internet[data-event="disruption"]
+  .internet-pin.is-selected
+  .internet-pin-halo {
+  stroke-dasharray: 3 2;
+  stroke-width: 3;
+}
+.internet-map-hitpoints {
+  position: absolute;
+  inset: 0;
+}
+.internet-map-hitpoints button {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.internet-map-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+.internet-map-caption a {
+  text-underline-offset: 0.2em;
+}
+.internet-countries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  border-top: 1px solid var(--line);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+.internet-countries button,
+.internet-playback button,
+.internet-event-list button {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--ink);
+}
+.internet-countries button[aria-pressed="true"] {
+  border-bottom-color: var(--small-accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.internet-reading {
+  padding: clamp(0.75rem, 1.5vw, 1.5rem);
+  min-width: 0;
+}
+.internet-country-name {
+  font: 500 clamp(1.5rem, 2.6vw, 2.5rem)/1.15 var(--display);
+  letter-spacing: -0.04em;
+  margin-top: 0.65rem;
+  min-height: 1.15em;
+}
+.internet-measure {
+  display: grid;
+  grid-template-columns: minmax(0, 0.6fr) minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-block: 0.6rem;
+}
+.internet-value {
+  font: 500 clamp(3rem, 6vw, 5rem)/1 var(--display);
+  letter-spacing: -0.06em;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+}
+.internet-value[data-placeholder] {
+  font-size: 1rem;
+  letter-spacing: 0;
+  min-height: clamp(3rem, 6vw, 5rem);
+  display: flex;
+  align-items: center;
+}
+.internet-measure > span {
+  min-width: 0;
+  color: var(--muted);
+  font: 0.85rem/1.6 monospace;
+}
+.internet-timestamp {
+  display: block;
+  min-height: 3.2em;
+}
+.internet-event-status {
+  font-size: 0.875rem;
+  min-height: 3.4em;
+}
+.internet-history {
+  margin: 0.6rem 0;
+}
+.internet-history svg {
+  display: block;
+  width: 100%;
+  height: 8rem;
+  overflow: visible;
+}
+.internet-chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.internet-chart-line {
+  stroke: var(--small-accent);
+  stroke-width: 2;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.internet-chart-cursor {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.internet-event-band {
+  fill: var(--small-accent);
+  opacity: 0.12;
+}
+.internet-history figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font: 0.75rem/1.5 monospace;
+  margin-top: 0.75rem;
+}
+.internet-time-controls label {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+.internet-time-controls input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  accent-color: var(--small-accent);
+  margin: 0.25rem 0;
+}
+.internet-time-controls p {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.internet-playback {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+.internet-playback button,
+.internet-event-list button {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+.internet button:disabled {
+  cursor: default;
+  text-decoration: none;
+}
+.internet-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding-top: 0.75rem;
+}
+.internet-event-list h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.internet-event-list p,
+.internet-disclaimer {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+.internet-disclaimer {
+  color: var(--muted);
+}
+.internet-attribution {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+.internet [hidden] {
+  display: none !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .internet-pin.is-selected .internet-pin-halo {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+}
+@media (max-width: 1000px) {
+  .internet-surface {
+    grid-template-columns: 1fr;
+  }
+  .internet-reading {
+    border-top: 1px solid var(--line);
+  }
+  .internet-country-name {
+    min-height: 0;
+  }
+}
+@media (max-width: 700px) {
+  .internet-map-hitpoints {
+    display: none;
+  }
+  .internet-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .internet-bottom {
+    grid-template-columns: 1fr;
+  }
+  .internet-map-caption {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .internet-countries {
+    gap: 0.2rem 1rem;
+  }
+  .internet-reading-heading,
+  .internet-map-top {
+    flex-wrap: wrap;
+  }
+  .internet-source {
+    white-space: normal;
+  }
+  .internet-playback {
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+}
+.internet-data-controls {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+.internet-source-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.25rem;
+  margin-block: 0.5rem;
+}
+.internet-source-details .internet-connection {
+  margin: 0;
+}
+.internet-data-controls button {
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.internet-data-controls button:disabled {
+  cursor: wait;
+}
+.internet-history figcaption {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.internet-event-list p {
+  overflow-wrap: anywhere;
+}
+.radar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin-block: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.radar-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  padding: 0.7rem 0;
+  cursor: pointer;
+}
+.radar-tabs button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--small-accent);
+}
+.radar-description {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+.radar-explanation {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 2rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 1000px) {
+  .radar-explanation {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+.radar-guide {
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-bottom: 0;
+}
+.radar-guide strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+.radar-summary {
+  min-height: 0;
+}
+.radar-bars {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0;
+}
+.radar-bars li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.radar-bars strong {
+  font: 500 1.1rem/1.4 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+.radar-bar-track {
+  grid-column: 1/-1;
+  display: block;
+  height: 0.5rem;
+  background: var(--line);
+}
+.radar-bar-track span {
+  display: block;
+  height: 100%;
+  background: var(--small-accent);
+  transform-origin: left;
+}
+.radar-summary-window {
+  font: 0.75rem/1.7 monospace;
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .internet .internet-pin.is-selected .internet-pin-halo {
+    animation: radar-arrival 2.8s ease-out infinite;
+    animation-play-state: paused;
+  }
+  .internet[data-pulse="running"] .internet-pin.is-selected .internet-pin-halo {
+    animation-play-state: running;
+  }
+  .radar-bar-track span {
+    animation: radar-bar-arrival 0.45s ease-out;
+  }
+  @keyframes radar-arrival {
+    from {
+      transform: scale(0.65);
+      opacity: 1;
+    }
+    to {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+  @keyframes radar-bar-arrival {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+}
+@media (max-width: 450px) {
+  .radar-bars li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.3rem;
+  }
+  .radar-tabs {
+    gap: 0.2rem 1rem;
+  }
+}

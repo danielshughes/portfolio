@@ -1,0 +1,86 @@
+<button
+  class="theme-control"
+  type="button"
+  data-choice="system"
+  aria-label="Colour theme: System. Switch to Light."
+  title="System theme. Switch to Light."
+  hidden
+>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <g data-icon="system">
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </g>
+    <g data-icon="light">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </g>
+    <g data-icon="dark">
+      <path d="M20.8 14.4A9 9 0 0 1 9.6 3.2a9 9 0 1 0 11.2 11.2Z" />
+    </g>
+  </svg>
+</button>
+<script>
+  const control = document.querySelector<HTMLButtonElement>(".theme-control");
+  const choices = ["system", "light", "dark"];
+  const labels: Record<string, string> = {
+    system: "System",
+    light: "Light",
+    dark: "Dark",
+  };
+  const system = matchMedia("(prefers-color-scheme: dark)");
+  let choice = "system";
+  try {
+    choice = localStorage.getItem("portfolio-theme") || "system";
+  } catch {
+    /* Storage is optional. */
+  }
+  if (!["system", "light", "dark"].includes(choice)) choice = "system";
+  function apply() {
+    const theme =
+      choice === "system" ? (system.matches ? "dark" : "light") : choice;
+    document.documentElement.dataset.theme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#171c1b" : "#f9f9f6");
+    if (control) {
+      const next = choices[(choices.indexOf(choice) + 1) % choices.length];
+      control.dataset.choice = choice;
+      control.setAttribute(
+        "aria-label",
+        `Colour theme: ${labels[choice]}. Switch to ${labels[next]}.`,
+      );
+      control.title = `${labels[choice]} theme. Switch to ${labels[next]}.`;
+    }
+    document.dispatchEvent(new Event("themechange"));
+  }
+  if (control) {
+    control.hidden = false;
+    control.addEventListener("click", () => {
+      choice = choices[(choices.indexOf(choice) + 1) % choices.length];
+      try {
+        localStorage.setItem("portfolio-theme", choice);
+      } catch {
+        /* In-memory preference still works. */
+      }
+      apply();
+    });
+  }
+  system.addEventListener("change", apply);
+  window.addEventListener("storage", (event) => {
+    if (event.key !== "portfolio-theme") return;
+    choice = ["light", "dark"].includes(event.newValue || "")
+      ? event.newValue!
+      : "system";
+    apply();
+  });
+  apply();
+</script>
