@@ -32,6 +32,8 @@ npm run quality
 
 The gate covers formatting, lint, types, tests, accessibility and the build across all configured browsers. After editing GitHub Actions workflows, also run `npm run lint:workflows` (requires Go).
 
+Documentation-only changes run a quick file check. They skip dependency installation, the full quality gate and deployment. Source, site content, assets, tests and configuration still run the full checks.
+
 ## Deployment
 
 Feature pull requests target `develop`. A trusted push deploys development after CI passes, using environment-scoped GitHub secrets. Development is live at [dev.dlhs.co.uk](https://dev.dlhs.co.uk) and deliberately non-indexable while the portfolio is being reviewed. Production publication is not enabled.
