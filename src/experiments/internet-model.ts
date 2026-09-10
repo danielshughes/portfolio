@@ -68,7 +68,3 @@ export function chartPath(
     })
     .join("");
 }
-
-export function sampleTime(hour: number) {
-  return `Day ${Math.floor(hour / 24) + 1}, ${String(hour % 24).padStart(2, "0")}:00`;
-}
