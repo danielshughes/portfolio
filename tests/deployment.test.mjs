@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import ts from "typescript";
-import { deployDevelopment } from "../scripts/deploy-development.mjs";
+import { deploy } from "../scripts/deploy.mjs";
 
 const allowed = {
   GITHUB_EVENT_NAME: "push",
@@ -12,6 +12,7 @@ const allowed = {
   CLOUDFLARE_API_TOKEN: "fixture-deploy-credential",
   CLOUDFLARE_ACCOUNT_ID: "fixture-account",
   RADAR_API_TOKEN: "fixture-radar-credential",
+  DEPLOY_ENV: "development",
 };
 
 test("development deployment rejects untrusted events, branches and missing credentials", () => {
@@ -27,20 +28,30 @@ test("development deployment rejects untrusted events, branches and missing cred
     let calls = 0;
     assert.throws(
       () =>
-        deployDevelopment({ ...allowed, ...change }, () => {
+        deploy({ ...allowed, ...change }, () => {
           calls++;
           return { status: 0 };
         }),
-      /Development deployment requires a trusted develop push|Missing deployment setting:/,
+      /Deployment requires a trusted environment branch push|Missing deployment setting:/,
     );
     assert.equal(calls, 0, "must reject before invoking Wrangler");
   }
 });
 
+test("schema migration precedes deployment without exposing the Radar credential", () => {
+  deploy(allowed, (_command, args) => {
+    assert.match(
+      args[3],
+      /^env -u RADAR_API_TOKEN node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
+    );
+    return { status: 0 };
+  });
+});
+
 test("only the development secret is streamed to Wrangler, never passed in argv", () => {
   let calls = 0;
   assert.equal(
-    deployDevelopment(allowed, (command, args, options) => {
+    deploy(allowed, (command, args, options) => {
       calls++;
       assert.equal(command, "bash");
       assert.deepEqual(args.slice(0, 3), ["-o", "pipefail", "-c"]);
@@ -63,25 +74,30 @@ test("only the development secret is streamed to Wrangler, never passed in argv"
   );
   assert.equal(calls, 1);
   assert.equal(
-    deployDevelopment(allowed, () => ({ status: 7 })),
+    deploy(allowed, () => ({ status: 7 })),
     7,
   );
   assert.equal(
-    deployDevelopment(allowed, () => ({ status: null })),
+    deploy(allowed, () => ({ status: null })),
     1,
   );
 });
 
 test("actual secret pipeline is readable by pathname on Linux and strips the consumer environment", () => {
-  const result = deployDevelopment(
+  const result = deploy(
     { ...process.env, ...allowed },
     (command, args, options) => {
       const probe = `node -e 'const assert=require("node:assert/strict"); const fs=require("node:fs"); assert.deepEqual(JSON.parse(fs.readFileSync("/dev/stdin", "utf8")), {RADAR_API_TOKEN:"fixture-radar-credential"}); assert.equal(process.env.RADAR_API_TOKEN, undefined);'`;
       const actualArgs = [...args];
-      actualArgs[3] = actualArgs[3].replace(
-        /node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
-        probe,
-      );
+      actualArgs[3] = actualArgs[3]
+        .replace(
+          /^env -u RADAR_API_TOKEN node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
+          "true && ",
+        )
+        .replace(
+          /node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
+          probe,
+        );
       assert.notEqual(
         actualArgs[3],
         args[3],
@@ -97,7 +113,43 @@ test("actual secret pipeline is readable by pathname on Linux and strips the con
   );
 });
 
-test("only development has a public route and enabled Radar", () => {
+test("production requires its matching branch and validated publication origin", () => {
+  const production = {
+    ...allowed,
+    DEPLOY_ENV: "production",
+    GITHUB_REF: "refs/heads/main",
+    SITE_URL: "https://danhughes.uk",
+    PRODUCTION_DEPLOY_ENABLED: "true",
+  };
+  assert.equal(
+    deploy(production, (_command, args) => {
+      assert.match(args[3], /--env production /);
+      return { status: 0 };
+    }),
+    0,
+  );
+  for (const change of [
+    { PRODUCTION_DEPLOY_ENABLED: undefined },
+    { PRODUCTION_DEPLOY_ENABLED: "false" },
+    { DEPLOY_ENV: "staging" },
+    { DEPLOY_ENV: undefined },
+    { GITHUB_REF: "refs/heads/develop" },
+    { SITE_URL: "https://wrong.example" },
+    { SITE_URL: undefined },
+    { GITHUB_EVENT_NAME: "pull_request" },
+  ]) {
+    let calls = 0;
+    assert.throws(() =>
+      deploy({ ...production, ...change }, () => {
+        calls++;
+        return { status: 0 };
+      }),
+    );
+    assert.equal(calls, 0, "must reject before invoking Wrangler");
+  }
+});
+
+test("environments route only to their authorised domains", () => {
   const { config, error } = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -108,10 +160,12 @@ test("only development has a public route and enabled Radar", () => {
   assert.equal(config.vars.RADAR_ENABLED, false);
   assert.equal(config.env.development.vars.RADAR_ENABLED, true);
   assert.deepEqual(config.env.development.routes, [
-    { pattern: "dev.dlhs.co.uk", custom_domain: true },
+    { pattern: "dev.danhughes.uk", custom_domain: true },
   ]);
-  assert.equal(config.env.production.vars.RADAR_ENABLED, false);
-  assert.equal(config.env.production.routes, undefined);
+  assert.equal(config.env.production.vars.RADAR_ENABLED, true);
+  assert.deepEqual(config.env.production.routes, [
+    { pattern: "danhughes.uk", custom_domain: true },
+  ]);
 });
 
 test("Radar attribution survives dynamic loading in a separate static element", () => {

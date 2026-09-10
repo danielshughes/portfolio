@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 
 // Only parse the checked-in non-secret configuration, never .env or .dev.vars.
 export async function runtime(options = {}) {
@@ -14,6 +14,7 @@ export async function runtime(options = {}) {
     format: "esm",
     platform: "browser",
     write: false,
+    external: ["cloudflare:workers"],
   });
   const mf = new Miniflare(
     convertV4MiniflareOptions({
@@ -36,7 +37,17 @@ export async function runtime(options = {}) {
             ...environment.vars,
             RADAR_ENABLED: true,
             RADAR_API_TOKEN: "explicitly-fake-runtime-fixture",
+            CF_VERSION_METADATA: {
+              id: "test-version",
+              tag: "test",
+              timestamp: "2026-09-10T00:00:00Z",
+            },
             ...options.bindings,
+          },
+          kvNamespaces: ["RADAR_SNAPSHOTS"],
+          d1Databases: ["HISTORY"],
+          durableObjects: {
+            COORDINATION: { className: "CoordinationRoom", useSQLite: true },
           },
           ratelimits: Object.fromEntries(
             environment.ratelimits.map(({ name, ...value }) => [
@@ -57,5 +68,12 @@ export async function runtime(options = {}) {
     }),
   );
   await mf.ready;
+  const db = await mf.getD1Database("HISTORY");
+  for (const file of (await readdir("worker/migrations"))
+    .filter((file) => file.endsWith(".sql"))
+    .sort()) {
+    const migration = await readFile(`worker/migrations/${file}`, "utf8");
+    await db.exec(migration.replace(/\n/g, " "));
+  }
   return mf;
 }

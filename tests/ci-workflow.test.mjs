@@ -25,6 +25,24 @@ test("quality runs for pull requests and protected branches only", () => {
   );
 });
 
+test("delivery is environment-scoped and protected branch deployments are not cancelled", () => {
+  assert.match(
+    workflow,
+    /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/,
+  );
+  assert.match(
+    workflow,
+    /name: \$\{\{ github.ref == 'refs\/heads\/main' && 'production' \|\| 'development' \}\}/,
+  );
+  assert.match(
+    workflow,
+    /DEPLOY_ENV: \$\{\{ github.ref == 'refs\/heads\/main' && 'production' \|\| 'development' \}\}/,
+  );
+  assert.match(workflow, /SITE_URL: https:\/\/danhughes.uk/);
+  assert.doesNotMatch(workflow, /dev\.dlhs\.co\.uk|deploy-development\.mjs/);
+  assert.match(workflow, /needs\.quality\.outputs\.code == 'true'/);
+});
+
 test("documentation can skip checks but mixed and unknown files require them", () => {
   const docs = [
     "README.md",

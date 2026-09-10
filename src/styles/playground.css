@@ -22,7 +22,7 @@
   align-items: baseline;
   margin-bottom: var(--heading-gap);
 }
-.experiment-card-heading h2 {
+.experiment-card-heading :is(h2, h3) {
   font: var(--weight-medium) var(--type-subheading)/1.12 var(--display);
   letter-spacing: -0.04em;
   text-wrap: balance;
@@ -46,11 +46,23 @@
   position: relative;
   overflow: hidden;
 }
-.experiment-kubernetes .experiment-stage {
-  background: var(--infra-bg);
+.experiment[data-tone="peach"] {
+  --preview-ink: var(--infra-ink);
+  --preview-tint: var(--infra-bg);
+  --preview-accent: var(--orange);
 }
-.experiment-mcp .experiment-stage {
-  background: var(--people-bg);
+.experiment[data-tone="sage"] {
+  --preview-ink: var(--observe-ink);
+  --preview-tint: var(--observe-bg);
+  --preview-accent: var(--observe-ink);
+}
+.experiment[data-tone="lilac"] {
+  --preview-ink: var(--people-ink);
+  --preview-tint: var(--people-bg);
+  --preview-accent: var(--people-ink);
+}
+.experiment[data-tinted] .experiment-stage {
+  background: var(--preview-tint);
 }
 .stage-label,
 .preview-caption {
@@ -97,7 +109,7 @@
   font: 14px var(--mono);
 }
 .preview-node {
-  stroke: var(--ink);
+  stroke: var(--preview-ink);
   stroke-width: 1.5;
   fill: var(--paper);
 }
@@ -105,16 +117,16 @@
 .preview-bar,
 .preview-request,
 .preview-bead {
-  fill: var(--orange);
+  fill: var(--preview-accent);
 }
 .preview-flow,
 .preview-axis,
 .preview-wave {
-  stroke: var(--ink);
+  stroke: var(--preview-ink);
   stroke-width: 1.5;
 }
 .preview-wave {
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
   stroke-width: 3;
 }
 .preview-axis {
@@ -305,7 +317,8 @@
   min-height: 44px;
   accent-color: var(--orange);
 }
-.experiment-controls button {
+.experiment-controls button,
+.live-controls button {
   min-height: 44px;
   padding: 0.6rem 0.85rem;
   border: 1px solid var(--line);
@@ -314,7 +327,8 @@
   font: var(--type-small)/1.5 var(--mono);
   cursor: pointer;
 }
-.experiment-controls button:hover {
+.experiment-controls button:hover,
+.live-controls button:hover {
   border-color: var(--ink);
 }
 .experiment-controls button[aria-pressed="true"] {
@@ -399,10 +413,10 @@
   fill: var(--ink);
 }
 .data-chart rect.tail {
-  fill: var(--orange);
+  fill: var(--preview-accent);
 }
 .data-chart .deadline {
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
   stroke-width: 3;
   stroke-dasharray: 6 5;
 }
@@ -417,10 +431,10 @@
 }
 .data-chart .timeout {
   fill: url(#timeout-hatch);
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
 }
 .data-chart pattern path {
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
   stroke-width: 2;
 }
 .chart-axis {
@@ -438,11 +452,11 @@
 }
 .system-chart .pod,
 .system-chart .budget {
-  fill: var(--orange);
+  fill: var(--preview-accent);
 }
 .system-chart .pending {
   fill: var(--paper);
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
   stroke-width: 2;
   stroke-dasharray: 4 3;
 }
@@ -453,7 +467,7 @@
   opacity: 0.35;
 }
 .system-chart .active {
-  stroke: var(--orange);
+  stroke: var(--preview-accent);
   stroke-width: 3;
 }
 .system-chart .step-text {

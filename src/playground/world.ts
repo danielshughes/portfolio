@@ -34,7 +34,7 @@ export function mountWorld(root: HTMLElement) {
     if (!ctx) return;
     const styles = getComputedStyle(root);
     const ink = styles.getPropertyValue("--ink").trim();
-    const accent = styles.getPropertyValue("--orange").trim();
+    const accent = styles.getPropertyValue("--preview-accent").trim();
     const paper = styles.getPropertyValue("--paper").trim();
     const theta = (angle * Math.PI) / 180,
       phi = (Number(tilt.value) * Math.PI) / 180;

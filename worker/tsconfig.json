@@ -10,5 +10,6 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["index.ts", "radar.ts", "worker-configuration.d.ts"]
+  "include": ["*.ts"],
+  "exclude": ["*.test.ts"]
 }

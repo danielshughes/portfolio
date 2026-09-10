@@ -1,19 +1,18 @@
 ---
 import earth from "../assets/earth-land.json";
-import {
-  countries,
-  sampleWeek,
-  chartPath,
-  project,
-} from "../experiments/internet-model";
+import { countries, project } from "../experiments/internet-model";
 import "../styles/internet-map.css";
 import RadarTabs from "./RadarTabs.astro";
 import { radarViews } from "../experiments/radar-tabs";
-const week = sampleWeek("GB");
 const descriptions = Object.values(radarViews);
 ---
 
-<section id="internet" class="internet" aria-labelledby="internet-title">
+<section
+  id="internet"
+  class="internet"
+  aria-labelledby="internet-title"
+  data-initialising
+>
   <header class="internet-heading">
     <div>
       <p class="eyebrow">Further afield</p>
@@ -22,11 +21,11 @@ const descriptions = Object.values(radarViews);
       </h2>
       <p>A country, a week, a different rhythm.</p>
     </div>
-    <p class="internet-source">Sample data · not live</p>
+    <p class="internet-source">Cloudflare Radar</p>
   </header>
   <div class="internet-source-details">
     <p class="internet-connection">
-      Static sample. Traffic and disruptions below are invented examples.
+      Observed data loads when the interactive view is ready.
     </p>
     <div class="internet-data-controls" hidden>
       <button type="button" data-internet-live hidden>
@@ -118,14 +117,16 @@ const descriptions = Object.values(radarViews);
           </button>
         ))}
       </div>
-      <p class="internet-noscript">
-        Enable JavaScript to load Cloudflare Radar.
-      </p>
+      <noscript>
+        <p class="internet-noscript">
+          Enable JavaScript to load Cloudflare Radar.
+        </p>
+      </noscript>
     </div>
     <div class="internet-reading">
       <div class="internet-reading-heading">
         <span class="radar-text-slot">
-          <span data-radar-reading-label>Sample / traffic index</span>
+          <span data-radar-reading-label>Observed / traffic index</span>
           <span
             class="radar-text-sizer"
             data-copy="Observed / traffic index"
@@ -157,11 +158,13 @@ const descriptions = Object.values(radarViews);
         </div>
         <div class="radar-traffic">
           <div class="internet-measure">
-            <strong class="internet-value">{week.values[0]}</strong>
+            <strong class="internet-value" data-placeholder>
+              Not loaded
+            </strong>
             <span>
               / 100
               <span class="internet-timestamp-slot radar-text-slot">
-                <span class="internet-timestamp">Day 1, 00:00</span>
+                <span class="internet-timestamp">No observed reading</span>
                 <span
                   class="radar-text-sizer"
                   data-copy="30 Sept 2026, 23:00 UTC"
@@ -172,9 +175,7 @@ const descriptions = Object.values(radarViews);
             </span>
           </div>
           <div class="internet-event-caption-slot radar-text-slot">
-            <p class="internet-event-caption">
-              No example disruption at this time.
-            </p>
+            <p class="internet-event-caption">No observations loaded yet.</p>
             <span
               class="radar-text-sizer"
               data-copy="No reported disruption at this time."
@@ -194,19 +195,19 @@ const descriptions = Object.values(radarViews);
               />
               <rect
                 class="internet-event-band"
-                x={(72 / 167) * 640}
+                x="0"
                 y="0"
-                width={(6 / 167) * 640}
+                width="0"
                 height="160"
               />
-              <path class="internet-chart-line" d={chartPath(week.values)} />
-              <path class="internet-chart-cursor" d="M0 0V160" />
+              <path class="internet-chart-line" d="" />
+              <path class="internet-chart-cursor" d="" />
             </svg>
             <figcaption class="radar-text-slot">
               <span class="internet-week-labels">
-                <span>Day 1</span>
-                <span>Sample week</span>
-                <span>Day 7</span>
+                <span>Observed week</span>
+                <span>Hourly · UTC</span>
+                <span>Not loaded</span>
               </span>
               <span class="internet-week-labels-sizer" aria-hidden="true" inert>
                 <span>30 Sept 2026, 23:00 UTC</span>
@@ -216,7 +217,7 @@ const descriptions = Object.values(radarViews);
             </figcaption>
           </figure>
           <div class="internet-time-controls" hidden>
-            <label for="internet-time">Time in sample week</label>
+            <label for="internet-time">Time in observed week</label>
             <input
               id="internet-time"
               type="range"
@@ -227,8 +228,8 @@ const descriptions = Object.values(radarViews);
               aria-describedby="internet-time-help"
             />
             <p id="internet-time-help">
-              The shaded interval is an example disruption. The gap is missing
-              data.
+              Peak traffic in this country's week = 100. Gaps are missing
+              readings.
             </p>
             <div class="internet-playback">
               <button type="button" data-internet-play>
@@ -241,9 +242,7 @@ const descriptions = Object.values(radarViews);
           </div>
           <details class="internet-event-details" hidden>
             <summary>Disruption at the selected time</summary>
-            <p class="internet-event-status">
-              No example disruption at this time.
-            </p>
+            <p class="internet-event-status">No observations loaded yet.</p>
           </details>
         </div>
       </div>
@@ -273,11 +272,8 @@ const descriptions = Object.values(radarViews);
         <div class="internet-traffic-context internet-footer-view">
           <div class="internet-event-slot radar-text-slot">
             <div class="internet-event-list">
-              <h3>In this sample</h3>
-              <p>Day 4, 00:00–06:00 · Illustrative disruption</p>
-              <button type="button" data-internet-event hidden>
-                Go to example disruption
-              </button>
+              <h3>Reported disruptions</h3>
+              <p>No observations loaded yet.</p>
             </div>
             <div class="internet-event-reserve" aria-hidden="true" inert>
               <h3>Reported disruptions</h3>
@@ -285,8 +281,8 @@ const descriptions = Object.values(radarViews);
             </div>
           </div>
           <p class="internet-disclaimer">
-            An authored example, not observed traffic. With JavaScript, this
-            atlas requests data from Cloudflare Radar.
+            Relative traffic, not uptime or absolute country volumes. No
+            reported events does not mean no outages.
           </p>
         </div>
         <div class="internet-summary-context internet-footer-view" hidden inert>

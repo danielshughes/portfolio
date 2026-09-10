@@ -8,12 +8,11 @@ import {
 } from "./radar-client";
 import {
   mountRadarTabs,
-  isRadarSummary,
   renderSummary,
   radarViews,
   type RadarView,
-  type RadarSummary,
 } from "./radar-tabs";
+import { isRadarSummary, type RadarSummary } from "./radar-summary";
 
 export function mountInternetMap(root: HTMLElement) {
   const query = <T extends Element>(selector: string) =>
@@ -124,7 +123,6 @@ export function mountInternetMap(root: HTMLElement) {
 
   for (const element of root.querySelectorAll<HTMLElement>("[hidden]"))
     element.hidden = false;
-  query<HTMLElement>(".internet-noscript").hidden = true;
   query(".internet-event-list").replaceChildren();
   mountRadarTabs(root, (next) => {
     view = next;
@@ -444,4 +442,5 @@ export function mountInternetMap(root: HTMLElement) {
   paint();
   syncPulse();
   void loadRadar();
+  root.removeAttribute("data-initialising");
 }

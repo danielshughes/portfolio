@@ -551,9 +551,16 @@ main,
   text-decoration: none;
   margin: 1rem 0;
 }
-.contact-title > span {
+.contact-title > .contact-arrow {
   font-size: 0.8em;
   flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  align-self: center;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 .contact-bottom {
   display: flex;
@@ -702,10 +709,10 @@ main,
       calc(var(--preview-engaged) * -0.12em)
     );
   }
-  .contact-title span {
+  .contact-title .contact-arrow {
     transition: transform 0.5s;
   }
-  .contact-title:hover span {
+  .contact-title:hover .contact-arrow {
     transform: translate(0.1em, -0.1em);
   }
   @view-transition {

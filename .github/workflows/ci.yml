@@ -9,7 +9,7 @@ permissions:
   contents: read
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -54,23 +54,27 @@ jobs:
           printf '%s  %s\n' '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' "$scanner_dir/gitleaks.tar.gz" | sha256sum --check --status
           tar -xzf "$scanner_dir/gitleaks.tar.gz" -C "$scanner_dir" gitleaks
           "$scanner_dir/gitleaks" git --redact=100 --log-opts="--all" .
-          for path in src worker tests scripts dist .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
+          for path in src worker tests scripts dist docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
             "$scanner_dir/gitleaks" dir --redact=100 "$path"
           done
-  deploy-development:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && github.repository == 'danielshughes/portfolio' && needs.quality.outputs.code == 'true'
+  deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || (github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true')) && github.repository == 'danielshughes/portfolio' && needs.quality.outputs.code == 'true'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
-      name: development
-      url: https://dev.dlhs.co.uk
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      url: ${{ github.ref == 'refs/heads/main' && 'https://danhughes.uk' || 'https://dev.danhughes.uk' }}
     permissions:
       contents: read
       deployments: write
     env:
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
       WRANGLER_SEND_METRICS: false
+      DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      SITE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      SITE_URL: https://danhughes.uk
+      PRODUCTION_DEPLOY_ENABLED: ${{ vars.PRODUCTION_DEPLOY_ENABLED }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,9 +85,9 @@ jobs:
           node-version: "24"
           package-manager-cache: false
       - run: npm ci
-      - run: npm run build:dev
-      - name: Deploy the checked development commit
-        run: node scripts/deploy-development.mjs
+      - run: npm run build
+      - name: Deploy the checked environment commit
+        run: node scripts/deploy.mjs
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

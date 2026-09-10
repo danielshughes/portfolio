@@ -6,32 +6,54 @@ interface Props {
   title: string;
   subtitle: string;
   label: string;
+  tone: "peach" | "sage" | "lilac";
+  tinted?: boolean;
+  live?: boolean;
+  caption?: string;
 }
-const { id, number, title, subtitle, label } = Astro.props;
+const {
+  id,
+  number,
+  title,
+  subtitle,
+  label,
+  tone,
+  tinted = false,
+  live = false,
+  caption = "Illustrative preview",
+} = Astro.props;
+const Heading = live ? "h3" : "h2";
 ---
 
 <article
   class={`experiment experiment-${id}`}
   id={id}
-  data-experiment={id}
+  data-tone={tone}
+  data-tinted={tinted ? "" : undefined}
+  data-experiment={live ? undefined : id}
+  data-live={live ? id : undefined}
   aria-labelledby={`${id}-title`}
 >
   <header class="experiment-card-heading">
     <span class="experiment-number">{number}</span>
     <div>
-      <h2 id={`${id}-title`}>{title}</h2>
+      <Heading id={`${id}-title`}>{title}</Heading>
       <p>{subtitle}</p>
     </div>
   </header>
   <div class="experiment-stage">
     <span class="stage-label">{label}</span>
     <div class="experiment-visual">
-      <ExperimentPreview kind={id} />
-      <div class="interactive-stage" hidden>
-        <slot name="stage" />
-      </div>
+      <slot name="preview">
+        <ExperimentPreview kind={id} />
+      </slot>
+      {!live && (
+        <div class="interactive-stage" hidden>
+          <slot name="stage" />
+        </div>
+      )}
     </div>
-    <span class="preview-caption">Illustrative preview</span>
+    <span class="preview-caption">{caption}</span>
   </div>
   <details class="experiment-settings">
     <summary>

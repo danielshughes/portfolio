@@ -4,6 +4,7 @@ import SignalField from "../components/SignalField.astro";
 import SignalControls from "../components/SignalControls.astro";
 import ExperimentCard from "../components/ExperimentCard.astro";
 import InternetMap from "../components/InternetMap.astro";
+import LiveExperiments from "../components/LiveExperiments.astro";
 import "../styles/playground.css";
 import { connections, nodes } from "../playground/topology";
 import { portfolioContent } from "../content/portfolio";
@@ -11,7 +12,7 @@ import { portfolioContent } from "../content/portfolio";
 
 <BaseLayout
   title="Experiments | Dan Hughes"
-  description="Browser-local experiments with Kubernetes, AI agents and MCP, waves and a 3D network. Explore observed Internet traffic with Cloudflare Radar."
+  description="Kubernetes and MCP simulations, observed Internet traffic, connection details and small live experiments with Cloudflare Workers."
 >
   <section class="play-intro page-intro" aria-labelledby="play-title">
     <p class="eyebrow">A few adjustable distractions</p>
@@ -27,6 +28,8 @@ import { portfolioContent } from "../content/portfolio";
   <div class="experiment-collection">
     <ExperimentCard
       id="kubernetes"
+      tone="peach"
+      tinted
       number="01"
       title="Room for one more?"
       subtitle="More replicas. Somewhere to put them."
@@ -100,6 +103,8 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
     <ExperimentCard
       id="mcp"
+      tone="lilac"
+      tinted
       number="02"
       title="Who’s allowed to do what?"
       subtitle="An agent, some tools, and a few boundaries."
@@ -178,6 +183,7 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
     <ExperimentCard
       id="wave"
+      tone="sage"
       number="03"
       title="A little interference."
       subtitle="Same wave. A different view."
@@ -196,6 +202,7 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
     <ExperimentCard
       id="latency"
+      tone="peach"
       number="04"
       title="The average looks fine."
       subtitle="Until you look at the slow end."
@@ -238,6 +245,7 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
     <ExperimentCard
       id="requests"
+      tone="lilac"
       number="05"
       title="Requests in flight."
       subtitle="A little parallelism. A definite limit."
@@ -297,6 +305,8 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
     <ExperimentCard
       id="world"
+      tone="sage"
+      tinted
       number="06"
       title="A small connected world."
       subtitle="Give it a spin. Follow a connection."
@@ -346,6 +356,7 @@ import { portfolioContent } from "../content/portfolio";
     </ExperimentCard>
   </div>
   <InternetMap />
+  <LiveExperiments />
   <section class="play-outro" aria-labelledby="play-outro-title">
     <h2 id="play-outro-title">
       No real systems
@@ -355,7 +366,9 @@ import { portfolioContent } from "../content/portfolio";
     <div>
       <p>
         The little simulations run in your browser. The Internet atlas looks
-        further afield, using public observations from Cloudflare Radar.
+        further afield, using public observations from Cloudflare Radar. The
+        edge experiments use their own bounded services, separate from the
+        browser-local simulations.
       </p>
       <a
         class="text-link"
@@ -371,7 +384,7 @@ import { portfolioContent } from "../content/portfolio";
 <script>
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const cards = [
-    ...document.querySelectorAll<HTMLElement>("[data-experiment]"),
+    ...document.querySelectorAll<HTMLElement>("[data-experiment], [data-live]"),
   ];
   const visible = new Set<Element>();
   function syncPreviews() {
@@ -380,7 +393,8 @@ import { portfolioContent } from "../content/portfolio";
         !reduced.matches &&
         !document.hidden &&
         visible.has(card) &&
-        !card.querySelector<HTMLDetailsElement>(".experiment-settings")!.open
+        (card.dataset.live === "edge" ||
+          !card.querySelector<HTMLDetailsElement>(".experiment-settings")!.open)
           ? "running"
           : "paused";
   }
@@ -402,6 +416,7 @@ import { portfolioContent } from "../content/portfolio";
     let loaded = false;
     const loadExperiment = async () => {
       syncPreviews();
+      if (card.dataset.live) return;
       if (!settings.open || loaded) return;
       loaded = true;
       try {

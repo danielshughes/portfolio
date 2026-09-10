@@ -1,0 +1,309 @@
+.live-experiments {
+  padding-block: var(--section-space);
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 2rem;
+}
+.live-intro {
+  max-width: 48ch;
+  color: var(--muted);
+  margin-block: var(--space-sm) var(--space-lg);
+}
+.live-grid {
+  padding-block: 0;
+}
+.live-controls {
+  padding-bottom: var(--space-md);
+  display: grid;
+  gap: var(--space-sm);
+}
+.live-controls [hidden] {
+  display: none !important;
+}
+.live-controls select {
+  font: inherit;
+  font-size: var(--type-small);
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0;
+  width: 100%;
+  min-width: 0;
+}
+.live-controls button {
+  cursor: pointer;
+  justify-self: start;
+}
+.live-controls button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.live-controls [role="status"],
+.live-controls label {
+  font-size: var(--type-small);
+}
+.live-footnote,
+.health-figure figcaption {
+  font-size: var(--type-caption);
+  color: var(--muted);
+  line-height: 1.7;
+}
+.edge-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+.edge-facts dt {
+  font-size: var(--type-caption);
+  color: var(--muted);
+}
+.edge-facts dd {
+  font: var(--weight-medium) var(--type-small)/1.6 var(--mono);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.health-figure {
+  margin: 0;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+}
+.experiment-health:has(.experiment-settings[open]) .health-figure {
+  display: flex;
+}
+.experiment-health:has(.experiment-settings[open]) .preview-live-health {
+  visibility: hidden;
+}
+.health-figure svg {
+  width: 100%;
+  display: block;
+  stroke: var(--preview-accent);
+  stroke-width: 2;
+  overflow: visible;
+}
+.health-baseline {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.health-figure text {
+  fill: var(--ink);
+  stroke: none;
+  font: 14px var(--mono);
+}
+.sample-table-scroll {
+  overflow-x: auto;
+}
+.sample-table table {
+  width: 100%;
+  font-size: var(--type-caption);
+  border-collapse: collapse;
+  text-align: left;
+}
+.sample-table caption {
+  text-align: left;
+  color: var(--muted);
+  padding-bottom: 0.5rem;
+}
+.sample-table th,
+.sample-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem;
+}
+.triage-evidence {
+  border-left: 2px solid var(--line);
+  padding-left: var(--space-sm);
+  font-size: var(--type-small);
+  line-height: 1.7;
+}
+.triage-answer {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--type-small);
+  line-height: 1.7;
+  padding-block: var(--space-sm);
+  border-top: 1px solid var(--line);
+}
+.live-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.room-display {
+  display: grid;
+  gap: 0.4rem;
+}
+.room-display > span {
+  font: var(--type-caption)/1.5 var(--mono);
+  color: var(--muted);
+}
+.room-display strong {
+  font: var(--weight-medium) var(--type-reading)/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.preview-live-room .room-pulse {
+  fill: var(--preview-accent);
+  stroke: none;
+  opacity: 0;
+}
+.live-preview-traveller,
+.live-preview-relay,
+.live-preview-pin,
+.live-preview-tick {
+  fill: var(--preview-accent);
+}
+.live-preview-halo {
+  stroke: var(--preview-ink);
+  stroke-width: 1;
+  opacity: 0.3;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.live-preview-hand {
+  stroke: var(--preview-ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform-origin: 300px 150px;
+}
+.live-preview-step {
+  fill: var(--preview-ink);
+  opacity: 0.12;
+}
+.live-preview-clock-link {
+  stroke-dasharray: 3 5;
+}
+.experiment-room:has(.experiment-settings[open])
+  :is(.live-preview-relay, .live-preview-halo) {
+  visibility: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-preview-traveller {
+    animation: live-preview-travel 5s ease-in-out infinite;
+  }
+  .live-preview-return {
+    animation-direction: reverse;
+    animation-delay: -2.5s;
+    opacity: 0.6;
+  }
+  .live-preview-halo {
+    animation: live-preview-arrival 5s ease-out infinite;
+  }
+  .live-preview-hand {
+    animation: live-preview-clock 10s linear infinite;
+  }
+  .live-preview-tick {
+    animation: live-preview-check 5s ease-in-out infinite;
+  }
+  .live-preview-step {
+    animation: live-preview-step 6s calc(var(--step) * 1.5s) ease-in-out
+      infinite;
+  }
+  .live-preview-relay {
+    animation: live-preview-relay 5s ease-in-out infinite;
+  }
+  .live-preview-relay-back {
+    animation-direction: reverse;
+    animation-delay: -2.5s;
+  }
+  @keyframes live-preview-arrival {
+    0%,
+    55%,
+    100% {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    65% {
+      opacity: 0.6;
+      transform: scale(0.9);
+    }
+    90% {
+      opacity: 0;
+      transform: scale(1.2);
+    }
+  }
+  @keyframes live-preview-clock {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes live-preview-check {
+    0%,
+    70%,
+    100% {
+      opacity: 0.2;
+    }
+    80%,
+    90% {
+      opacity: 1;
+    }
+  }
+  @keyframes live-preview-step {
+    0%,
+    45%,
+    100% {
+      opacity: 0.04;
+    }
+    15%,
+    30% {
+      opacity: 0.28;
+    }
+  }
+  @keyframes live-preview-relay {
+    0%,
+    5% {
+      transform: none;
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+    }
+    45%,
+    55% {
+      transform: translateX(210px);
+      opacity: 1;
+    }
+    90%,
+    100% {
+      transform: translateX(420px);
+      opacity: 0;
+    }
+  }
+  @keyframes live-preview-travel {
+    0%,
+    10% {
+      opacity: 0;
+      transform: none;
+    }
+    20% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+      transform: translateX(240px);
+    }
+    90%,
+    100% {
+      opacity: 0;
+      transform: translateX(240px);
+    }
+  }
+  .live-controls [aria-busy="true"]::after {
+    content: "";
+    display: inline-block;
+    width: 0.65em;
+    height: 0.65em;
+    margin-left: 0.6em;
+    border: 1px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: live-wait 0.7s linear infinite;
+  }
+  @keyframes live-wait {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

@@ -2,7 +2,7 @@
 
 Public source for Dan Hughes's engineering portfolio, covering observability, Kubernetes, infrastructure as code and interactive experiments.
 
-Built with Astro and TypeScript for Cloudflare Workers Static Assets. A small Worker API supplies Cloudflare Radar data to the Internet atlas; the other experiments are synthetic and run in the browser.
+Built with Astro and TypeScript for Cloudflare Workers Static Assets. Browser-local simulations sit alongside Cloudflare Radar, request metadata, scheduled observations, bounded AI inference and shared-state experiments.
 
 ## Routes
 
@@ -19,7 +19,14 @@ npm ci
 npm run dev
 ```
 
-The site works without Radar credentials. To load observed data locally, run the development Worker on port 8787 with a server-side `RADAR_API_TOKEN`; Astro proxies `/api/radar` to it. Without the Worker, the atlas reports unavailable data.
+The pages work without credentials. For the API experiments, initialise local storage and start the Worker on port 8787:
+
+```sh
+npx wrangler d1 migrations apply HISTORY --env development --local
+npm run dev:worker
+```
+
+Astro proxies `/api` and WebSockets to the Worker. Radar needs a server-side `RADAR_API_TOKEN`; unavailable services show an honest error or empty history, not invented data. AI inference is opt-in and uses its binding, not a browser key.
 
 ## Checks
 
@@ -36,9 +43,9 @@ Documentation-only changes run a quick file check. They skip dependency installa
 
 ## Deployment
 
-Feature pull requests target `develop`. A trusted push deploys development after CI passes, using environment-scoped GitHub secrets. Development is live at [dev.dlhs.co.uk](https://dev.dlhs.co.uk) and deliberately non-indexable while the portfolio is being reviewed. Production publication is not enabled.
+Feature pull requests target `develop`, configured for Access-protected [development](https://dev.danhughes.uk). Production is on hold. Its prepared promotion path requires separate approval and an explicit enable switch. Trusted development pushes deploy after CI passes, using GitHub environment secrets and database migrations before upload.
 
-Default builds are development-only and non-indexable. Production publication and automation, pull request previews and analytics are not implemented. Worker configuration lives in [wrangler.jsonc](wrangler.jsonc).
+Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for the service connections and [operations](docs/operations.md) for setup, verification, limits and recovery. No pull-request deployments or paid fallback.
 
 ## Contributing and data
 

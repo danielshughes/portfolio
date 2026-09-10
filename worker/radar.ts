@@ -67,6 +67,7 @@ export interface RadarOptions {
     put(key: string, response: Response): Promise<void>;
   };
   reportFailure?: (stage: string, kind: string) => void;
+  snapshot?: (country: string, view: string) => Promise<Response | undefined>;
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -293,6 +294,8 @@ export async function handleRadar(
   try {
     const cached = await options.cache.match(key);
     if (cached) return cached;
+    const snapshot = await options.snapshot?.(country!, view);
+    if (snapshot) return snapshot;
     const backoff = await options.cache.match(backoffKey);
     if (backoff) {
       const until = Number(backoff.headers.get("x-retry-at"));

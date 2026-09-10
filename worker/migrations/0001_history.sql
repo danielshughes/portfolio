@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS health_samples (
+  observed_at INTEGER PRIMARY KEY,
+  status INTEGER NOT NULL,
+  elapsed_ms INTEGER NOT NULL,
+  ok INTEGER NOT NULL CHECK (ok IN (0, 1))
+);
+CREATE TABLE IF NOT EXISTS ai_budget (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL
+);
