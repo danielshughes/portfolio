@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const title = "Dan Hughes — Observability & SRE Leader";
+const description =
+  "A compact, evidence-led portfolio focused on SRE, infrastructure, observability, incident management and practical uses of AI.";
+---
+
+<BaseLayout {title} {description}>
+  <section class="intro" aria-labelledby="page-title">
+    <div class="intro__index" aria-hidden="true">
+      <span>Entry</span>
+      <strong>00</strong>
+    </div>
+
+    <div class="intro__content">
+      <p class="eyebrow">Portfolio foundation · Build in progress</p>
+      <h1 id="page-title">Observability &amp; SRE Leader</h1>
+      <p class="lede">
+        A compact, evidence-led portfolio about reliable systems, clear operational
+        decisions and the engineering practices behind them.
+      </p>
+    </div>
+  </section>
+
+  <aside class="system-state" aria-labelledby="system-state-title">
+    <div>
+      <p class="eyebrow" id="system-state-title">System state</p>
+      <p class="system-state__summary">The delivery foundation is being assembled in public.</p>
+    </div>
+
+    <dl>
+      <div>
+        <dt>Render</dt>
+        <dd>Static HTML</dd>
+      </div>
+      <div>
+        <dt>Client runtime</dt>
+        <dd>None required</dd>
+      </div>
+      <div>
+        <dt>Next change</dt>
+        <dd>Evidence model</dd>
+      </div>
+    </dl>
+  </aside>
+</BaseLayout>
