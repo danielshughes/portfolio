@@ -1,0 +1,265 @@
+---
+import earth from "../assets/earth-land.json";
+import {
+  countries,
+  sampleWeek,
+  chartPath,
+  project,
+} from "../experiments/internet-model";
+import "../styles/internet-map.css";
+import RadarTabs from "./RadarTabs.astro";
+const week = sampleWeek("GB");
+---
+
+<section id="internet" class="internet" aria-labelledby="internet-title">
+  <header class="internet-heading">
+    <div>
+      <p class="eyebrow">Further afield</p>
+      <h2 id="internet-title">
+        The Internet <em>has a pulse.</em>
+      </h2>
+      <p>A country, a week, a different rhythm.</p>
+    </div>
+    <p class="internet-source">Sample data · not live</p>
+  </header>
+  <div class="internet-source-details">
+    <p class="internet-connection">
+      Static sample. Traffic and disruptions below are invented examples.
+    </p>
+    <div class="internet-data-controls" hidden>
+      <button type="button" data-internet-live hidden>
+        Retry Radar
+      </button>
+    </div>
+  </div>
+  <RadarTabs />
+  <div class="internet-surface">
+    <div class="internet-map-panel">
+      <div class="internet-map-top">
+        <span>Internet atlas</span>
+        <span>01 / {String(countries.length).padStart(2, "0")}</span>
+      </div>
+      <div class="internet-atlas">
+        <svg
+          viewBox="0 0 720 360"
+          aria-hidden="true"
+          class="internet-geography"
+        >
+          <g class="internet-graticule">
+            {[60, 120, 180, 240, 300].map((y) => (
+              <path d={`M0 ${y}H720`} />
+            ))}
+            {[120, 240, 360, 480, 600].map((x) => (
+              <path d={`M${x} 0V360`} />
+            ))}
+          </g>
+          <g class="internet-land">
+            {earth.paths.map((d) => (
+              <path d={d} />
+            ))}
+          </g>
+          {countries.map((country) => {
+            const [x, y] = project(country.lon, country.lat);
+            return (
+              <g
+                class:list={[
+                  "internet-pin",
+                  { "is-selected": country.code === "GB" },
+                ]}
+                data-country-pin={country.code}
+                transform={`translate(${x} ${y})`}
+              >
+                <circle class="internet-pin-halo" r="14" />
+                <circle class="internet-pin-core" r="4" />
+              </g>
+            );
+          })}
+        </svg>
+        <div class="internet-map-hitpoints" hidden>
+          {countries.map((country) => {
+            const [x, y] = project(country.lon, country.lat);
+            return (
+              <button
+                type="button"
+                tabindex="-1"
+                data-map-country={country.code}
+                aria-label={`Select ${country.name} on map`}
+                style={`left:${x / 7.2}%;top:${y / 3.6}%`}
+              ></button>
+            );
+          })}
+        </div>
+      </div>
+      <div class="internet-map-caption">
+        <span>Country markers, not network routes</span>
+        <a
+          href="https://www.naturalearthdata.com/about/terms-of-use/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Map: Natural Earth<span class="sr-only"> (opens in a new tab)</span>
+        </a>
+      </div>
+      <div
+        class="internet-countries"
+        role="group"
+        aria-label="Choose a country"
+        hidden
+      >
+        {countries.map((country) => (
+          <button
+            type="button"
+            data-country={country.code}
+            aria-pressed={country.code === "GB" ? "true" : "false"}
+          >
+            {country.name}
+          </button>
+        ))}
+      </div>
+      <p class="internet-noscript">
+        Enable JavaScript to load Cloudflare Radar.
+      </p>
+    </div>
+    <div class="internet-reading">
+      <div class="internet-reading-heading">
+        <span>Sample / traffic index</span>
+        <span class="internet-country-code">GB</span>
+      </div>
+      <h3 class="internet-country-name">United Kingdom</h3>
+      <div
+        id="radar-panel"
+        tabindex="0"
+        aria-describedby="radar-description radar-guide"
+      >
+        <div class="radar-summary" hidden>
+          <ul class="radar-bars"></ul>
+          <p class="radar-summary-window">Waiting for Radar data.</p>
+        </div>
+        <div class="radar-traffic">
+          <div class="internet-measure">
+            <strong class="internet-value">{week.values[0]}</strong>
+            <span>
+              / 100<span class="internet-timestamp">Day 1, 00:00</span>
+            </span>
+          </div>
+          <p class="internet-event-status">
+            No example disruption at this time.
+          </p>
+          <figure class="internet-history">
+            <svg
+              viewBox="-4 -8 648 176"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path
+                class="internet-chart-grid"
+                d="M0 0H640M0 80H640M0 160H640"
+              />
+              <rect
+                class="internet-event-band"
+                x={(72 / 167) * 640}
+                y="0"
+                width={(6 / 167) * 640}
+                height="160"
+              />
+              <path class="internet-chart-line" d={chartPath(week.values)} />
+              <path class="internet-chart-cursor" d="M0 0V160" />
+            </svg>
+            <figcaption>
+              <span>Day 1</span>
+              <span>Sample week</span>
+              <span>Day 7</span>
+            </figcaption>
+          </figure>
+          <div class="internet-time-controls" hidden>
+            <label for="internet-time">Time in sample week</label>
+            <input
+              id="internet-time"
+              type="range"
+              min="0"
+              max="167"
+              step="1"
+              value="0"
+              aria-describedby="internet-time-help"
+            />
+            <p id="internet-time-help">
+              The shaded interval is an example disruption. The gap is missing
+              data.
+            </p>
+            <div class="internet-playback">
+              <button type="button" data-internet-play>
+                Play week
+              </button>
+              <button type="button" data-internet-reset>
+                Reset view
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p
+        class="internet-announcement sr-only"
+        role="status"
+        aria-atomic="true"
+      ></p>
+    </div>
+  </div>
+  <div class="radar-explanation">
+    <p class="radar-description" id="radar-description">
+      The daily rhythm of HTTP requests seen by Cloudflare.
+    </p>
+    <p class="radar-guide" id="radar-guide">
+      <strong>How to read it</strong>
+      <span>
+        Read the shape, not the size. Each country's peak is 100; a dip alone
+        does not establish an outage.
+      </span>
+    </p>
+  </div>
+  <div class="internet-bottom">
+    <div class="internet-event-list">
+      <h3>In this sample</h3>
+      <p>Day 4, 00:00–06:00 · Illustrative disruption</p>
+      <button type="button" data-internet-event hidden>
+        Go to example disruption
+      </button>
+    </div>
+    <p class="internet-disclaimer">
+      An authored example, not observed traffic. With JavaScript, this atlas
+      requests data from{" "}
+      <a
+        href="https://radar.cloudflare.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Cloudflare Radar<span class="sr-only"> (opens in a new tab)</span>
+      </a>
+      .
+    </p>
+  </div>
+  <p class="internet-attribution">
+    Data:{" "}
+    <a
+      href="https://radar.cloudflare.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Cloudflare Radar<span class="sr-only"> (opens in a new tab)</span>
+    </a>
+    .
+    <a
+      href="https://creativecommons.org/licenses/by-nc/4.0/"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      CC BY-NC 4.0<span class="sr-only"> (opens in a new tab)</span>
+    </a>
+    . Custom visualisation; traffic normalised by country.
+  </p>
+</section>
+
+<script>
+  import { mountInternetMap } from "../experiments/internet-map";
+  const root = document.querySelector<HTMLElement>("#internet");
+  if (root) mountInternetMap(root);
+</script>

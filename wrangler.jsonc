@@ -1,0 +1,71 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dan-hughes-portfolio-local",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page",
+  },
+  "vars": { "RADAR_ENABLED": false, "SITE_ENV": "development" },
+  "ratelimits": [
+    {
+      "name": "RADAR_INGRESS",
+      "namespace_id": "1001",
+      "simple": { "limit": 300, "period": 60 },
+    },
+    {
+      "name": "RADAR_UPSTREAM",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
+  "secrets": { "required": ["RADAR_API_TOKEN"] },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "redact_query_string": true,
+  },
+  "env": {
+    "development": {
+      "name": "dan-hughes-portfolio-development",
+      "routes": [{ "pattern": "dev.dlhs.co.uk", "custom_domain": true }],
+      "vars": { "RADAR_ENABLED": true, "SITE_ENV": "development" },
+      "ratelimits": [
+        {
+          "name": "RADAR_INGRESS",
+          "namespace_id": "1001",
+          "simple": { "limit": 300, "period": 60 },
+        },
+        {
+          "name": "RADAR_UPSTREAM",
+          "namespace_id": "1002",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
+      "secrets": { "required": ["RADAR_API_TOKEN"] },
+    },
+    "production": {
+      "name": "dan-hughes-portfolio-production",
+      "vars": { "RADAR_ENABLED": false, "SITE_ENV": "production" },
+      "ratelimits": [
+        {
+          "name": "RADAR_INGRESS",
+          "namespace_id": "2001",
+          "simple": { "limit": 300, "period": 60 },
+        },
+        {
+          "name": "RADAR_UPSTREAM",
+          "namespace_id": "2002",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
+      "secrets": { "required": ["RADAR_API_TOKEN"] },
+    },
+  },
+}
