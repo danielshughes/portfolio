@@ -86,6 +86,6 @@ test("touch opens a note on its first tap without relying on hover", async ({
   const page = await context.newPage();
   await page.goto("http://127.0.0.1:4322/");
   await page.locator(".project-observe").tap();
-  await expect(page).toHaveURL(/\/notes\/#freshness$/);
+  await expect(page).toHaveURL(/\/notes\/#observability$/);
   await context.close();
 });

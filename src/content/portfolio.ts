@@ -1,5 +1,5 @@
 export const portfolioContent = {
-  headline: "Observability & SRE Leader",
+  headline: "Observability, SRE & AI Leader",
   introduction:
     "Dan Hughes. Hands-on engineering and technical leadership across observability, Kubernetes, infrastructure as code and AI tooling.",
   github: "https://github.com/danielshughes/portfolio",

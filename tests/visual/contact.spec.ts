@@ -13,9 +13,7 @@ for (const route of ["/", "/notes/"])
       }),
     );
     await page.goto(route);
-    await expect(page.locator('#contact a[href*="linkedin.com"]')).toHaveCount(
-      route === "/" ? 2 : 1,
-    );
+    await expect(page.locator("#contact a")).toHaveCount(route === "/" ? 2 : 1);
     for (const link of await page
       .locator('#contact a[href*="linkedin.com"]')
       .all()) {

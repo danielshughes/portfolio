@@ -90,15 +90,19 @@ export function mountRadarTabs(
     }
     panel.setAttribute("role", "tabpanel");
     panel.setAttribute("aria-labelledby", `radar-tab-${view}`);
-    root.querySelector<HTMLElement>(".radar-traffic")!.hidden =
-      view !== "traffic";
-    root.querySelector<HTMLElement>(".radar-summary")!.hidden =
-      view === "traffic";
-    root.querySelector<HTMLElement>(".internet-event-list")!.hidden =
-      view !== "traffic";
+    for (const [selector, hidden] of [
+      [".radar-traffic", view !== "traffic"],
+      [".radar-summary", view === "traffic"],
+      [".internet-traffic-context", view !== "traffic"],
+      [".internet-summary-context", view === "traffic"],
+    ] as const) {
+      const content = root.querySelector<HTMLElement>(selector)!;
+      content.hidden = hidden;
+      content.inert = hidden;
+    }
     root.querySelector<HTMLElement>(".radar-description")!.textContent =
       radarViews[view].description;
-    root.querySelector<HTMLElement>(".radar-guide span")!.textContent =
+    root.querySelector<HTMLElement>("[data-radar-guide]")!.textContent =
       radarViews[view].guide;
   }
   for (const [index, tab] of tabs.entries()) {

@@ -13,7 +13,7 @@
     "build:prod": "SITE_ENV=production astro build",
     "lint": "eslint .",
     "lint:workflows": "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/ci.yml",
-    "test:environment": "node --test tests/environment.test.mjs tests/deployment.test.mjs",
+    "test:environment": "node --test tests/environment.test.mjs tests/deployment.test.mjs tests/ci-workflow.test.mjs",
     "test:runtime": "node --test tests/runtime.test.mjs",
     "quality": "node scripts/quality.mjs",
     "preview": "astro preview",

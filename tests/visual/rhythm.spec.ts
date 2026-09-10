@@ -1,5 +1,75 @@
 import { test, expect } from "@playwright/test";
 
+for (const width of [390, 585, 1440])
+  test(`compact homepage spacing and shared grid at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const geometry = await page.evaluate(() => {
+      const style = (selector: string) =>
+        getComputedStyle(document.querySelector(selector)!);
+      return {
+        opening: parseFloat(style(".opening").paddingTop),
+        headlineAfter: parseFloat(style(".opening h1").marginBottom),
+        hero: parseFloat(style(".hero-bottom").paddingTop),
+        copyBefore: parseFloat(style(".opening-copy p").marginTop),
+        section: parseFloat(style(".selected-work").paddingTop),
+        preview: document.querySelector(".project-art")!.getBoundingClientRect()
+          .height,
+        connections: document
+          .querySelector(".connection-surface")!
+          .getBoundingClientRect().height,
+        leadership: document
+          .querySelector(".people-art")!
+          .getBoundingClientRect().height,
+        connectionFrame: document
+          .querySelector(".connection-surface")!
+          .getBoundingClientRect()
+          .toJSON(),
+        connectionCaption: document
+          .querySelector(".connection-field figcaption")!
+          .getBoundingClientRect()
+          .toJSON(),
+      };
+    });
+    expect(geometry.opening).toBeLessThanOrEqual(24);
+    expect(geometry.headlineAfter).toBeLessThanOrEqual(24);
+    expect(geometry.hero).toBeLessThanOrEqual(24);
+    expect(geometry.copyBefore).toBe(0);
+    expect(geometry.section).toBeLessThanOrEqual(width <= 720 ? 24 : 32);
+    expect(geometry.preview).toBeLessThanOrEqual(width <= 720 ? 256 : 336);
+    expect(geometry.connections).toBeLessThanOrEqual(width <= 600 ? 136 : 180);
+    expect(geometry.leadership).toBeLessThanOrEqual(width <= 720 ? 256 : 336);
+    expect(geometry.connectionCaption.x).toBeCloseTo(
+      geometry.connectionFrame.x,
+      1,
+    );
+    expect(geometry.connectionCaption.width).toBeCloseTo(
+      geometry.connectionFrame.width,
+      1,
+    );
+    for (const route of ["/", "/notes/", "/experiments/"]) {
+      await page.goto(route);
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({
+          colorScheme: theme,
+          reducedMotion: "reduce",
+        });
+        const background = await page
+          .locator("body")
+          .evaluate((body) => getComputedStyle(body).backgroundImage);
+        expect(background).toContain("linear-gradient");
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth + 1,
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
 test("shared heading scale reflows at 320px with doubled text", async ({
   page,
 }) => {

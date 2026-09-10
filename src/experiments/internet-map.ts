@@ -105,14 +105,8 @@ export function mountInternetMap(root: HTMLElement) {
   document.addEventListener("visibilitychange", syncPrefetch);
   function syncPulse() {
     root.dataset.pulse =
-      document.documentElement.dataset.ambientPaused !== "true" &&
-      mapVisible &&
-      !document.hidden &&
-      !reduced.matches
-        ? "running"
-        : "paused";
+      mapVisible && !document.hidden && !reduced.matches ? "running" : "paused";
   }
-  document.addEventListener("portfolio:ambient-motion", syncPulse);
   reduced.addEventListener("change", syncPulse);
   document.addEventListener("visibilitychange", syncPulse);
   new IntersectionObserver((entries) => {
@@ -124,12 +118,14 @@ export function mountInternetMap(root: HTMLElement) {
   let loading = false;
   let data: RadarData | null = null;
   let selectedEvent: RadarData["outages"][number] | null = null;
+  let detailEvent: object | null = null;
   let requestVersion = 0;
   let view: RadarView = "traffic";
 
   for (const element of root.querySelectorAll<HTMLElement>("[hidden]"))
     element.hidden = false;
   query<HTMLElement>(".internet-noscript").hidden = true;
+  query(".internet-event-list").replaceChildren();
   mountRadarTabs(root, (next) => {
     view = next;
     stop();
@@ -161,6 +157,21 @@ export function mountInternetMap(root: HTMLElement) {
         : "Unavailable";
     query(".internet-timestamp").textContent = stamp;
     query(".internet-event-status").textContent = eventText;
+    query(".internet-event-caption").textContent = selectedEvent
+      ? "Selected disruption. Details below."
+      : event
+        ? "Reported disruption at this time."
+        : data
+          ? "No reported disruption at this time."
+          : "Observed data is unavailable.";
+    const eventDetails = query<HTMLDetailsElement>(".internet-event-details");
+    const nextDetailEvent = selectedEvent ?? event ?? null;
+    eventDetails.hidden = !nextDetailEvent;
+    // Preserve the reader's disclosure choice while this event stays selected.
+    if (nextDetailEvent !== detailEvent) {
+      eventDetails.open = !!selectedEvent;
+      detailEvent = nextDetailEvent;
+    }
     query(".internet-chart-cursor").setAttribute(
       "d",
       `M${(hour / 167) * 640} 0V160`,
@@ -228,7 +239,7 @@ export function mountInternetMap(root: HTMLElement) {
     root.setAttribute("aria-busy", "true");
     query(".radar-bars").replaceChildren();
     query(".radar-summary-window").textContent = "Loading the observed week…";
-    query(".internet-reading-heading span").textContent =
+    query("[data-radar-reading-label]").textContent =
       view === "traffic"
         ? "Observed / traffic index"
         : `Observed / ${radarViews[view].title.toLowerCase()}`;
@@ -237,23 +248,11 @@ export function mountInternetMap(root: HTMLElement) {
       "Peak traffic in this country's week = 100. Gaps are missing readings.";
     query(".internet-chart-line").setAttribute("d", "");
     query<SVGElement>(".internet-event-band").style.display = "none";
-    query(".internet-event-list").replaceChildren();
-    query(".internet-history figcaption").textContent =
-      "Observed week · hourly · UTC";
-    const disclaimer = query(".internet-disclaimer");
-    const link = document.createElement("a");
-    link.href = "https://radar.cloudflare.com/";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Cloudflare Radar";
-    link.setAttribute("aria-label", "Cloudflare Radar (opens in a new tab)");
-    disclaimer.replaceChildren(
-      "Source: ",
-      link,
-      view === "traffic"
-        ? ". Relative traffic, not uptime or absolute country volumes. No reported events does not mean no outages."
-        : ". Shares of HTTP requests observed by Cloudflare, not a census of the entire Internet.",
-    );
+    query<HTMLElement>(".internet-event-list").style.visibility = "hidden";
+    query<HTMLElement>(".internet-event-list").inert = true;
+    query(".internet-week-labels").textContent = "Observed week · hourly · UTC";
+    query(".internet-disclaimer").textContent =
+      "Relative traffic, not uptime or absolute country volumes. No reported events does not mean no outages.";
     paint();
     try {
       const body = await cache.get(`${requestedCountry}:${requestedView}`);
@@ -286,7 +285,7 @@ export function mountInternetMap(root: HTMLElement) {
         "Cloudflare Radar · observed data";
       query(".internet-connection").textContent = radarMetadata(data);
       query(".internet-chart-line").setAttribute("d", chartPath(data.values));
-      const captions = query(".internet-history figcaption");
+      const captions = query(".internet-week-labels");
       captions.replaceChildren(
         ...[
           radarTime(data.timestamps[0]),
@@ -298,10 +297,12 @@ export function mountInternetMap(root: HTMLElement) {
           return span;
         }),
       );
-      const list = query(".internet-event-list"),
+      const list = query<HTMLElement>(".internet-event-list"),
         heading = document.createElement("h3");
+      list.style.visibility = "";
+      list.inert = false;
       heading.textContent = "Reported disruptions";
-      list.append(heading);
+      list.replaceChildren(heading);
       if (!data.outages.length) {
         const p = document.createElement("p");
         p.textContent =
@@ -328,6 +329,7 @@ export function mountInternetMap(root: HTMLElement) {
           );
           time.value = String(nearest);
           paint(true);
+          query<HTMLDetailsElement>(".internet-event-details").open = true;
           time.focus({ preventScroll: true });
         });
         list.append(p, button);

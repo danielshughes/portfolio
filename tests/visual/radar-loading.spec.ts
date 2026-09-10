@@ -38,7 +38,7 @@ for (const hint of [
 ])
   test(`connection hint ${JSON.stringify(hint)} skips speculation but preserves automatic load and selection`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.addInitScript(
       (hint) =>
         Object.defineProperty(navigator, "connection", {
@@ -46,21 +46,78 @@ for (const hint of [
         }),
       hint,
     );
+    // Keep evidence at the browser/input boundary if a CI-only click is lost.
+    // This records only authored fixture state, never response bodies or config.
+    await page.addInitScript(() => {
+      const events: object[] = [];
+      Object.defineProperty(window, "radarInteractionEvents", {
+        value: events,
+      });
+      for (const type of ["pointerdown", "pointerup", "click", "focusin"]) {
+        document.addEventListener(type, (event) => {
+          if (events.length >= 40) events.shift();
+          const target = event.target instanceof Element ? event.target : null;
+          const button = target?.closest<HTMLButtonElement>(
+            "[data-country], [data-map-country]",
+          );
+          const map = document.querySelector("#internet");
+          events.push({
+            type,
+            country: button?.dataset.country ?? button?.dataset.mapCountry,
+            target: target?.tagName,
+            prevented: event.defaultPrevented,
+            scrollY,
+            point:
+              event instanceof MouseEvent
+                ? [event.clientX, event.clientY]
+                : null,
+            selected: map?.querySelector(".internet-country-code")?.textContent,
+            busy: map?.getAttribute("aria-busy"),
+          });
+        });
+      }
+    });
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
     const calls: string[] = [];
     await page.route("**/api/radar?*", (route) => {
       const url = new URL(route.request().url());
       calls.push(url.search);
       return route.fulfill({ json: radar(url.searchParams.get("country")!) });
     });
-    await page.goto("/experiments/#internet");
-    await expect(page.locator(".internet-value")).toHaveText("50");
-    await page.getByRole("button", { name: "Japan", exact: true }).hover();
-    await page.waitForTimeout(100);
-    expect(calls).toEqual(["?country=GB"]);
-    await page.getByRole("button", { name: "Japan", exact: true }).click();
-    await expect(page.locator(".internet-country-name")).toHaveText("Japan");
-    await expect(page.locator(".internet-value")).toHaveText("50");
-    expect(calls).toEqual(["?country=GB", "?country=JP"]);
+    try {
+      await page.goto("/experiments/#internet");
+      await expect(page.locator(".internet-value")).toHaveText("50");
+      await page.getByRole("button", { name: "Japan", exact: true }).hover();
+      await page.waitForTimeout(100);
+      expect(calls).toEqual(["?country=GB"]);
+      await page.getByRole("button", { name: "Japan", exact: true }).click();
+      await expect(page.locator(".internet-country-name")).toHaveText("Japan");
+      await expect(page.locator(".internet-value")).toHaveText("50");
+      expect(calls).toEqual(["?country=GB", "?country=JP"]);
+    } catch (error) {
+      const browser = await page.evaluate(() => {
+        const button = document.querySelector<HTMLButtonElement>(
+          '[data-country="JP"]',
+        );
+        return {
+          events: (window as Window & { radarInteractionEvents?: object[] })
+            .radarInteractionEvents,
+          scrollY,
+          hash: location.hash,
+          country: document.querySelector(".internet-country-code")
+            ?.textContent,
+          pressed: button?.getAttribute("aria-pressed"),
+          button: button?.getBoundingClientRect().toJSON(),
+          active: document.activeElement?.tagName,
+        };
+      });
+      await testInfo.attach("radar-country-interaction", {
+        contentType: "application/json",
+        body: JSON.stringify({ hint, calls, pageErrors, browser }, null, 2),
+      });
+      throw error;
+    }
   });
 
 test("idle atlas does not speculate; intent caches tabs and hidden state cancels the queue", async ({

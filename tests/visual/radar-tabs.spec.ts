@@ -48,7 +48,7 @@ test("reading guidance sits below the shared map and chart surface", async ({
   expect(geometry.chartOverlapsMap).toBe(true);
   expect(geometry.chartBottom).toBeLessThanOrEqual(geometry.countriesBottom);
 });
-test("map pulse uses the shared motion control and stops offscreen", async ({
+test("map pulse respects motion preferences and stops offscreen without a pause control", async ({
   page,
 }) => {
   await page.route("**/api/radar?*", (route) =>
@@ -62,15 +62,26 @@ test("map pulse uses the shared motion control and stops offscreen", async ({
   ).toHaveCount(0);
   await expect(halo).toHaveCSS("animation-iteration-count", "infinite");
   await expect(halo).toHaveCSS("animation-play-state", "running");
-  await page
-    .getByRole("button", { name: "Pause background motion", exact: true })
-    .click();
-  await map.locator(".internet-atlas").scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole("button", { name: /background motion/i }),
+  ).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(map).toHaveAttribute("data-pulse", "paused");
+  await expect(halo).toHaveCSS("animation-name", "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect(halo).toHaveCSS("animation-play-state", "running");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
   await expect(halo).toHaveCSS("animation-play-state", "paused");
-  await page
-    .getByRole("button", { name: "Resume background motion", exact: true })
-    .click();
-  await map.locator(".internet-atlas").scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    delete (document as unknown as { hidden?: boolean }).hidden;
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
   await expect(halo).toHaveCSS("animation-play-state", "running");
   await page.getByRole("heading", { level: 1 }).scrollIntoViewIfNeeded();
   await expect(halo).toHaveCSS("animation-play-state", "paused");

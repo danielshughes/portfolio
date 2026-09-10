@@ -48,7 +48,7 @@ test("all experiments have visible previews in a staggered gallery", async ({
     "data-preview-motion",
     "running",
   );
-  await page.getByRole("button", { name: "Pause background motion" }).click();
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator("#kubernetes")).toHaveAttribute(
     "data-preview-motion",
     "paused",

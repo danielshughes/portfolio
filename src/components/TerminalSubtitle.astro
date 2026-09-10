@@ -1,0 +1,221 @@
+---
+const phrases = [
+  "Hands-on leadership. Shared know-how.",
+  "Observability beyond the dashboard.",
+  "Kubernetes, from config to rollout.",
+  "AI tooling with guardrails built in.",
+  "Incident lessons turned into code.",
+  "Infrastructure as code, reviewed in Git.",
+  "Automate the repeatable. Investigate the rest.",
+];
+---
+
+<div class="terminal-subtitle" data-motion="static">
+  <h2 class="terminal-subtitle-heading">
+    <span class="subtitle-accessible">{phrases[0]}</span>
+    <span class="subtitle-prompt" aria-hidden="true">
+      &gt;
+    </span>
+    <span class="subtitle-text">
+      {phrases.map((phrase) => (
+        <span class="subtitle-phrase subtitle-reserve" aria-hidden="true">
+          {phrase}
+          <span class="subtitle-caret" />
+        </span>
+      ))}
+      <span class="subtitle-phrase subtitle-live" aria-hidden="true">
+        <span class="subtitle-letters">{phrases[0]}</span>
+        <span class="subtitle-caret"></span>
+      </span>
+    </span>
+  </h2>
+</div>
+
+<style>
+  .terminal-subtitle {
+    margin-block-end: var(--space-sm);
+  }
+
+  .terminal-subtitle .terminal-subtitle-heading {
+    display: grid;
+    grid-template-columns: 1ch minmax(0, 1fr);
+    column-gap: 0.6ch;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: clamp(1rem, 0.95rem + 0.25vw, 1.2rem);
+    font-weight: var(--weight-medium);
+    line-height: 1.6;
+    letter-spacing: -0.025em;
+  }
+
+  .subtitle-accessible {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .subtitle-prompt {
+    color: var(--small-accent);
+  }
+
+  .subtitle-text {
+    display: grid;
+    min-width: 0;
+  }
+
+  .subtitle-phrase {
+    grid-area: 1 / 1;
+    align-self: start;
+    overflow-wrap: anywhere;
+  }
+
+  /* Every complete phrase participates in sizing, including enlarged text. */
+  .subtitle-reserve {
+    visibility: hidden;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .subtitle-caret {
+    display: inline-block;
+    width: 0.45ch;
+    height: 0.95em;
+    margin-inline-start: 0.1ch;
+    border-inline-start: 0.1em solid var(--small-accent);
+    vertical-align: -0.12em;
+  }
+
+  @media (max-width: 45rem) {
+    .terminal-subtitle {
+      margin-block-end: var(--space-xs);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .terminal-subtitle:is([data-motion="running"], [data-motion="holding"])
+      .subtitle-live
+      .subtitle-caret {
+      animation: subtitle-blink 0.8s steps(1, end) infinite;
+    }
+  }
+
+  @keyframes subtitle-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  const subtitle = document.querySelector<HTMLElement>(".terminal-subtitle");
+  const letters = subtitle?.querySelector<HTMLElement>(".subtitle-letters");
+
+  if (subtitle && letters && "IntersectionObserver" in window) {
+    const root = subtitle;
+    const output = letters;
+    const phrases = Array.from(
+      root.querySelectorAll<HTMLElement>(".subtitle-reserve"),
+      (element) => element.textContent!.trim(),
+    );
+    const initial = phrases[0];
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let phase: "holding" | "deleting" | "typing" = "holding";
+    let current = 0;
+    let unshown = phrases.map((_, index) => index).slice(1);
+    let target = 0;
+    let position = initial.length;
+    let remaining = 3000;
+    let due = 0;
+    let timer: number | undefined;
+    let visible = false;
+    let pageActive = true;
+
+    function suspend() {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timer = undefined;
+        remaining = Math.max(0, due - performance.now());
+      }
+    }
+
+    function sync() {
+      if (reduced.matches) {
+        suspend();
+        output.textContent = initial;
+        phase = "holding";
+        current = 0;
+        unshown = phrases.map((_, index) => index).slice(1);
+        position = initial.length;
+        remaining = 3000;
+        root.dataset.motion = "static";
+        return;
+      }
+      if (!visible || document.hidden || !pageActive) {
+        suspend();
+        root.dataset.motion = "paused";
+        return;
+      }
+      root.dataset.motion = phase === "holding" ? "holding" : "running";
+      if (timer === undefined) {
+        due = performance.now() + remaining;
+        timer = window.setTimeout(step, remaining);
+      }
+    }
+
+    function step() {
+      timer = undefined;
+      if (reduced.matches || document.hidden || !visible || !pageActive) {
+        remaining = 0;
+        sync();
+        return;
+      }
+      if (phase === "holding") {
+        if (!unshown.length) unshown = phrases.map((_, index) => index);
+        const candidates = unshown.filter((index) => index !== current);
+        target = candidates[Math.floor(Math.random() * candidates.length)];
+        unshown.splice(unshown.indexOf(target), 1);
+        phase = "deleting";
+      }
+      if (phase === "deleting") {
+        output.textContent = phrases[current].slice(0, --position);
+        remaining = 20;
+        if (position === 0) {
+          phase = "typing";
+          remaining = 160;
+        }
+      } else {
+        output.textContent = phrases[target].slice(0, ++position);
+        remaining = 40;
+        if (position === phrases[target].length) {
+          current = target;
+          phase = "holding";
+          remaining = 3000;
+        }
+      }
+      sync();
+    }
+
+    // Suspending retains the next character's delay instead of catching up.
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      sync();
+    }).observe(root);
+    document.addEventListener("visibilitychange", sync);
+    reduced.addEventListener("change", sync);
+    window.addEventListener("pagehide", () => {
+      pageActive = false;
+      sync();
+    });
+    window.addEventListener("pageshow", () => {
+      pageActive = true;
+      sync();
+    });
+    sync();
+  }
+</script>

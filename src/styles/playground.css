@@ -1,44 +1,13 @@
-.play-intro {
-  padding-block: var(--section-space);
-}
-.play-intro h1 {
-  font: 500 var(--type-page)/1.03 var(--display);
-  letter-spacing: -0.06em;
-  margin-block: var(--heading-gap) var(--space-lg);
-  max-width: none;
-}
-.play-intro h1 em,
 .play-outro h2 em {
   color: var(--orange);
   font-style: normal;
-}
-.play-intro h1 em {
-  display: inline-block;
-}
-.play-intro-bottom {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--space-lg);
-}
-.play-intro-bottom p {
-  font-size: clamp(1rem, 1.5vw, 1.25rem);
-}
-.preview-toggle {
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  min-height: 44px;
-  padding: 0.5rem 0;
-  font: 0.8rem/1.5 monospace;
-  cursor: pointer;
 }
 .experiment-collection {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-xl);
   align-items: start;
-  padding-bottom: var(--section-space);
+  padding-block: var(--section-space);
 }
 .experiment:nth-child(even) {
   margin-top: var(--space-xl);
@@ -54,17 +23,17 @@
   margin-bottom: var(--heading-gap);
 }
 .experiment-card-heading h2 {
-  font: 500 var(--type-subheading)/1.12 var(--display);
+  font: var(--weight-medium) var(--type-subheading)/1.12 var(--display);
   letter-spacing: -0.04em;
   text-wrap: balance;
 }
 .experiment-card-heading p {
-  font-size: 0.9rem;
+  font-size: var(--type-small);
   color: var(--muted);
   margin-top: var(--copy-gap);
 }
 .experiment-number {
-  font: 0.75rem/1.5 monospace;
+  font: var(--type-micro)/1.5 var(--mono);
   color: var(--small-accent);
   flex: 0 0 2ch;
   white-space: nowrap;
@@ -86,12 +55,13 @@
 .stage-label,
 .preview-caption {
   display: block;
-  font: 0.65rem/1.6 monospace;
+  font: var(--type-micro)/1.6 var(--mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .preview-caption {
   color: var(--ink);
+  font-size: var(--type-caption);
   margin-top: 0.5rem;
 }
 .experiment-preview {
@@ -124,7 +94,7 @@
 .experiment-preview text,
 .system-chart text {
   fill: var(--ink);
-  font: 14px monospace;
+  font: 14px var(--mono);
 }
 .preview-node {
   stroke: var(--ink);
@@ -290,7 +260,7 @@
   min-height: 52px;
   padding-block: 0.75rem;
   border-bottom: 1px solid var(--line);
-  font: 0.85rem/1.5 monospace;
+  font: var(--type-small)/1.5 var(--mono);
   cursor: pointer;
   list-style: none;
 }
@@ -309,7 +279,7 @@
 }
 .experiment-desk > p:first-child {
   margin-bottom: var(--copy-gap);
-  font-size: 1rem;
+  font-size: var(--type-body);
 }
 .experiment-controls {
   display: flex;
@@ -327,7 +297,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  font-size: 0.875rem;
+  font-size: var(--type-small);
 }
 .experiment-controls input[type="range"] {
   width: min(50%, 13rem);
@@ -341,7 +311,7 @@
   border: 1px solid var(--line);
   background: transparent;
   border-radius: 2px;
-  font: 0.75rem/1.5 monospace;
+  font: var(--type-small)/1.5 var(--mono);
   cursor: pointer;
 }
 .experiment-controls button:hover {
@@ -352,18 +322,17 @@
   color: var(--paper);
   border-color: var(--ink);
 }
-.experiment-controls button:disabled,
-.preview-toggle:disabled {
+.experiment-controls button:disabled {
   cursor: default;
 }
 .experiment-desk output {
   display: block;
-  font: 0.9rem/1.7 var(--body);
+  font: var(--type-small)/1.7 var(--body);
   padding-block: var(--space-md);
   border-bottom: 1px solid var(--line);
 }
 .experiment-footnote {
-  font-size: 0.8rem;
+  font-size: var(--type-caption);
   color: var(--muted);
   margin-top: 1rem;
 }
@@ -377,7 +346,7 @@
   min-width: 0;
 }
 .scenario-choices legend {
-  font: 0.75rem/1.6 monospace;
+  font: var(--type-micro)/1.6 var(--mono);
   margin-bottom: 0.4rem;
 }
 .scenario-choices label {
@@ -401,7 +370,7 @@
 .connection-list,
 .trace-list {
   margin-top: 1rem;
-  font-size: 0.8rem;
+  font-size: var(--type-caption);
 }
 .connection-list summary,
 .trace-list summary {
@@ -415,7 +384,7 @@
   line-height: 1.9;
 }
 .trace-list [aria-current="step"] {
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--small-accent);
 }
 .data-chart,
@@ -458,7 +427,7 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  font: 0.75rem/1.5 monospace;
+  font: var(--type-micro)/1.5 var(--mono);
   border-top: 1px solid var(--line);
   padding-top: 0.7rem;
 }
@@ -539,7 +508,7 @@
   align-items: center;
 }
 .play-outro h2 {
-  font: 500 var(--type-note)/1.1 var(--display);
+  font: var(--weight-medium) var(--type-note)/1.1 var(--display);
   letter-spacing: -0.04em;
 }
 .play-outro p {
@@ -564,11 +533,6 @@
   }
   .experiment:nth-child(even) {
     margin-top: 0;
-  }
-  .play-intro-bottom {
-    align-items: start;
-    flex-direction: column;
-    gap: 1rem;
   }
   .play-intro {
     padding-bottom: var(--section-space);

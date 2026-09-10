@@ -10,7 +10,7 @@
   gap: var(--space-lg);
 }
 .internet-heading h2 {
-  font: 500 var(--type-note)/1.07 var(--display);
+  font: var(--weight-medium) var(--type-note)/1.07 var(--display);
   letter-spacing: -0.055em;
   margin-block: var(--heading-gap);
 }
@@ -19,7 +19,7 @@
   color: var(--orange);
 }
 .internet-source {
-  font: 0.8rem/1.5 monospace;
+  font: var(--type-caption)/1.5 var(--mono);
   border-bottom: 1px solid var(--small-accent);
   color: var(--ink);
   padding-bottom: 0.35rem;
@@ -27,7 +27,7 @@
 }
 .internet-connection {
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--type-small);
   margin-block: 0.75rem 0.4rem;
 }
 .internet-surface {
@@ -45,7 +45,7 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  font: 0.8rem/1.5 monospace;
+  font: var(--type-caption)/1.5 var(--mono);
 }
 .internet-atlas {
   position: relative;
@@ -106,7 +106,7 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   line-height: 1.6;
 }
 .internet-map-caption a {
@@ -124,7 +124,7 @@
 .internet-playback button,
 .internet-event-list button {
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--type-small);
   padding: 0.5rem 0;
   min-height: 44px;
   border: 0;
@@ -136,33 +136,36 @@
 .internet-countries button[aria-pressed="true"] {
   border-bottom-color: var(--small-accent);
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .internet-reading {
   padding: clamp(0.75rem, 1.5vw, 1.5rem);
   min-width: 0;
 }
-.internet-country-name {
-  font: 500 clamp(1.5rem, 2.6vw, 2.5rem)/1.15 var(--display);
+.internet-country-heading {
+  font: var(--weight-medium) clamp(1.5rem, 2.6vw, 2.5rem)/1.15 var(--display);
   letter-spacing: -0.04em;
-  margin-top: 0.65rem;
-  min-height: 1.15em;
+  margin-top: 0.35rem;
+}
+.internet-country-name {
+  font: inherit;
+  margin: 0;
 }
 .internet-measure {
   display: grid;
   grid-template-columns: minmax(0, 0.6fr) minmax(0, 1fr);
   gap: var(--space-sm);
   align-items: center;
-  margin-block: 0.6rem;
+  margin-block: 0.4rem;
 }
 .internet-value {
-  font: 500 clamp(3rem, 6vw, 5rem)/1 var(--display);
+  font: var(--weight-medium) clamp(3rem, 6vw, 5rem)/1 var(--display);
   letter-spacing: -0.06em;
   min-width: 2ch;
   font-variant-numeric: tabular-nums;
 }
 .internet-value[data-placeholder] {
-  font-size: 1rem;
+  font-size: var(--type-body);
   letter-spacing: 0;
   min-height: clamp(3rem, 6vw, 5rem);
   display: flex;
@@ -171,15 +174,28 @@
 .internet-measure > span {
   min-width: 0;
   color: var(--muted);
-  font: 0.85rem/1.6 monospace;
+  font: var(--type-small)/1.6 var(--mono);
 }
 .internet-timestamp {
   display: block;
   min-height: 3.2em;
 }
+.internet-event-caption-slot {
+  font-size: var(--type-small);
+  line-height: 1.7;
+}
+.internet-event-details {
+  margin-top: 0.75rem;
+  font-size: var(--type-small);
+  overflow-wrap: anywhere;
+}
+.internet-event-details summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 0.5rem;
+}
 .internet-event-status {
-  font-size: 0.875rem;
-  min-height: 3.4em;
+  margin-top: 0.5rem;
 }
 .internet-history {
   margin: 0.6rem 0;
@@ -213,15 +229,19 @@
   opacity: 0.12;
 }
 .internet-history figcaption {
+  font: var(--type-micro)/1.5 var(--mono);
+  margin-top: 0.75rem;
+}
+.internet-week-labels,
+.internet-week-labels-sizer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.5rem;
-  font: 0.75rem/1.5 monospace;
-  margin-top: 0.75rem;
 }
 .internet-time-controls label {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--type-small);
   margin-top: 0.75rem;
 }
 .internet-time-controls input {
@@ -233,7 +253,7 @@
 }
 .internet-time-controls p {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--type-caption);
 }
 .internet-playback {
   display: flex;
@@ -249,28 +269,44 @@
   cursor: default;
   text-decoration: none;
 }
-.internet-bottom {
+.internet-footer {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.6fr 1fr;
   gap: 2rem;
-  padding-top: 0.75rem;
+  padding-top: 1rem;
 }
-.internet-event-list h3 {
-  font-size: 1rem;
+.internet-footer-context,
+.internet-footer-guide {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.internet-bottom {
+  min-width: 0;
+}
+.internet-event-list h3,
+.internet-event-reserve h3,
+.internet-summary-context h3 {
+  font-size: var(--type-body);
   margin-bottom: 0.5rem;
 }
 .internet-event-list p,
-.internet-disclaimer {
-  font-size: 0.875rem;
+.internet-event-reserve p,
+.internet-footer-view > p {
+  font-size: var(--type-small);
   line-height: 1.7;
 }
 .internet-disclaimer {
   color: var(--muted);
 }
-.internet-attribution {
-  margin-top: 0.75rem;
+.internet-summary-context p + p {
   color: var(--muted);
-  font-size: 0.75rem;
+}
+.internet-attribution {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--type-micro);
   line-height: 1.7;
 }
 .internet [hidden] {
@@ -292,6 +328,10 @@
   .internet-country-name {
     min-height: 0;
   }
+  .internet-footer {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
 }
 @media (max-width: 700px) {
   .internet-map-hitpoints {
@@ -301,9 +341,6 @@
     align-items: start;
     flex-direction: column;
     gap: 1rem;
-  }
-  .internet-bottom {
-    grid-template-columns: 1fr;
   }
   .internet-map-caption {
     flex-direction: column;
@@ -348,17 +385,13 @@
   background: transparent;
   border: 0;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--type-small);
   text-decoration: underline;
   text-underline-offset: 0.2em;
   cursor: pointer;
 }
 .internet-data-controls button:disabled {
   cursor: wait;
-}
-.internet-history figcaption {
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 .internet-event-list p {
   overflow-wrap: anywhere;
@@ -384,26 +417,16 @@
   color: var(--ink);
   border-bottom-color: var(--small-accent);
 }
-.radar-description {
-  font-size: 1.05rem;
+.radar-description-slot {
+  font-size: var(--type-body);
   line-height: 1.6;
-  margin-bottom: 1rem;
 }
-.radar-explanation {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 2rem;
-  padding-block: 1rem;
-  border-bottom: 1px solid var(--line);
-}
-@media (max-width: 1000px) {
-  .radar-explanation {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
+.radar-description {
+  line-height: inherit;
+  margin: 0;
 }
 .radar-guide {
-  font-size: 0.8rem;
+  font-size: var(--type-caption);
   line-height: 1.65;
   color: var(--muted);
   margin-bottom: 0;
@@ -411,11 +434,36 @@
 .radar-guide strong {
   display: block;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-bottom: 0.3rem;
 }
 .radar-summary {
   min-height: 0;
+}
+/* Inactive views still establish their intrinsic size, but expose no controls. */
+#radar-panel,
+.radar-text-slot {
+  display: grid;
+}
+#radar-panel > *,
+.radar-text-slot > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+#radar-panel > .radar-traffic[hidden],
+#radar-panel > .radar-summary[hidden],
+.internet .internet-footer-view[hidden] {
+  display: block !important;
+  visibility: hidden;
+}
+.radar-text-sizer,
+.internet-week-labels-sizer,
+.internet-event-reserve {
+  visibility: hidden;
+  pointer-events: none;
+}
+.radar-text-sizer::before {
+  content: attr(data-copy);
 }
 .radar-bars {
   list-style: none;
@@ -427,11 +475,11 @@
   grid-template-columns: 1fr auto;
   gap: 0.8rem;
   margin-bottom: 1.25rem;
-  font-size: 0.9rem;
+  font-size: var(--type-small);
   overflow-wrap: anywhere;
 }
 .radar-bars strong {
-  font: 500 1.1rem/1.4 var(--display);
+  font: var(--weight-medium) var(--type-reading)/1.4 var(--display);
   font-variant-numeric: tabular-nums;
 }
 .radar-bar-track {
@@ -447,7 +495,7 @@
   transform-origin: left;
 }
 .radar-summary-window {
-  font: 0.75rem/1.7 monospace;
+  font: var(--type-micro)/1.7 var(--mono);
   color: var(--muted);
 }
 @media (prefers-reduced-motion: no-preference) {

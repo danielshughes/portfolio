@@ -13,21 +13,16 @@ import { portfolioContent } from "../content/portfolio";
   title="Experiments | Dan Hughes"
   description="Browser-local experiments with Kubernetes, AI agents and MCP, waves and a 3D network. Explore observed Internet traffic with Cloudflare Radar."
 >
-  <section class="play-intro" aria-labelledby="play-title">
+  <section class="play-intro page-intro" aria-labelledby="play-title">
     <p class="eyebrow">A few adjustable distractions</p>
     <h1 id="play-title">
       What happens <em>if you…</em>
     </h1>
-    <div class="play-intro-bottom">
-      <p>
-        Small experiments, made to be played with.
-        <br />
-        Nothing connected to anything important.
-      </p>
-      <button type="button" class="preview-toggle" hidden>
-        Pause background motion
-      </button>
-    </div>
+    <p class="intro-description">
+      Small experiments, made to be played with.
+      <br />
+      Nothing connected to anything important.
+    </p>
   </section>
   <div class="experiment-collection">
     <ExperimentCard
@@ -375,36 +370,20 @@ import { portfolioContent } from "../content/portfolio";
 </BaseLayout>
 <script>
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-  const pause = document.querySelector<HTMLButtonElement>(".preview-toggle")!;
   const cards = [
     ...document.querySelectorAll<HTMLElement>("[data-experiment]"),
   ];
   const visible = new Set<Element>();
-  let paused = false;
   function syncPreviews() {
     for (const card of cards)
       card.dataset.previewMotion =
-        !paused &&
         !reduced.matches &&
         !document.hidden &&
         visible.has(card) &&
         !card.querySelector<HTMLDetailsElement>(".experiment-settings")!.open
           ? "running"
           : "paused";
-    pause.textContent = reduced.matches
-      ? "Reduced motion on"
-      : paused
-        ? "Resume background motion"
-        : "Pause background motion";
-    pause.disabled = reduced.matches;
-    document.documentElement.dataset.ambientPaused = String(paused);
-    document.dispatchEvent(new Event("portfolio:ambient-motion"));
   }
-  pause.hidden = false;
-  pause.addEventListener("click", () => {
-    paused = !paused;
-    syncPreviews();
-  });
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting)
