@@ -84,8 +84,14 @@ test("scroll motion responds to a live reduced-motion preference", async ({
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
-  const target = await page.locator(".ai-heading").boundingBox();
-  await page.mouse.wheel(0, target!.y - page.viewportSize()!.height / 2);
+  // Mark exploration with real input, then place the target deterministically.
+  // A wheel delta is not a cross-browser guarantee of exact scroll distance.
+  await page.mouse.wheel(0, 1);
+  await page
+    .locator(".ai-heading")
+    .evaluate((element) =>
+      element.scrollIntoView({ block: "center", behavior: "instant" }),
+    );
   await expect
     .poll(() => page.evaluate(() => document.getAnimations().length))
     .toBeGreaterThan(0);

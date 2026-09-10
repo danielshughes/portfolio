@@ -176,14 +176,16 @@ test("keyboard pulses are finite and cancel when motion is reduced or offscreen"
   await expect(field).toHaveAttribute("data-motion", "idle");
   await page.keyboard.press("Enter");
   await expect(field).toHaveAttribute("data-motion", "idle");
+  const preference = await page.evaluateHandle(() =>
+    matchMedia("(prefers-reduced-motion: reduce)"),
+  );
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  // Wait for an existing MediaQueryList to update, not a newly created query.
   await expect
-    .poll(() =>
-      page.evaluate(
-        () => matchMedia("(prefers-reduced-motion: reduce)").matches,
-      ),
-    )
+    .poll(() => preference.evaluate((query) => query.matches))
     .toBe(false);
+  await preference.dispose();
+  await expect(trigger).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(field).toHaveAttribute("data-motion", "running");
   await page.locator("#contact").scrollIntoViewIfNeeded();

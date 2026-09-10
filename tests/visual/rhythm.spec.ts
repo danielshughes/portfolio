@@ -104,8 +104,9 @@ for (const width of [390, 585, 900, 1440])
           contentType: "application/json",
         });
         for (let index = 1; index < geometry.length; index++)
+          // DOMRect edges can differ by a fraction of a CSS layout unit.
           expect(geometry[index].top).toBeGreaterThanOrEqual(
-            geometry[index - 1].bottom,
+            geometry[index - 1].bottom - 0.01,
           );
         await page.screenshot({
           path: test
