@@ -2,6 +2,12 @@
 
 An experiment's heading, explanation, graphic, controls and readout must describe the same behaviour. Automated checks establish specific guarantees, not a visual design verdict. Review the rendered page as well as the underlying model before release.
 
+## Shared presentation
+
+Compact simulations and Worker-backed cards use `ExperimentCard.astro` for headings, frame, caption and native Explore disclosure. `playground.css` owns the shared tone, spacing and action-button rules. Every simulation, including the waveform, uses `experiment-controls` for responsive ranges and actions; do not duplicate that styling in global or experiment-specific rules.
+
+AI and Radar intentionally stay open at full width. They reuse the typography, tones and motion conventions without an Explore gate. The health inspector uses a full-width timeline slider, while Radar keeps named country buttons and native tabs. These layouts serve different interactions, not separate design systems. Continuous previews, finite simulations and received-event animations share the visibility/reduced-motion rules but retain their own truthful lifecycles.
+
 ## Browser-local simulations
 
 | Experiment                | What the controls actually change                               | Expected result and boundary                                                                                                                                                                                                                                                                 |
@@ -20,6 +26,8 @@ The finite request, placement and latency animations show a state transition, th
 ## Radar atlas
 
 Traffic, Bots, Devices and Protocols retain the same selected country and fixed map/chart frame. Each tab has its own description, reading guide and observed time window. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
+
+Clicking or tapping near a country marker selects the nearest rendered dot within a bounded radius. Blank map areas do nothing and scrolling remains native. The labelled country buttons provide the equivalent keyboard and screen-reader interaction, without overlapping invisible targets on the map. Summary bars use the shared spacing token between rows while retaining the outer frame across tab changes.
 
 Loading, unavailable and a genuinely absent reading are distinct. Never fill missing observations with synthetic data. Reported disruptions come from the supplied events and scope, not from dips in the chart; no returned events does not prove no outages. Replay scrubs an observed week and must not imply live traffic.
 

@@ -91,8 +91,7 @@ export function mountInternetMap(root: HTMLElement) {
   root.addEventListener("focusin", (event) => {
     focusExploring = true;
     const target = event.target instanceof HTMLElement ? event.target : null;
-    const country =
-      target?.dataset.country ?? target?.dataset.mapCountry ?? code;
+    const country = target?.dataset.country ?? code;
     neighbours(`${country}:${target?.dataset.radarView ?? view}`);
   });
   root.addEventListener("focusout", (event) => {
@@ -363,18 +362,37 @@ export function mountInternetMap(root: HTMLElement) {
   });
 
   for (const button of root.querySelectorAll<HTMLButtonElement>(
-    "[data-country], [data-map-country]",
+    "[data-country]",
   )) {
-    const intent = () =>
-      neighbours(
-        `${button.dataset.country ?? button.dataset.mapCountry!}:${view}`,
-      );
+    const intent = () => neighbours(`${button.dataset.country!}:${view}`);
     button.addEventListener("pointerenter", intent);
     button.addEventListener("focus", intent);
     button.addEventListener("click", () =>
-      selectCountry(button.dataset.country ?? button.dataset.mapCountry!),
+      selectCountry(button.dataset.country!),
     );
   }
+  // Use the nearest rendered marker: fixed overlay buttons overlap in Europe
+  // on small screens. The labelled country buttons remain the keyboard route.
+  const pins = [...root.querySelectorAll<SVGElement>("[data-country-pin]")];
+  query<HTMLElement>(".internet-atlas").addEventListener("click", (event) => {
+    if (event.button !== 0) return;
+    let closest: string | undefined;
+    let distance = 22;
+    for (const pin of pins) {
+      const box = pin
+        .querySelector(".internet-pin-core")!
+        .getBoundingClientRect();
+      const next = Math.hypot(
+        event.clientX - (box.left + box.width / 2),
+        event.clientY - (box.top + box.height / 2),
+      );
+      if (next <= distance) {
+        distance = next;
+        closest = pin.dataset.countryPin;
+      }
+    }
+    if (closest) selectCountry(closest);
+  });
   for (const tab of root.querySelectorAll<HTMLButtonElement>(
     "[data-radar-view]",
   )) {

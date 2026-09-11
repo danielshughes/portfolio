@@ -121,9 +121,7 @@ for (const hint of [
         document.addEventListener(type, (event) => {
           if (events.length >= 40) events.shift();
           const target = event.target instanceof Element ? event.target : null;
-          const button = target?.closest<HTMLButtonElement>(
-            "[data-country], [data-map-country]",
-          );
+          const button = target?.closest<HTMLButtonElement>("[data-country]");
           const map = document.querySelector("#internet");
           events.push({
             type,

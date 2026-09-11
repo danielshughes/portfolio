@@ -345,6 +345,19 @@ for (const viewport of [
             .toBeCloseTo(before[selector].height, 0);
         }
         if (name !== "Traffic") {
+          const spacing = await map.locator(".radar-bars").evaluate((list) => {
+            const rows = [...list.children].map((row) =>
+              row.getBoundingClientRect(),
+            );
+            return {
+              expected: parseFloat(getComputedStyle(list).rowGap),
+              gaps: rows.slice(1).map((row, i) => row.top - rows[i].bottom),
+            };
+          });
+          for (const gap of spacing.gaps)
+            expect
+              .soft(gap, `${name} bar gap`)
+              .toBeCloseTo(spacing.expected, 0);
           await expect(map.getByRole("slider")).toHaveCount(0);
           await expect(
             map.getByRole("button", { name: "Play week", exact: true }),
