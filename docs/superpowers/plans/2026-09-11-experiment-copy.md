@@ -40,7 +40,7 @@ Create a Playwright test that opens `/experiments/`, checks the six existing car
 ```ts
 const expected = [
   ["Room for one more?", "Raise CPU demand and watch the replica target change, then see which pods fit."],
-  ["Who's allowed to do what?", "Choose a scenario, set the call budget and decide whether a simulated write is allowed."],
+  ["Who’s allowed to do what?", "Choose a scenario, set the call budget and decide whether a simulated write is allowed."],
   ["A little interference.", "Compare a clean wave with the same wave after interference is added."],
   ["The average looks fine.", "Keep most requests steady, then stretch the slowest ten."],
   ["Requests in flight.", "Change how many requests run together and see which finish before the deadline."],
@@ -61,11 +61,11 @@ Apply these replacements in `src/pages/experiments.astro`:
 ```astro
 subtitle="Raise CPU demand and watch the replica target change, then see which pods fit."
 <p>Turn up CPU demand. HPA changes the target, then the scheduler tries to place each pod.</p>
-<output ...>HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.</output>
+<output aria-live="polite" aria-atomic="true">HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.</output>
 
 subtitle="Choose a scenario, set the call budget and decide whether a simulated write is allowed."
 <p>Follow the scripted agent as it checks context, calls tools and stops at a timeout, missing context or denied write.</p>
-<output ...>The script proposes a call. The host checks context, budget and approval before a simulated write.</output>
+<output aria-live="polite" aria-atomic="true">The script proposes a call. The host checks context, budget and approval before a simulated write.</output>
 <summary>Follow the trace</summary>
 
 subtitle="Compare a clean wave with the same wave after interference is added."
@@ -73,11 +73,11 @@ subtitle="Compare a clean wave with the same wave after interference is added."
 
 subtitle="Keep most requests steady, then stretch the slowest ten."
 <p>Move the tail slider and watch the median stay put while the slow end grows.</p>
-<output ...>The median stays steady; the slowest requests move the upper percentiles.</output>
+<output aria-live="polite" aria-atomic="true">The median stays steady; the slowest requests move the upper percentiles.</output>
 
 subtitle="Change how many requests run together and see which finish before the deadline."
 <p>Run the lookup with a different number in flight. Queued time counts against the deadline.</p>
-<output ...>The readout will show how many of 12 requests meet the deadline.</output>
+<output aria-live="polite" aria-atomic="true">The readout will show how many of 12 requests meet the deadline.</output>
 
 subtitle="Rotate the graph or select a node to see its direct connections."
 <p>Drag to rotate. Select a node to highlight its neighbours and dim the rest.</p>
@@ -340,4 +340,3 @@ git log -4 --oneline --show-signature
 ```
 
 Expected: no whitespace errors, only the intended commits, and signed commits visible on the current branch.
-
