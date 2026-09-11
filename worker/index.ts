@@ -113,6 +113,24 @@ export default {
         collectHealth(env, event.scheduledTime),
         collectSnapshots(env, event.scheduledTime, radarOptions(env)),
       ]);
+      const radar = results[1];
+      const incompleteRadar =
+        radar.status === "fulfilled" &&
+        (radar.value.status === "empty" || radar.value.status === "partial");
+      if (incompleteRadar && radar.status === "fulfilled")
+        console.warn(
+          JSON.stringify({
+            event: "scheduled_collection_incomplete",
+            service: "radar",
+            status: radar.value.status,
+            country: radar.value.country,
+            acceptedViews: radar.value.views.length,
+            ...(radar.value.status === "empty"
+              ? { reason: radar.value.reason }
+              : {}),
+            version: env.CF_VERSION_METADATA.id,
+          }),
+        );
       results.forEach((result, index) => {
         if (result.status === "rejected")
           console.warn(
@@ -123,7 +141,10 @@ export default {
             }),
           );
       });
-      if (results.some((result) => result.status === "rejected"))
+      if (
+        incompleteRadar ||
+        results.some((result) => result.status === "rejected")
+      )
         throw new Error("Scheduled collection incomplete");
     });
   },

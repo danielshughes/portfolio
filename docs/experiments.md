@@ -8,6 +8,8 @@ Compact simulations and Worker-backed cards use `ExperimentCard.astro` for headi
 
 AI and Radar intentionally stay open at full width. They reuse the typography, tones and motion conventions without an Explore gate. The health inspector uses a full-width timeline slider, while Radar keeps named country buttons and native tabs. These layouts serve different interactions, not separate design systems. Continuous previews, finite simulations and received-event animations share the visibility/reduced-motion rules but retain their own truthful lifecycles.
 
+Use the shared peach, sage and lilac tones, mixing neutral surfaces with selected tinted panels. Avoid repeated tinted backgrounds in adjacent cards or down a desktop column; carry accents through artwork. Graphics and Explore controls keep their dimensions and position across disclosure changes. All live previews respect viewport visibility and reduced motion.
+
 ## Browser-local simulations
 
 | Experiment                | What the controls actually change                               | Expected result and boundary                                                                                                                                                                                                                                                                 |
@@ -31,7 +33,7 @@ Clicking or tapping near a country marker selects the nearest rendered dot withi
 
 Loading, unavailable and a genuinely absent reading are distinct. Never fill missing observations with synthetic data. Reported disruptions come from the supplied events and scope, not from dips in the chart; no returned events does not prove no outages. Replay scrubs an observed week and must not imply live traffic.
 
-Keep the attribution, licence and transformation notice visible. On development, D1 caches only fixed country/view keys and one shared backoff key. Successful data and upstream backoff have different maximum lifetimes: the latter must honour a longer valid Retry-After without making stale data eligible.
+Keep the attribution, licence and transformation notice visible. `radar-tabs.ts` owns the UI wording and exhaustively types its metadata against the dependency-free `radar-views.ts` contract. [Radar data flow](architecture.md#radar-end-to-end) owns cache/storage and upstream backoff behaviour; the browser must not treat reuse as refreshed source data.
 
 ## Worker-backed experiments
 
@@ -49,11 +51,15 @@ Point at the health chart or use its native range control to inspect one recorde
 
 Keep the health chart quiet as history fills: a thin line for adjacent successful checks, dots only for isolated observations, crosses for failures and one selected marker. Recent readings is collapsed initially and shows only the latest five checks, newest first. The inspector retains the entire recorded window; limiting the table must not truncate observations or bridge gaps.
 
-AI is the wide incident lab below the compact collection, not another Explore card. Its shallow artwork spans the shared frame at every width, with readable HTML labels. The native scenario chooser sits with the introduction; evidence and answers share two desktop columns and stack in reading order on mobile. The authored interpretation fills the result initially. A complete model answer appears before the collapsed reference; a new scenario restores the reference. Keep all facts readable without JavaScript, no empty verification row, and no reserved blank result panel.
+AI is the wide incident lab below the compact collection, not another Explore card. Its shallow artwork spans the shared frame at every width, with readable HTML labels and the shared lilac palette. The native scenario chooser sits with the introduction; evidence and answers share two desktop columns and stack in reading order on mobile. The authored interpretation fills the result initially. A complete model answer appears before the collapsed reference; a new scenario restores the reference. Keep all facts readable without JavaScript, no empty verification row, and no reserved blank result panel.
 
 The artwork's ready, preparing, verifying, waiting, answered and unavailable states follow browser request callbacks, not model internals. Configuration loading and local availability checks stay neutral; verifying begins only when human verification is required, and model waiting only follows that verification. Idle movement is decorative, pending movement shows an actual request, and completed/failed states settle. Shared viewport, hidden-tab and reduced-motion gates apply. Its decorative label does not duplicate the accessible status announcement or trigger inference. Turnstile appears only on a deliberate Run and uses its compact layout when the available width is too narrow for the normal widget. [AI review](ai-review.md) defines correctness and security evaluation.
 
 The room clears its displayed sequence on disconnect. Closing the card, hiding the tab or taking the card out of view disconnects it without an automatic retry loop. The graphic has a separate visibility gate: a reader can keep the controls and connection on-screen while the diagram is above the viewport, without animating off-screen. Reduced motion and disconnect cancel both travel and arrival effects.
+
+A received room pulse travels across the complete window A / shared sequence / window B path, with a brief centre dwell and receiver highlight. It does not animate the initial state snapshot or claim a measured network route or latency. The illustrative room preview stops on opening.
+
+Streaming validates frame order, size and the final marker. Start begins from a compact, meaningful empty state; only received frames change the markers. Stop, disclosure closure, leaving view and hiding the page cancel consumption. The illustrative traveller stops while opened so it cannot be mistaken for observed arrivals.
 
 Connect checks the current card bounds instead of waiting for a potentially delayed intersection notification. Changing a pending AI scenario aborts the old request and leaves the new scenario ready; its cancellation must not overwrite that state.
 

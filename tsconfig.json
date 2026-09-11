@@ -1,4 +1,7 @@
 {
   "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "erasableSyntaxOnly": true
+  },
   "exclude": ["worker", "dist", "node_modules"]
 }

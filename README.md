@@ -12,14 +12,14 @@ Built with Astro and TypeScript for Cloudflare Workers Static Assets. Browser-lo
 
 ## Local development
 
-Use Node 24 and npm:
+Use the Node release in [.nvmrc](.nvmrc) and the npm version in [package.json](package.json). To run the declared npm without changing a global installation:
 
 ```sh
-npm ci
-npm run dev
+npx --yes "$(node -p "require('./package.json').packageManager")" ci
+npx --yes "$(node -p "require('./package.json').packageManager")" run dev
 ```
 
-The pages work without credentials. For the API experiments, initialise local storage and start the Worker on port 8787:
+The remaining examples use `npm` as shorthand for that declared version. The pages work without credentials. For the API experiments, initialise local storage and start the Worker on port 8787:
 
 ```sh
 npm run build:dev

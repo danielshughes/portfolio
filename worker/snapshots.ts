@@ -2,8 +2,19 @@ import { isRadarData } from "../src/experiments/radar-client.ts";
 import { isRadarSummary } from "../src/experiments/radar-summary.ts";
 import { countries } from "../src/experiments/internet-model.ts";
 import { handleRadar, type RadarOptions } from "./radar.ts";
+import {
+  isRadarView,
+  radarViewIds,
+  type RadarView,
+} from "../src/experiments/radar-views.ts";
 
-const VIEWS = ["traffic", "bots", "devices", "protocols"] as const;
+export type SnapshotCollection = {
+  country: string;
+  views: RadarView[];
+} & (
+  | { status: "disabled" | "complete" | "partial" }
+  | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
+);
 const MAX_AGE = 3600000;
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
@@ -14,7 +25,12 @@ export function snapshotPayload(
   view: string,
   now: number,
 ) {
-  if (!record(value) || typeof value.fetchedAt !== "string") return;
+  if (
+    !isRadarView(view) ||
+    !record(value) ||
+    typeof value.fetchedAt !== "string"
+  )
+    return;
   const age = now - Date.parse(value.fetchedAt);
   if (!Number.isFinite(age) || age < 0 || age >= MAX_AGE) return;
   if (
@@ -31,6 +47,8 @@ export async function readSnapshot(
   view: string,
   now: number,
 ) {
+  if (!isRadarView(view) || !countries.some(({ code }) => code === country))
+    return;
   const raw = await kv.get(`country:${country}`, {
     type: "text",
     cacheTtl: 60,
@@ -42,7 +60,7 @@ export async function readSnapshot(
   } catch {
     return;
   }
-  if (!record(bundle)) return;
+  if (!record(bundle) || !Object.hasOwn(bundle, view)) return;
   const value = snapshotPayload(bundle[view], country, view, now);
   if (!value) return;
   const seconds = Math.max(
@@ -61,9 +79,18 @@ export async function collectSnapshots(
   env: Env,
   time: number,
   options: RadarOptions,
-) {
+): Promise<SnapshotCollection> {
   const country = countries[Math.floor(time / 300000) % countries.length].code;
+  if (!options.enabled) return { status: "disabled", country, views: [] };
+  if (!options.token)
+    return {
+      status: "empty",
+      reason: "missing_credentials",
+      country,
+      views: [],
+    };
   const bundle: Record<string, unknown> = {};
+  const views: RadarView[] = [];
   // Fixed small batch: five upstream requests and one KV write per tick.
   // Invocation-local cache prevents an old PoP cache from perpetually renewing
   // a snapshot. Error backoff still applies across the four requests.
@@ -78,7 +105,7 @@ export async function collectSnapshots(
       },
     },
   };
-  for (const view of VIEWS) {
+  for (const view of radarViewIds) {
     const response = await handleRadar(
       new Request(
         `https://portfolio.invalid/api/radar?country=${country}&view=${view}`,
@@ -90,7 +117,10 @@ export async function collectSnapshots(
       continue;
     }
     const value: unknown = await response.json();
-    if (snapshotPayload(value, country, view, Date.now())) bundle[view] = value;
+    if (snapshotPayload(value, country, view, options.now())) {
+      bundle[view] = value;
+      views.push(view);
+    }
   }
   if (Object.keys(bundle).length)
     await env.RADAR_SNAPSHOTS.put(
@@ -98,4 +128,11 @@ export async function collectSnapshots(
       JSON.stringify(bundle),
       { expirationTtl: 7200 },
     );
+  if (!views.length)
+    return { status: "empty", reason: "no_usable_views", country, views };
+  return {
+    status: views.length === radarViewIds.length ? "complete" : "partial",
+    country,
+    views,
+  };
 }
