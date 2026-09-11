@@ -56,13 +56,18 @@ test("public AI waits for human verification and sends only its token and scenar
   page,
 }) => {
   let inference = 0;
+  let releaseConfiguration!: () => void;
+  const pendingConfiguration = new Promise<void>((resolve) => {
+    releaseConfiguration = resolve;
+  });
   let releaseAnswer!: () => void;
   const pendingAnswer = new Promise<void>((resolve) => {
     releaseAnswer = resolve;
   });
-  await page.route("**/api/triage-config", (route) =>
-    route.fulfill({ json: { local: false, siteKey: "public-fixture" } }),
-  );
+  await page.route("**/api/triage-config", async (route) => {
+    await pendingConfiguration;
+    return route.fulfill({ json: { local: false, siteKey: "public-fixture" } });
+  });
   await page.route(
     "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
     (route) =>
@@ -85,6 +90,10 @@ test("public AI waits for human verification and sends only its token and scenar
     .soft(page.locator("#triage"))
     .toHaveAttribute("data-triage-phase", "ready");
   await page.getByRole("button", { name: "Run triage", exact: true }).click();
+  await expect
+    .soft(page.locator("#triage"))
+    .toHaveAttribute("data-triage-phase", "preparing");
+  releaseConfiguration();
   await expect
     .poll(() =>
       page.evaluate(
@@ -128,6 +137,44 @@ test("public AI waits for human verification and sends only its token and scenar
   await expect(page.locator("#triage")).toHaveAttribute(
     "data-triage-phase",
     "ready",
+  );
+});
+
+test("local AI availability checks do not claim verification or inference", async ({
+  page,
+}) => {
+  let complete!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
+  let requests = 0;
+  await page.route("**/api/triage-config", (route) =>
+    route.fulfill({ json: { local: true } }),
+  );
+  await page.route("**/api/triage?*", async (route) => {
+    requests++;
+    await pending;
+    return route.fulfill({
+      status: 503,
+      json: { error: "local_inference_unavailable" },
+    });
+  });
+  await page.goto("/experiments/#triage");
+  await page.getByRole("button", { name: "Run triage", exact: true }).click();
+  await expect.poll(() => requests).toBe(1);
+  await expect
+    .soft(page.locator("#triage"))
+    .toHaveAttribute("data-triage-phase", "preparing");
+  await expect
+    .soft(page.locator("[data-triage-status]"))
+    .not.toContainText(/Verifying|Waiting for the model/);
+  complete();
+  await expect(page.locator("[data-triage-status]")).toContainText(
+    "Local preview does not run inference",
+  );
+  await expect(page.locator("#triage")).toHaveAttribute(
+    "data-triage-phase",
+    "unavailable",
   );
 });
 

@@ -120,6 +120,7 @@ export function mountLiveExperiments(root: HTMLElement) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const triagePhases = {
     ready: "Ready when you are.",
+    preparing: "Preparing the request.",
     verifying: "Verifying this request.",
     waiting: "Waiting for the model.",
     answered: "Suggestion ready.",
@@ -144,10 +145,11 @@ export function mountLiveExperiments(root: HTMLElement) {
     controllers.set(name, controller);
     const status = q<HTMLElement>(`[data-${name}-status]`),
       button = root.querySelector<HTMLButtonElement>(`[data-${name}-run]`);
-    status.textContent = "Loading…";
+    status.textContent =
+      name === "triage" ? "Preparing this request…" : "Loading…";
     button?.setAttribute("aria-busy", "true");
     if (button) button.disabled = true;
-    if (name === "triage") setTriagePhase("verifying");
+    if (name === "triage") setTriagePhase("preparing");
     try {
       await action(
         AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
@@ -316,6 +318,7 @@ export function mountLiveExperiments(root: HTMLElement) {
               !configuration.siteKey
             )
               throw new Error("Verification unavailable");
+            setTriagePhase("verifying");
             q<HTMLElement>("[data-triage-status]").textContent =
               "Verifying this request before contacting the model…";
             try {
@@ -333,9 +336,11 @@ export function mountLiveExperiments(root: HTMLElement) {
             }
           }
           signal.throwIfAborted();
-          setTriagePhase("waiting");
-          q<HTMLElement>("[data-triage-status]").textContent =
-            "Waiting for the model’s response…";
+          if (!configuration.local) {
+            setTriagePhase("waiting");
+            q<HTMLElement>("[data-triage-status]").textContent =
+              "Waiting for the model’s response…";
+          }
           const data = await readJson(
             `/api/triage?scenario=${encodeURIComponent(selected)}`,
             AbortSignal.any([signal, AbortSignal.timeout(25000)]),
