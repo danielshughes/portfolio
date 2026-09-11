@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createConnection } from "node:net";
+import { randomBytes } from "node:crypto";
+import { once } from "node:events";
+import { setTimeout as delay } from "node:timers/promises";
 import { runtime } from "./runtime-harness.mjs";
 
 test(
@@ -29,6 +33,83 @@ test(
 );
 
 const origin = "https://portfolio.example";
+
+test(
+  "an abruptly terminated transport reaches the Durable Object close callback without throwing",
+  { timeout: 15000 },
+  async (t) => {
+    const mf = await runtime({
+      entryPoint: "tests/fixtures/coordination-close.mjs",
+    });
+    t.after(() => mf.dispose());
+    const url = await mf.ready;
+    const transport = createConnection({
+      host: "127.0.0.1",
+      port: Number(url.port),
+    });
+    t.after(() => transport.destroy());
+    await once(transport, "connect");
+    // A real upgrade, followed by TCP termination without a WebSocket close frame.
+    const upgraded = new Promise((resolve, reject) => {
+      let received = Buffer.alloc(0);
+      const read = (chunk) => {
+        received = Buffer.concat([received, chunk]);
+        const headerEnd = received.indexOf("\r\n\r\n");
+        if (headerEnd < 0) return;
+        if (
+          !received.subarray(0, headerEnd).toString().startsWith("HTTP/1.1 101")
+        )
+          return reject(new Error("Expected a real WebSocket upgrade"));
+        const frame = received.subarray(headerEnd + 4);
+        if (frame.length < 2) return;
+        const size = frame[1] & 127;
+        if (size >= 126)
+          return reject(new Error("Snapshot exceeded the short-frame bound"));
+        if (frame.length < size + 2) return;
+        transport.off("data", read);
+        resolve(JSON.parse(frame.subarray(2, 2 + size).toString()));
+      };
+      transport.on("data", read);
+      transport.once("error", reject);
+    });
+    transport.write(
+      `GET /api/coordination HTTP/1.1\r\nHost: ${url.host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: ${randomBytes(16).toString("base64")}\r\n\r\n`,
+    );
+    const snapshot = await upgraded;
+    assert.equal(snapshot.kind, "snapshot");
+    const ended = once(transport, "close");
+    transport.destroy();
+    await ended;
+
+    let events = [];
+    const deadline = Date.now() + 5000;
+    while (!events.length && Date.now() < deadline) {
+      const response = await mf.dispatchFetch(origin + "/api/close-events");
+      assert.equal(response.status, 200);
+      events = await response.json();
+      if (!events.length) await delay(10);
+    }
+    assert.deepEqual(events, [{ code: 1006, error: null }]);
+
+    const reconnect = new WebSocket(
+      new URL("/api/coordination", url).toString().replace("http:", "ws:"),
+    );
+    t.after(() => reconnect.close(1000));
+    const [current] = await once(reconnect, "message");
+    assert.equal(JSON.parse(current.data).sequence, snapshot.sequence);
+    const next = once(reconnect, "message");
+    reconnect.send("pulse");
+    const [pulse] = await next;
+    assert.equal(
+      JSON.parse(pulse.data).sequence,
+      (snapshot.sequence + 1) % 1000000,
+    );
+    const closed = once(reconnect, "close");
+    reconnect.close(1000);
+    await closed;
+  },
+);
+
 test("explicit local mode survives Wrangler rewriting the request origin", async (t) => {
   const mf = await runtime({ bindings: { LOCAL_PREVIEW: "true" } });
   t.after(() => mf.dispose());
