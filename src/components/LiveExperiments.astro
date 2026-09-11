@@ -80,7 +80,7 @@ import "../styles/live-experiments.css";
         <svg
           viewBox="0 0 600 160"
           role="img"
-          aria-label="Homepage asset response time samples over the last day"
+          aria-label="Observed homepage asset response time samples"
         >
           <path class="health-baseline" d="M0 145H600M0 15H600" />
           <path data-health-line fill="none" />
@@ -99,6 +99,7 @@ import "../styles/live-experiments.css";
         <p role="status" data-health-status>
           Open to load the measurement window.
         </p>
+        <p class="live-footnote" data-health-window />
         <button type="button" data-health-retry hidden>
           Try samples again
         </button>
@@ -189,7 +190,7 @@ import "../styles/live-experiments.css";
           Not connected.
         </p>
         <p class="live-footnote">
-          A small public demo room, not chat. No names or messages. Short
+          A small shared demo room, not chat. No names or messages. Short
           sessions, bounded pulses, and connections close when this view is
           hidden. Idle connections use hibernation.
         </p>

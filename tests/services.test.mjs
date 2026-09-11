@@ -3,6 +3,64 @@ import test from "node:test";
 import { runtime } from "./runtime-harness.mjs";
 
 const origin = "https://portfolio.example";
+test("explicit local mode survives Wrangler rewriting the request origin", async (t) => {
+  const mf = await runtime({ bindings: { LOCAL_PREVIEW: "true" } });
+  t.after(() => mf.dispose());
+  const edge = await mf.dispatchFetch(origin + "/api/edge", {
+    cf: { country: "GB", colo: "LHR" },
+  });
+  assert.equal((await edge.json()).mode, "local");
+  const inference = await mf.dispatchFetch(
+    origin + "/api/triage?scenario=latency",
+    {
+      method: "POST",
+      headers: { origin },
+    },
+  );
+  assert.equal(inference.status, 503);
+  assert.equal((await inference.json()).error, "local_inference_unavailable");
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS count FROM ai_budget").first()).count,
+    0,
+  );
+});
+
+test("local edge metadata is not presented as an observed Cloudflare connection", async (t) => {
+  const mf = await runtime();
+  t.after(() => mf.dispose());
+  const response = await mf.dispatchFetch("http://127.0.0.1:8787/api/edge", {
+    cf: { country: "GB", colo: "LHR", httpProtocol: "HTTP/3" },
+  });
+  const data = await response.json();
+  assert.equal(data.mode, "local");
+  assert.equal(data.country, null);
+  assert.equal(data.colo, null);
+  assert.equal(data.protocol, null);
+});
+
+test("local AI explains its remote dependency without reserving inference budget", async (t) => {
+  const mf = await runtime();
+  t.after(() => mf.dispose());
+  const local = "http://127.0.0.1:8787";
+  const response = await mf.dispatchFetch(
+    local + "/api/triage?scenario=latency",
+    {
+      method: "POST",
+      headers: { origin: local },
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: "local_inference_unavailable",
+  });
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS count FROM ai_budget").first()).count,
+    0,
+  );
+});
+
 test("edge response is private, does not retain caller identity and enforces methods", async (t) => {
   const mf = await runtime();
   t.after(() => mf.dispose());
@@ -38,6 +96,10 @@ test("health history is empty until real scheduled measurements exist", async (t
   assert.equal(data.coverage, 0);
   assert.equal(data.target, "https://dev.danhughes.uk/");
   assert.equal(data.measurement, "asset-binding-response-headers");
+  assert.equal(
+    Date.parse(data.window.end) - Date.parse(data.window.start),
+    86400000,
+  );
 });
 test("AI rejects arbitrary scenarios and cross-origin requests before inference", async (t) => {
   let calls = 0;
@@ -204,14 +266,10 @@ test("shared coordination broadcasts real state to both clients, rejecting inval
   b.webSocket.accept();
   const next = (socket) =>
     new Promise((resolve) =>
-      socket.addEventListener(
-        "message",
-        (e) => {
-          const v = JSON.parse(e.data);
-          if (v.sequence === 1) resolve(v);
-        },
-        { once: true },
-      ),
+      socket.addEventListener("message", (e) => {
+        const v = JSON.parse(e.data);
+        if (v.kind === "pulse" && v.sequence === 1) resolve(v);
+      }),
     );
   const first = next(a.webSocket),
     second = next(b.webSocket);
@@ -224,3 +282,27 @@ test("shared coordination broadcasts real state to both clients, rejecting inval
   assert.equal((await close).code, 1008);
   b.webSocket.close(1000);
 });
+
+test(
+  "a room connection receives current state before the first pulse",
+  { timeout: 3000 },
+  async (t) => {
+    const mf = await runtime();
+    t.after(() => mf.dispose());
+    const response = await mf.dispatchFetch(origin + "/api/coordination", {
+      headers: { Upgrade: "websocket", origin },
+    });
+    const state = new Promise((resolve) =>
+      response.webSocket.addEventListener(
+        "message",
+        (event) => resolve(JSON.parse(event.data)),
+        { once: true },
+      ),
+    );
+    response.webSocket.accept();
+    const message = await state;
+    assert.equal(message.kind, "snapshot");
+    assert.equal(message.sequence, 0);
+    response.webSocket.close(1000);
+  },
+);

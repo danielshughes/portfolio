@@ -130,3 +130,25 @@ test("workerd ingress binding limits invalid requests", async (t) => {
     429,
   );
 });
+
+test("development retains long upstream rate-limit backoff across countries", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    outbound() {
+      calls++;
+      return new Response(null, {
+        status: 429,
+        headers: { "retry-after": "7200" },
+      });
+    },
+  });
+  t.after(() => mf.dispose());
+  for (const country of ["GB", "JP"]) {
+    const response = await mf.dispatchFetch(
+      `https://portfolio.example/api/radar?country=${country}`,
+    );
+    assert.equal(response.status, 429);
+    assert(Number(response.headers.get("retry-after")) > 3600);
+  }
+  assert.equal(calls, 1);
+});

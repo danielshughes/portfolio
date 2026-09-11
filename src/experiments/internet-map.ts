@@ -245,7 +245,6 @@ export function mountInternetMap(root: HTMLElement) {
     query("#internet-time-help").textContent =
       "Peak traffic in this country's week = 100. Gaps are missing readings.";
     query(".internet-chart-line").setAttribute("d", "");
-    query<SVGElement>(".internet-event-band").style.display = "none";
     query<HTMLElement>(".internet-event-list").style.visibility = "hidden";
     query<HTMLElement>(".internet-event-list").inert = true;
     query(".internet-week-labels").textContent = "Observed week · hourly · UTC";

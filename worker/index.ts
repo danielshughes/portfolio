@@ -1,7 +1,7 @@
 import { handleRadar } from "./radar.ts";
 import { securityHeaders } from "../src/security/policy.ts";
 import { edgeDetails } from "./edge.ts";
-import { apiJson, sameOrigin } from "./http.ts";
+import { apiJson, isLocalPreview, sameOrigin } from "./http.ts";
 import { healthHistory, collectHealth } from "./health.ts";
 import { triage } from "./triage.ts";
 import { radarOptions } from "./radar-options.ts";
@@ -53,7 +53,16 @@ export default {
           return protect(apiJson({ error: "invalid_query" }, 400));
         if (path === "/api/edge")
           return protect(
-            apiJson(edgeDetails(request.cf), 200, "private, no-store"),
+            apiJson(
+              {
+                mode: isLocalPreview(request, env) ? "local" : "observed",
+                ...edgeDetails(
+                  isLocalPreview(request, env) ? undefined : request.cf,
+                ),
+              },
+              200,
+              "private, no-store",
+            ),
           );
         if (path === "/api/health")
           return protect(await healthHistory(env, Date.now()));

@@ -1,10 +1,14 @@
 import { apiJson } from "./http.ts";
+import {
+  HEALTH_INTERVAL_MS,
+  HEALTH_WINDOW_MS,
+  HEALTH_EXPECTED_SAMPLES,
+} from "../src/experiments/health-model.ts";
 
 const healthTarget = (env: Env) =>
   env.SITE_ENV === "production"
     ? "https://danhughes.uk/"
     : "https://dev.danhughes.uk/";
-export const SAMPLE_INTERVAL = 5 * 60 * 1000;
 const RETENTION = 7 * 86400000;
 
 export async function collectHealth(env: Env, time: number) {
@@ -35,7 +39,7 @@ export async function collectHealth(env: Env, time: number) {
         "INSERT OR IGNORE INTO health_samples (observed_at,status,elapsed_ms,ok) VALUES (?,?,?,?)",
       )
       .bind(
-        Math.floor(time / SAMPLE_INTERVAL) * SAMPLE_INTERVAL,
+        Math.floor(time / HEALTH_INTERVAL_MS) * HEALTH_INTERVAL_MS,
         status,
         Math.max(0, Date.now() - started),
         ok ? 1 : 0,
@@ -48,12 +52,12 @@ export async function collectHealth(env: Env, time: number) {
 
 export async function healthHistory(env: Env, now: number) {
   const db = env.HISTORY;
-  const start = Math.floor(now / SAMPLE_INTERVAL) * SAMPLE_INTERVAL - 86400000;
+  const start = now - HEALTH_WINDOW_MS;
   const rows = await db
     .prepare(
-      "SELECT observed_at, status, elapsed_ms, ok FROM health_samples WHERE observed_at > ? AND observed_at <= ? ORDER BY observed_at LIMIT 288",
+      "SELECT observed_at, status, elapsed_ms, ok FROM health_samples WHERE observed_at > ? AND observed_at <= ? ORDER BY observed_at LIMIT ?",
     )
-    .bind(start, now)
+    .bind(start, now, HEALTH_EXPECTED_SAMPLES)
     .all<{
       observed_at: number;
       status: number;
@@ -68,9 +72,9 @@ export async function healthHistory(env: Env, now: number) {
         start: new Date(start).toISOString(),
         end: new Date(now).toISOString(),
       },
-      intervalMs: SAMPLE_INTERVAL,
-      expectedSamples: 288,
-      coverage: rows.results.length / 288,
+      intervalMs: HEALTH_INTERVAL_MS,
+      expectedSamples: HEALTH_EXPECTED_SAMPLES,
+      coverage: rows.results.length / HEALTH_EXPECTED_SAMPLES,
       samples: rows.results,
     },
     200,

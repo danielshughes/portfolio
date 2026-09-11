@@ -17,6 +17,10 @@ test("a slower tail changes high percentiles but not the typical request", () =>
     slow = latencies(1000);
   assert.equal(fast.length, 100);
   assert.deepEqual(latencies(100), fast);
+  assert.ok(
+    Math.min(...fast.slice(90)) > Math.max(...fast.slice(0, 90)),
+    "the adjustable ten are always the slowest requests",
+  );
   assert.equal(percentile(fast, 50), percentile(slow, 50));
   assert.ok(percentile(slow, 95) > percentile(fast, 95));
   assert.ok(percentile(slow, 99) > percentile(fast, 99));

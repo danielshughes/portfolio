@@ -224,10 +224,6 @@
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
 }
-.internet-event-band {
-  fill: var(--small-accent);
-  opacity: 0.12;
-}
 .internet-history figcaption {
   font: var(--type-micro)/1.5 var(--mono);
   margin-top: 0.75rem;

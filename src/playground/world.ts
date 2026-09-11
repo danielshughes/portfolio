@@ -39,18 +39,30 @@ export function mountWorld(root: HTMLElement) {
     const theta = (angle * Math.PI) / 180,
       phi = (Number(tilt.value) * Math.PI) / 180;
     ctx.clearRect(0, 0, Math.ceil(width), Math.ceil(height));
-    const points = nodes.map(({ point: [x, y, z] }) => {
+    const points = nodes.map(({ point: [x, y, z] }, i) => {
       const rx = x * Math.cos(theta) + z * Math.sin(theta);
       const rz = -x * Math.sin(theta) + z * Math.cos(theta);
       const ry = y * Math.cos(phi) - rz * Math.sin(phi);
       const depth = y * Math.sin(phi) + rz * Math.cos(phi);
       const perspective = 4 / (4 + depth);
-      const scale = Math.min(width / 6.2, height / 4.5);
+      // Fixed inset reserves node radii and labels across every camera angle.
+      // Keep the scale stable while rotating rather than making the scene breathe.
+      const scale = Math.max(
+        1,
+        Math.min((width - 72) / 6.2, (height - 72) / 4.5),
+      );
       return {
         x: width / 2 + rx * scale * perspective,
         y: height / 2 + ry * scale * perspective,
         depth,
         radius: 6 * perspective,
+        connected:
+          selected === -1 ||
+          i === selected ||
+          edges.some(
+            ([a, b]) =>
+              (a === selected && b === i) || (b === selected && a === i),
+          ),
       };
     });
     for (const [a, b] of edges) {
@@ -78,14 +90,7 @@ export function mountWorld(root: HTMLElement) {
       .map((p, i) => ({ ...p, i }))
       .sort((a, b) => b.depth - a.depth);
     for (const p of order) {
-      const connected =
-        selected === -1 ||
-        p.i === selected ||
-        edges.some(
-          ([a, b]) =>
-            (a === selected && b === p.i) || (b === selected && a === p.i),
-        );
-      ctx.globalAlpha = connected ? 1 : 0.3;
+      ctx.globalAlpha = p.connected ? 1 : 0.3;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius + (p.i === selected ? 3 : 0), 0, Math.PI * 2);
       ctx.fillStyle = p.i === selected ? accent : paper;
@@ -93,11 +98,81 @@ export function mountWorld(root: HTMLElement) {
       ctx.strokeStyle = accent;
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.font = "12px monospace";
-      ctx.textAlign = "center";
-      ctx.fillStyle = ink;
-      ctx.fillText(nodes[p.i].name, p.x, p.y + p.radius + 19);
     }
+    // Projected nodes can coincide. Place their labels separately, after every
+    // node is drawn, so neither another label nor a foreground node hides one.
+    ctx.font = "12px monospace";
+    ctx.textAlign = "center";
+    type Box = { left: number; right: number; top: number; bottom: number };
+    const overlaps = (a: Box, b: Box) =>
+      a.left < b.right + 4 &&
+      a.right + 4 > b.left &&
+      a.top < b.bottom + 4 &&
+      a.bottom + 4 > b.top;
+    const occupied: Box[] = points.map((p) => ({
+      left: p.x - p.radius - 3,
+      right: p.x + p.radius + 3,
+      top: p.y - p.radius - 3,
+      bottom: p.y + p.radius + 3,
+    }));
+    // Stable node order prevents depth-sort changes from swapping label priority.
+    points.forEach((p, i) => {
+      const name = nodes[i].name;
+      const metrics = ctx.measureText(name);
+      const half = metrics.width / 2;
+      const ascent = metrics.actualBoundingBoxAscent;
+      const descent = metrics.actualBoundingBoxDescent;
+      const candidates = Array.from({ length: 10 }, (_, ring) => {
+        const gap = 10 + ring * 12;
+        const below = p.y + p.radius + gap + ascent;
+        const above = p.y - p.radius - gap - descent;
+        const left = p.x - p.radius - gap - half;
+        const right = p.x + p.radius + gap + half;
+        const middle = p.y + (ascent - descent) / 2;
+        return [
+          [p.x, below],
+          [p.x, above],
+          [right, middle],
+          [left, middle],
+          [right, below],
+          [left, below],
+          [right, above],
+          [left, above],
+        ];
+      })
+        .flat()
+        .map(([x, y]) => {
+          x = Math.max(half + 4, Math.min(width - half - 4, x));
+          y = Math.max(ascent + 4, Math.min(height - descent - 4, y));
+          return {
+            x,
+            y,
+            left: x - half,
+            right: x + half,
+            top: y - ascent,
+            bottom: y + descent,
+          };
+        });
+      const label =
+        candidates.find((candidate) =>
+          occupied.every((other) => !overlaps(candidate, other)),
+        ) ?? candidates[0];
+      occupied.push(label);
+      ctx.globalAlpha = p.connected ? 1 : 0.3;
+      if (label !== candidates[0]) {
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(
+          Math.max(label.left, Math.min(label.right, p.x)),
+          Math.max(label.top, Math.min(label.bottom, p.y)),
+        );
+        ctx.stroke();
+      }
+      ctx.fillStyle = ink;
+      ctx.fillText(name, label.x, label.y);
+    });
     ctx.globalAlpha = 1;
   }
   function tick(time: number) {

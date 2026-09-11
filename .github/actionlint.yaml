@@ -1,0 +1,8 @@
+# GitHub supports this field, but the pinned actionlint release does not:
+# https://github.com/rhysd/actionlint/issues/680
+# tests/ci-workflow.test.mjs validates our exact queue/cancellation combination.
+# Remove this one diagnostic exception when actionlint supports concurrency.queue.
+paths:
+  .github/workflows/ci.yml:
+    ignore:
+      - '^unexpected key "queue" for "concurrency" section\. expected one of "cancel-in-progress", "group"$'

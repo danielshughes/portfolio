@@ -96,9 +96,9 @@ import { portfolioContent } from "../content/portfolio";
       </output>
       <p class="experiment-footnote">
         One CPU snapshot from two ready replicas. Each node has 2,000m available
-        CPU. Illustrative least-used placement, not the full Kubernetes
-        scheduler. No memory, affinity, readiness delays or HPA stabilisation.
-        Nodes are added manually here.
+        CPU. Replica bounds 1–12; 10% HPA tolerance. Illustrative least-used
+        placement, not the full Kubernetes scheduler. No memory, affinity,
+        readiness delays or HPA stabilisation. Nodes are added manually here.
       </p>
     </ExperimentCard>
     <ExperimentCard
@@ -196,8 +196,7 @@ import { portfolioContent } from "../content/portfolio";
       </p>
       <SignalControls expanded />
       <p class="experiment-footnote">
-        A visual experiment, not signal recovery or incident detection. Open the
-        controls to adjust the waveform.
+        Synthetic interference, not signal recovery or incident detection.
       </p>
     </ExperimentCard>
     <ExperimentCard

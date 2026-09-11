@@ -29,6 +29,12 @@ export class CoordinationRoom extends DurableObject<Env> {
       messages: 0,
     };
     pair[1].serializeAttachment(session);
+    const snapshot = this.ctx.storage.sql
+      .exec<{ sequence: number }>("SELECT sequence FROM state WHERE id=1")
+      .one();
+    pair[1].send(
+      JSON.stringify({ kind: "snapshot", sequence: snapshot.sequence }),
+    );
     if ((await this.ctx.storage.getAlarm()) === null)
       await this.ctx.storage.setAlarm(session.expires);
     return new Response(null, { status: 101, webSocket: pair[0] });
@@ -53,7 +59,11 @@ export class CoordinationRoom extends DurableObject<Env> {
         "UPDATE state SET sequence=(sequence+1)%1000000 WHERE id=1 RETURNING sequence",
       )
       .one();
-    const payload = JSON.stringify({ sequence: row.sequence, at: now });
+    const payload = JSON.stringify({
+      kind: "pulse",
+      sequence: row.sequence,
+      at: now,
+    });
     for (const peer of this.ctx.getWebSockets()) {
       try {
         peer.send(payload);

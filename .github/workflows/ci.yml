@@ -9,7 +9,8 @@ permissions:
   contents: read
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  queue: max
+  cancel-in-progress: false
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -45,7 +46,6 @@ jobs:
       - run: npm audit --audit-level=low
         if: steps.filter.outputs.code == 'true'
       - name: Redacted secret scan of history and deliverables
-        if: steps.filter.outputs.code == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -54,9 +54,12 @@ jobs:
           printf '%s  %s\n' '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' "$scanner_dir/gitleaks.tar.gz" | sha256sum --check --status
           tar -xzf "$scanner_dir/gitleaks.tar.gz" -C "$scanner_dir" gitleaks
           "$scanner_dir/gitleaks" git --redact=100 --log-opts="--all" .
-          for path in src worker tests scripts dist docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
+          for path in src public worker tests scripts docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
             "$scanner_dir/gitleaks" dir --redact=100 "$path"
           done
+          if [ -d dist ]; then
+            "$scanner_dir/gitleaks" dir --redact=100 dist
+          fi
   deploy:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || (github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true')) && github.repository == 'danielshughes/portfolio' && needs.quality.outputs.code == 'true'
     needs: quality

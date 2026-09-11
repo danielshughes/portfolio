@@ -149,6 +149,14 @@
   stroke: none;
   opacity: 0;
 }
+.room-arrival {
+  fill: none;
+  stroke: var(--preview-accent);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
 .live-preview-traveller,
 .live-preview-relay,
 .live-preview-pin,

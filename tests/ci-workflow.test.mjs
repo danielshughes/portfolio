@@ -25,10 +25,19 @@ test("quality runs for pull requests and protected branches only", () => {
   );
 });
 
+test("documentation-only changes still receive the redacted history secret scan", () => {
+  const step = workflow.match(
+    /- name: Redacted secret scan of history and deliverables\n([\s\S]*?)(?=\n  deploy:)/,
+  )?.[1];
+  assert.ok(step, "secret scanning is part of the required quality job");
+  assert.doesNotMatch(step, /if: steps\.filter/);
+  assert.match(step, /gitleaks\" git --redact=100/);
+});
+
 test("delivery is environment-scoped and protected branch deployments are not cancelled", () => {
   assert.match(
     workflow,
-    /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/,
+    /concurrency:\s*\n\s+group: [^\n]+\n\s+queue: max\n\s+cancel-in-progress: false/,
   );
   assert.match(
     workflow,

@@ -120,6 +120,8 @@ test("Kubernetes shows pending pods and adding capacity allows placement", async
   await card.getByLabel("CPU demand").fill("4000");
   await card.getByLabel("Nodes", { exact: true }).fill("1");
   await expect(card.locator("output")).toContainText("8 pending");
+  await expect(card.locator(".step-text")).toHaveText("8 pods still pending");
+  await expect(card.locator("output")).toContainText("1 node,");
   await card.getByLabel("Nodes", { exact: true }).fill("3");
   await expect(card.locator("output")).toContainText("0 pending");
   await card.getByRole("button", { name: "Reset", exact: true }).click();

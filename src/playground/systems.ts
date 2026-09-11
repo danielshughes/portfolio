@@ -23,6 +23,9 @@ export function mountSystem(root: HTMLElement) {
     const player = playback(
       root,
       (progress) => {
+        const pending = state.assignments.filter(
+          (node) => node === null,
+        ).length;
         const step =
           progress < 0.2
             ? "HPA: calculate target"
@@ -30,7 +33,9 @@ export function mountSystem(root: HTMLElement) {
               ? "Controllers: reconcile pods"
               : progress < 1
                 ? "Scheduler: find a fit"
-                : "Placement complete";
+                : pending
+                  ? `${pending} pod${pending === 1 ? "" : "s"} still pending`
+                  : "All pods placed";
         const width = 540 / state.nodes;
         const slots = Array<number>(state.nodes).fill(0);
         const nodes = state.used
@@ -71,14 +76,14 @@ export function mountSystem(root: HTMLElement) {
           "aria-valuetext",
           input.value +
             (input.name === "nodes"
-              ? " nodes"
+              ? ` node${Number(input.value) === 1 ? "" : "s"}`
               : input.name === "target"
                 ? " percent"
                 : " millicores"),
         ),
       );
       const pending = state.assignments.filter((node) => node === null).length;
-      output.textContent = `Result: ${state.desired} desired pods, ${state.desired - pending} placed, ${pending} pending. CPU utilisation in the initial snapshot: ${Math.round(state.utilisation)}%. ${nodes} nodes, ${cpuRequest}m requested per pod.`;
+      output.textContent = `Result: ${state.desired} desired pod${state.desired === 1 ? "" : "s"}, ${state.desired - pending} placed, ${pending} pending. CPU utilisation in the initial snapshot: ${Math.round(state.utilisation)}%. ${nodes} node${nodes === 1 ? "" : "s"}, ${cpuRequest}m requested per pod.`;
       player.replay();
     }
     inputs.forEach((input) => input.addEventListener("input", update));

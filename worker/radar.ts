@@ -4,6 +4,7 @@ const HOUR = 3_600_000;
 const MAX_BODY = 262_144;
 const MAX_EVENTS = 100;
 const CACHE_SECONDS = 3600;
+export const MAX_BACKOFF_SECONDS = 86400;
 const TIMEOUT_MS = 10_000;
 const dimensions: Record<string, string> = {
   bots: "BOT_CLASS",
@@ -353,7 +354,7 @@ export async function handleRadar(
         await response.body?.cancel();
         throw new RateLimit(
           Number.isFinite(seconds)
-            ? Math.min(86400, Math.max(1, Math.ceil(seconds)))
+            ? Math.min(MAX_BACKOFF_SECONDS, Math.max(1, Math.ceil(seconds)))
             : 60,
         );
       }

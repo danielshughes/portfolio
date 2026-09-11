@@ -177,3 +177,24 @@ test("Radar attribution survives dynamic loading in a separate static element", 
   );
   assert.match(markup, /Custom visualisation/);
 });
+
+test("observability keeps explicit sampled logs and traces with query redaction", () => {
+  const { config, error } = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  );
+  assert.equal(error, undefined);
+  for (const environment of [config.env.development, config.env.production]) {
+    const observability = environment.observability ?? config.observability;
+    assert.equal(observability.redact_query_string, true);
+    assert.deepEqual(observability.logs, {
+      enabled: true,
+      head_sampling_rate: 0.1,
+      invocation_logs: true,
+    });
+    assert.deepEqual(observability.traces, {
+      enabled: true,
+      head_sampling_rate: 0.01,
+    });
+  }
+});

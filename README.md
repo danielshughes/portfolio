@@ -22,11 +22,12 @@ npm run dev
 The pages work without credentials. For the API experiments, initialise local storage and start the Worker on port 8787:
 
 ```sh
+npm run build:dev
 npx wrangler d1 migrations apply HISTORY --env development --local
 npm run dev:worker
 ```
 
-Astro proxies `/api` and WebSockets to the Worker. Radar needs a server-side `RADAR_API_TOKEN`; unavailable services show an honest error or empty history, not invented data. AI inference is opt-in and uses its binding, not a browser key.
+Astro proxies `/api` and WebSockets to the Worker. In another terminal, `npm run dev:sample` triggers a real local health check. Radar needs a server-side `RADAR_API_TOKEN`. Cloudflare edge metadata and AI inference require the deployed site; local preview explains that limitation without inventing results. See [local operations](docs/operations.md#local-development-and-tests).
 
 ## Checks
 
@@ -39,7 +40,7 @@ npm run quality
 
 The gate covers formatting, lint, types, tests, accessibility and the build across all configured browsers. After editing GitHub Actions workflows, also run `npm run lint:workflows` (requires Go).
 
-Documentation-only changes run a quick file check. They skip dependency installation, the full quality gate and deployment. Source, site content, assets, tests and configuration still run the full checks.
+Documentation-only changes run file classification and redacted secret scanning. They skip dependency installation, the full quality gate and deployment. Source, site content, assets, tests and configuration still run the full checks.
 
 ## Deployment
 

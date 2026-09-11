@@ -1,4 +1,9 @@
 import { isTriageScenario, triageScenarios } from "./triage-scenarios";
+import {
+  HEALTH_INTERVAL_MS,
+  HEALTH_WINDOW_MS,
+  HEALTH_EXPECTED_SAMPLES,
+} from "./health-model";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
@@ -9,6 +14,17 @@ const stamp = (time: number) =>
     minute: "2-digit",
     timeZone: "UTC",
   }).format(time);
+const datedStamp = (time: number) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(time);
+
+class ExperimentError extends Error {}
 
 async function readJson(
   url: string,
@@ -21,12 +37,10 @@ async function readJson(
     redirect: "error",
     headers: { accept: "application/json" },
   });
-  if (!response.ok) {
+  if (response.status === 429) {
     await response.body?.cancel();
-    throw new Error(
-      response.status === 429
-        ? "This experiment has reached its request limit. Try again later."
-        : "This experiment is unavailable right now. Try again shortly.",
+    throw new ExperimentError(
+      "This experiment has reached its request limit. Try again later.",
     );
   }
   // Responses have fixed server-side limits; enforce a browser-side bound too.
@@ -54,7 +68,16 @@ async function readJson(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return JSON.parse(new TextDecoder().decode(bytes));
+  const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!response.ok)
+    throw new ExperimentError(
+      response.status === 503 &&
+        record(data) &&
+        data.error === "local_inference_unavailable"
+        ? "Workers AI needs a Cloudflare connection. Local preview does not run inference; try this on the deployed development site."
+        : "This experiment is unavailable right now. Try again shortly.",
+    );
+  return data;
 }
 
 interface Sample {
@@ -66,10 +89,14 @@ interface Sample {
 function isSample(value: unknown): value is Sample {
   return (
     record(value) &&
-    ["observed_at", "status", "elapsed_ms", "ok"].every(
-      (key) => typeof value[key] === "number" && Number.isFinite(value[key]),
+    ["observed_at", "status", "elapsed_ms", "ok"].every((key) =>
+      Number.isSafeInteger(value[key]),
     ) &&
     Number(value.elapsed_ms) >= 0 &&
+    Number(value.observed_at) >= 0 &&
+    (value.status === 0 ||
+      (Number(value.status) >= 100 && Number(value.status) <= 599)) &&
+    (value.ok !== 1 || value.status === 200) &&
     [0, 1].includes(Number(value.ok))
   );
 }
@@ -81,8 +108,7 @@ export function mountLiveExperiments(root: HTMLElement) {
   const loaded = new Set<string>();
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const errorText = (error: unknown) =>
-    error instanceof Error &&
-    error.message.startsWith("This experiment has reached its request limit.")
+    error instanceof ExperimentError
       ? error.message
       : "This experiment is unavailable right now. Try again shortly.";
   async function run(
@@ -102,6 +128,7 @@ export function mountLiveExperiments(root: HTMLElement) {
         AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
       );
     } catch (error) {
+      if (controller.signal.reason === "scenario-changed") return;
       status.textContent = controller.signal.aborted
         ? "Request stopped. Open again or retry when ready."
         : errorText(error);
@@ -138,7 +165,9 @@ export function mountLiveExperiments(root: HTMLElement) {
                 : "Not supplied";
       }
       q<HTMLElement>("[data-edge-status]").textContent =
-        "Observed for this request. Nothing precise or private is mapped.";
+        data.mode === "local"
+          ? "Local preview. Connection metadata is available on the deployed site."
+          : "Observed for this request. Nothing precise or private is mapped.";
       q<HTMLButtonElement>("[data-edge-retry]").hidden = true;
       loaded.add("edge");
     });
@@ -149,17 +178,32 @@ export function mountLiveExperiments(root: HTMLElement) {
         !record(data) ||
         !record(data.window) ||
         typeof data.window.start !== "string" ||
+        typeof data.window.end !== "string" ||
         !Array.isArray(data.samples) ||
-        data.samples.length > 288 ||
+        data.samples.length > HEALTH_EXPECTED_SAMPLES ||
         !data.samples.every(isSample)
       )
         throw new Error("Invalid samples");
       const samples: Sample[] = data.samples;
       const start = Date.parse(data.window.start);
-      if (!Number.isFinite(start)) throw new Error("Invalid window");
+      const end = Date.parse(data.window.end);
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        end - start !== HEALTH_WINDOW_MS ||
+        samples.some(
+          (sample, index) =>
+            sample.observed_at <= start ||
+            sample.observed_at > end ||
+            (index > 0 && sample.observed_at <= samples[index - 1].observed_at),
+        )
+      )
+        throw new Error("Invalid window");
+      q<HTMLElement>("[data-health-window]").textContent =
+        `Observed window: ${datedStamp(start)} to ${datedStamp(end)} UTC.`;
       const status = q<HTMLElement>("[data-health-status]");
       status.textContent = samples.length
-        ? `${samples.length} of 288 scheduled samples in the last day. ${samples.filter((s) => s.ok).length} returned HTTP 200 with HTML headers. Latest check ${stamp(samples.at(-1)!.observed_at)} UTC.`
+        ? `${samples.length} of ${HEALTH_EXPECTED_SAMPLES} scheduled samples in this window. ${samples.filter((s) => s.ok).length} returned HTTP 200 with HTML headers. Latest check ${datedStamp(samples.at(-1)!.observed_at)} UTC.`
         : "No samples yet. The history starts with real scheduled checks, not a filled-in chart.";
       const empty = q<SVGTextElement>("[data-health-empty]");
       empty.textContent = samples.length ? "" : "No samples yet.";
@@ -173,15 +217,18 @@ export function mountLiveExperiments(root: HTMLElement) {
       failures.replaceChildren();
       points.replaceChildren();
       q<HTMLElement>("[data-health-scale]").textContent =
-        `Vertical scale: 0–${Math.ceil(scale)} ms. Horizontal scale: the last 24 hours.`;
+        `Vertical scale: 0–${Math.ceil(scale)} ms. Horizontal scale: the observed window.`;
       for (const sample of samples) {
         const x = Math.max(
             0,
-            Math.min(600, ((sample.observed_at - start) / 86400000) * 600),
+            Math.min(
+              600,
+              ((sample.observed_at - start) / HEALTH_WINDOW_MS) * 600,
+            ),
           ),
           y = 145 - Math.min(1, sample.elapsed_ms / scale) * 130;
         if (sample.ok) {
-          path += `${previous?.ok && sample.observed_at - previous.observed_at <= 300000 ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)} `;
+          path += `${previous?.ok && sample.observed_at - previous.observed_at <= HEALTH_INTERVAL_MS ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)} `;
           const dot = document.createElementNS(svgNS, "circle");
           dot.setAttribute("cx", String(x));
           dot.setAttribute("cy", String(y));
@@ -234,7 +281,7 @@ export function mountLiveExperiments(root: HTMLElement) {
     answer = q<HTMLElement>("[data-triage-answer]");
   scenario.addEventListener("change", () => {
     if (!isTriageScenario(scenario.value)) return;
-    controllers.get("triage")?.abort();
+    controllers.get("triage")?.abort("scenario-changed");
     q<HTMLElement>("[data-triage-evidence]").textContent =
       triageScenarios[scenario.value].evidence;
     answer.textContent = "";
@@ -275,25 +322,43 @@ export function mountLiveExperiments(root: HTMLElement) {
     send = q<HTMLButtonElement>("[data-room-send]"),
     status = q<HTMLElement>("[data-room-status]");
   let socket: WebSocket | undefined;
-  let pulse: Animation | undefined;
+  let pulse: Animation[] = [];
   let cooldown: number | undefined;
-  let inView = false;
+  let diagramInView = false;
+  const roomIsVisible = () => {
+    const bounds = room.getBoundingClientRect();
+    return (
+      bounds.bottom > 0 &&
+      bounds.top < innerHeight &&
+      bounds.right > 0 &&
+      bounds.left < innerWidth
+    );
+  };
+  const stopPulse = () => {
+    pulse.forEach((animation) => animation.cancel());
+    pulse = [];
+  };
   function disconnect(message = "Disconnected.") {
     const previous = socket;
     socket = undefined;
     previous?.close(1000, "View inactive");
-    pulse?.cancel();
+    stopPulse();
+    q<HTMLElement>("[data-room-sequence]").textContent = "Not connected";
     window.clearTimeout(cooldown);
     send.disabled = true;
     connect.disabled = false;
     connect.textContent = "Connect";
     status.textContent = message;
   }
-  const observer = new IntersectionObserver((entries) => {
-    inView = entries.some((entry) => entry.isIntersecting);
-    if (!inView && socket) disconnect();
+  const observer = new IntersectionObserver(() => {
+    // Observer delivery can lag a scroll or explicit click. Use current bounds.
+    if (!roomIsVisible() && socket) disconnect();
   });
   observer.observe(room);
+  new IntersectionObserver(([entry]) => {
+    diagramInView = entry.isIntersecting;
+    if (!diagramInView) stopPulse();
+  }).observe(room.querySelector(".experiment-stage")!);
   const onVisibility = () => {
     if (document.hidden) {
       disconnect();
@@ -309,12 +374,13 @@ export function mountLiveExperiments(root: HTMLElement) {
       disconnect();
       return;
     }
-    if (!details.open || document.hidden || !inView) return;
+    if (!details.open || document.hidden || !roomIsVisible()) return;
     const url = new URL("/api/coordination", location.href);
     url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const current = new WebSocket(url);
     socket = current;
     connect.disabled = true;
+    q<HTMLElement>("[data-room-sequence]").textContent = "Waiting for state";
     status.textContent = "Connecting…";
     current.addEventListener("open", () => {
       if (socket !== current) return;
@@ -339,6 +405,7 @@ export function mountLiveExperiments(root: HTMLElement) {
       }
       if (
         !record(data) ||
+        !["snapshot", "pulse"].includes(String(data.kind)) ||
         !Number.isInteger(data.sequence) ||
         Number(data.sequence) < 0 ||
         Number(data.sequence) > 1000000
@@ -347,17 +414,30 @@ export function mountLiveExperiments(root: HTMLElement) {
       q<HTMLElement>("[data-room-sequence]").textContent = String(
         data.sequence,
       );
-      pulse?.cancel();
-      if (!reduced.matches)
-        pulse = q<SVGCircleElement>(".room-pulse").animate(
-          [
-            { transform: "translateX(-90px)", opacity: 0 },
-            { opacity: 1, offset: 0.2 },
-            { opacity: 1, offset: 0.8 },
-            { transform: "translateX(90px)", opacity: 0 },
-          ],
-          { duration: 700, easing: "linear" },
-        );
+      if (data.kind === "snapshot") return;
+      stopPulse();
+      if (!reduced.matches && diagramInView && !document.hidden && details.open)
+        pulse = [
+          q<SVGCircleElement>(".room-pulse").animate(
+            [
+              { transform: "translateX(-210px)", opacity: 0, offset: 0 },
+              { transform: "translateX(-210px)", opacity: 1, offset: 0.08 },
+              { transform: "translateX(0px)", opacity: 1, offset: 0.45 },
+              { transform: "translateX(0px)", opacity: 1, offset: 0.55 },
+              { transform: "translateX(210px)", opacity: 1, offset: 0.92 },
+              { transform: "translateX(210px)", opacity: 0, offset: 1 },
+            ],
+            { duration: 1000, easing: "linear" },
+          ),
+          q<SVGCircleElement>(".room-arrival").animate(
+            [
+              { opacity: 0, transform: "scale(0.9)" },
+              { opacity: 0.8, transform: "scale(1)", offset: 0.2 },
+              { opacity: 0, transform: "scale(1.3)" },
+            ],
+            { duration: 500, delay: 850, easing: "ease-out" },
+          ),
+        ];
     });
     current.addEventListener("close", () => {
       if (socket === current)
@@ -379,7 +459,7 @@ export function mountLiveExperiments(root: HTMLElement) {
     }, 1100);
   });
   reduced.addEventListener("change", () => {
-    if (reduced.matches) pulse?.cancel();
+    if (reduced.matches) stopPulse();
   });
   window.addEventListener("pagehide", () => {
     disconnect();
