@@ -34,6 +34,69 @@ test("the atlas has no coloured panel behind the map", async ({ page }) => {
   );
 });
 
+test.describe("country marker touch selection", () => {
+  test.use({ hasTouch: true });
+  for (const width of [320, 402, 620, 1440]) {
+    test(`every map dot selects its country at ${width}px, including adjacent markers`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/experiments/#internet");
+      const map = page.locator("#internet");
+      await expect(map.locator(".internet-value")).toHaveText("50");
+      for (const code of [
+        "US",
+        "GB",
+        "DE",
+        "GB",
+        "BR",
+        "IN",
+        "JP",
+        "ZA",
+        "AU",
+      ]) {
+        await map.locator(".internet-atlas").scrollIntoViewIfNeeded();
+        const dot = (await map
+          .locator(`[data-country-pin="${code}"] .internet-pin-core`)
+          .boundingBox())!;
+        await page.touchscreen.tap(
+          dot.x + dot.width / 2,
+          dot.y + dot.height / 2,
+        );
+        await expect(map.locator(".internet-country-code")).toHaveText(code);
+        await expect(map.locator(`[data-country="${code}"]`)).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        await expect(map.locator(`[data-country-pin="${code}"]`)).toHaveClass(
+          /is-selected/,
+        );
+      }
+      const japan = (await map
+        .locator('[data-country-pin="JP"] .internet-pin-core')
+        .boundingBox())!;
+      await page.touchscreen.tap(
+        japan.x + japan.width / 2 + 12,
+        japan.y + japan.height / 2,
+      );
+      await expect(map.locator(".internet-country-code")).toHaveText("JP");
+      const atlas = (await map.locator(".internet-atlas").boundingBox())!;
+      await page.touchscreen.tap(
+        atlas.x + atlas.width * 0.1,
+        atlas.y + atlas.height * 0.8,
+      );
+      await expect(map.locator(".internet-country-code")).toHaveText("JP");
+      const keyboardChoice = map.getByRole("button", {
+        name: "Germany",
+        exact: true,
+      });
+      await keyboardChoice.focus();
+      await page.keyboard.press("Enter");
+      await expect(map.locator(".internet-country-code")).toHaveText("DE");
+    });
+  }
+});
+
 test("Internet map keeps observed provenance visible and responds to country and time", async ({
   page,
 }) => {

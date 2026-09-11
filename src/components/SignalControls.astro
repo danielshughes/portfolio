@@ -5,7 +5,7 @@ interface Props {
 const { expanded = false } = Astro.props;
 ---
 
-<div class="signal-controls" hidden>
+<div class="signal-controls experiment-controls" hidden>
   <label for="signal-noise">
     Signal noise{" "}
     <input
@@ -17,9 +17,6 @@ const { expanded = false } = Astro.props;
       aria-describedby="signal-description"
     />
   </label>
-  <button type="button" class="signal-toggle">
-    Pause animation
-  </button>
   {expanded && (
     <>
       <label for="signal-frequency">
@@ -36,9 +33,12 @@ const { expanded = false } = Astro.props;
           value="65"
         />
       </label>
-      <button type="button" class="signal-reset signal-toggle">
-        Reset
-      </button>
     </>
+  )}
+  <button type="button">Pause animation</button>
+  {expanded && (
+    <button type="button" class="signal-reset">
+      Reset
+    </button>
   )}
 </div>

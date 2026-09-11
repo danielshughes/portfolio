@@ -76,20 +76,6 @@ const descriptions = Object.values(radarViews);
             );
           })}
         </svg>
-        <div class="internet-map-hitpoints" hidden>
-          {countries.map((country) => {
-            const [x, y] = project(country.lon, country.lat);
-            return (
-              <button
-                type="button"
-                tabindex="-1"
-                data-map-country={country.code}
-                aria-label={`Select ${country.name} on map`}
-                style={`left:${x / 7.2}%;top:${y / 3.6}%`}
-              ></button>
-            );
-          })}
-        </div>
       </div>
       <div class="internet-map-caption">
         <span>Country markers, not network routes</span>

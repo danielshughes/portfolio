@@ -275,38 +275,6 @@ main,
 .has-canvas .signal-fallback {
   display: none;
 }
-.signal-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-top: 1px solid var(--line);
-  padding-block: 0.7rem;
-}
-.signal-controls label {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  font-size: var(--type-small);
-  flex: 1;
-}
-.signal-controls input {
-  width: clamp(4rem, 10vw, 10rem);
-  min-height: 44px;
-  accent-color: var(--orange);
-}
-.signal-toggle {
-  border: 1px solid var(--line);
-  border-radius: 2rem;
-  background: transparent;
-  min-height: 44px;
-  font-size: var(--type-small);
-  padding: 0.6rem 1rem;
-  flex-shrink: 0;
-}
-.signal-toggle:hover {
-  border-color: var(--ink);
-}
 .signal-caption {
   font-size: var(--type-micro);
   color: var(--muted);
@@ -718,13 +686,6 @@ main,
     flex-wrap: wrap;
     gap: 1rem;
   }
-  .signal-controls {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .signal-controls label {
-    flex-wrap: wrap;
-  }
   .off-clock {
     column-gap: var(--space-lg);
   }
@@ -753,12 +714,6 @@ main,
   }
   .signal-display {
     height: 15rem;
-  }
-  .signal-controls {
-    align-items: center;
-  }
-  .signal-controls label {
-    flex-wrap: nowrap;
   }
   .signal-heading {
     flex-wrap: wrap;
@@ -821,12 +776,6 @@ main,
   }
 }
 @media (max-width: 360px) {
-  .signal-controls label {
-    flex-wrap: wrap;
-  }
-  .signal-toggle {
-    padding-inline: 0.7rem;
-  }
   .art-label {
     font-size: var(--type-micro);
   }

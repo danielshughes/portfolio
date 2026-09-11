@@ -270,7 +270,7 @@ for (const viewport of [
   { width: 320, text: 200 },
 ]) {
   for (const theme of ["light", "dark"] as const) {
-    test(`Radar tabs reserve their natural layout at ${viewport.width}px and ${viewport.text}% text in ${theme}`, async ({
+    test(`Radar tabs keep selection anchored and summaries compact at ${viewport.width}px and ${viewport.text}% text in ${theme}`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: viewport.width, height: 1000 });
@@ -313,6 +313,10 @@ for (const viewport of [
       const map = page.locator("#internet");
       await expect(map.locator(".internet-value")).toHaveText("50");
       const before = await geometry(map);
+      const selectionAnchors = [
+        ".internet-countries",
+        ".internet-country-name",
+      ];
       for (const name of ["Bots", "Devices", "Protocols", "Traffic"]) {
         delay = name !== "Traffic";
         pendingRequest = false;
@@ -321,7 +325,7 @@ for (const viewport of [
           await expect(map).toHaveAttribute("aria-busy", "true");
           await expect.poll(() => pendingRequest).toBe(true);
           const pending = await geometry(map);
-          for (const selector of Object.keys(before)) {
+          for (const selector of selectionAnchors) {
             expect
               .soft(pending[selector].top, `${name} pending ${selector} top`)
               .toBeCloseTo(before[selector].top, 0);
@@ -336,7 +340,9 @@ for (const viewport of [
         }
         await expect(map).toHaveAttribute("aria-busy", "false");
         const after = await geometry(map);
-        for (const selector of Object.keys(before)) {
+        for (const selector of name === "Traffic"
+          ? Object.keys(before)
+          : selectionAnchors) {
           expect
             .soft(after[selector].top, `${name} ${selector} top`)
             .toBeCloseTo(before[selector].top, 0);
@@ -345,6 +351,31 @@ for (const viewport of [
             .toBeCloseTo(before[selector].height, 0);
         }
         if (name !== "Traffic") {
+          const spacing = await map.locator(".radar-bars").evaluate((list) => {
+            const rows = [...list.children].map((row) =>
+              row.getBoundingClientRect(),
+            );
+            return {
+              expected: parseFloat(getComputedStyle(list).rowGap),
+              gaps: rows.slice(1).map((row, i) => row.top - rows[i].bottom),
+              leading:
+                rows[0].top -
+                list.closest("#radar-panel")!.getBoundingClientRect().top,
+              trailing:
+                list.nextElementSibling!.getBoundingClientRect().top -
+                rows.at(-1)!.bottom,
+            };
+          });
+          expect
+            .soft(spacing.leading, `${name} leading space`)
+            .toBeLessThanOrEqual(spacing.expected);
+          expect
+            .soft(spacing.trailing, `${name} trailing space`)
+            .toBeLessThanOrEqual(spacing.expected);
+          for (const gap of spacing.gaps)
+            expect
+              .soft(gap, `${name} bar gap`)
+              .toBeCloseTo(spacing.expected, 0);
           await expect(map.getByRole("slider")).toHaveCount(0);
           await expect(
             map.getByRole("button", { name: "Play week", exact: true }),

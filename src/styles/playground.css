@@ -315,6 +315,7 @@
   width: min(50%, 13rem);
   min-width: 4rem;
   min-height: 44px;
+  margin: 0;
   accent-color: var(--orange);
 }
 .experiment-controls button,
@@ -502,16 +503,6 @@
 }
 .experiment-wave .signal-display {
   height: 100%;
-}
-.experiment-wave .signal-controls {
-  flex-wrap: wrap;
-}
-.experiment-wave .signal-controls label {
-  flex: 1 1 100%;
-  justify-content: space-between;
-}
-.experiment-wave .signal-controls input {
-  max-width: 50%;
 }
 .play-outro {
   border-top: 1px solid var(--line);
