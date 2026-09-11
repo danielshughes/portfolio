@@ -79,12 +79,10 @@ test("opening the model keeps the same accent as its preview", async ({
     .evaluate((el) => getComputedStyle(el).fill);
   await card.locator(".experiment-settings > summary").click();
   await expect(card.locator(".system-chart .budget").first()).toBeVisible();
-  expect(
-    await card
-      .locator(".system-chart .budget")
-      .first()
-      .evaluate((el) => getComputedStyle(el).fill),
-  ).toBe(previewColour);
+  await expect(card.locator(".system-chart .budget").first()).toHaveCSS(
+    "fill",
+    previewColour,
+  );
 });
 
 test("all experiments have visible previews in a staggered gallery", async ({

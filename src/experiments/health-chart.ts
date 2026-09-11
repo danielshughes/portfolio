@@ -46,12 +46,21 @@ export function renderHealthChart(
     const { x, y } = positions[index];
     if (sample.ok) {
       const previous = samples[index - 1];
-      path += `${previous?.ok && sample.observed_at - previous.observed_at <= HEALTH_INTERVAL_MS ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)} `;
-      const dot = document.createElementNS(svgNS, "circle");
-      dot.setAttribute("cx", String(x));
-      dot.setAttribute("cy", String(y));
-      dot.setAttribute("r", "2");
-      points.append(dot);
+      const next = samples[index + 1];
+      const joinsPrevious =
+        previous?.ok &&
+        sample.observed_at - previous.observed_at <= HEALTH_INTERVAL_MS;
+      const joinsNext =
+        next?.ok && next.observed_at - sample.observed_at <= HEALTH_INTERVAL_MS;
+      path += `${joinsPrevious ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)} `;
+      // A lone observation needs a mark; connected runs already have the line.
+      if (!joinsPrevious && !joinsNext) {
+        const dot = document.createElementNS(svgNS, "circle");
+        dot.setAttribute("cx", String(x));
+        dot.setAttribute("cy", String(y));
+        dot.setAttribute("r", "2");
+        points.append(dot);
+      }
     } else {
       const cross = document.createElementNS(svgNS, "path");
       cross.setAttribute("d", `M${x - 3} 136l6 6m-6 0 6-6`);
