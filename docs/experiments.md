@@ -25,9 +25,9 @@ The finite request, placement and latency animations show a state transition, th
 
 ## Radar atlas
 
-Traffic, Bots, Devices and Protocols retain the same selected country and fixed map/chart frame. Each tab has its own description, reading guide and observed time window. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
+Traffic, Bots, Devices and Protocols retain the same selected country, map and selection-control positions. Each tab has its own description, reading guide and observed time window. The active chart panel sizes naturally: category summaries must not reserve the unrelated Traffic controls' height. On mobile the footer follows that content, rather than leaving an empty chart-sized box. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
 
-Clicking or tapping near a country marker selects the nearest rendered dot within a bounded radius. Blank map areas do nothing and scrolling remains native. The labelled country buttons provide the equivalent keyboard and screen-reader interaction, without overlapping invisible targets on the map. Summary bars use the shared spacing token between rows while retaining the outer frame across tab changes.
+Clicking or tapping near a country marker selects the nearest rendered dot within a bounded radius. Blank map areas do nothing and scrolling remains native. The labelled country buttons provide the equivalent keyboard and screen-reader interaction, without overlapping invisible targets on the map. Summary bars use the shared spacing token between rows, beginning just below the country heading and ending close to their date/source text.
 
 Loading, unavailable and a genuinely absent reading are distinct. Never fill missing observations with synthetic data. Reported disruptions come from the supplied events and scope, not from dips in the chart; no returned events does not prove no outages. Replay scrubs an observed week and must not imply live traffic.
 
@@ -70,7 +70,7 @@ Use the [local setup](operations.md#local-development-and-tests) before testing 
 - Inspect desktop and mobile in both palettes, including long labels, enlarged text, extreme 3D rotations and open controls. Retain a readable alternative to canvas or SVG-only information.
 - Verify that browser-local simulations make no external service calls. For live experiments, check loading, empty, unavailable and real-success paths independently.
 - Test health history with success, failure and missing slots together. Test room initial state, two-client broadcast, reconnect/disconnect and off-screen graphics separately.
-- Review every Radar view and country, source dates, reported-event scope, failure/retry behaviour and stable tab geometry.
+- Review every Radar view and country, source dates, reported-event scope, failure/retry behaviour and anchored selection controls. Check whitespace before and after the category bars as well as between them. The active content may reflow below the controls; do not reintroduce a full Traffic-height reservation to freeze the footer.
 - Keep visible copy in British English, without em dashes or unsupported claims. The AI prompt requests the same style, but a prompt instruction alone is not a guarantee about generated text.
 
 `npm run quality` covers models, Worker/runtime boundaries, generated static output and browser regressions. The browser suites include fake upstream fixtures so failures and boundary states are reproducible without real credentials. Those checks do not prove Cloudflare provisioning, real AI inference, scheduled collection or Access sign-in. Verify those separately on the protected development deployment using the [operations checklist](operations.md).

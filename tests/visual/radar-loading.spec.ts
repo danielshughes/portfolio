@@ -1,5 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { radar } from "./radar-fixture";
+
+// Positive speculation checks require an eligible connection. Browser network
+// estimates vary with runner load; the explicit slow/save-data cases below
+// separately verify that those visitors never trigger background requests.
+async function allowSpeculation(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "connection", {
+      value: Object.assign(new EventTarget(), {
+        saveData: false,
+        effectiveType: "4g",
+      }),
+    });
+  });
+}
 
 test("a delayed Radar module never paints a sample chart before initialisation", async ({
   page,
@@ -43,6 +57,7 @@ for (const status of [429, 502, 503])
   test(`Radar ${status} stops document speculation but leaves explicit retry usable`, async ({
     page,
   }) => {
+    await allowSpeculation(page);
     const calls: string[] = [];
     let recovered = false;
     await page.route("**/api/radar?*", (route) => {
@@ -74,7 +89,10 @@ for (const status of [429, 502, 503])
     expect(calls).toEqual(["?country=GB", "?country=GB"]);
   });
 
-test("keyboard focus alone warms the intended Radar tab", async ({ page }) => {
+test("keyboard focus alone warms the intended Radar tab", async ({
+  page,
+}, testInfo) => {
+  await allowSpeculation(page);
   const calls: string[] = [];
   await page.route("**/api/radar?*", (route) => {
     const url = new URL(route.request().url());
@@ -89,7 +107,37 @@ test("keyboard focus alone warms the intended Radar tab", async ({ page }) => {
   await expect(page.locator(".internet-value")).toHaveText("50");
   await page.locator(".internet-atlas").scrollIntoViewIfNeeded();
   await page.getByRole("tab", { name: "Bots", exact: true }).focus();
-  await expect.poll(() => calls.includes("?country=GB&view=bots")).toBe(true);
+  try {
+    await expect.poll(() => calls.includes("?country=GB&view=bots")).toBe(true);
+  } catch (error) {
+    const state = await page.evaluate(() => {
+      const connection = (
+        navigator as Navigator & {
+          connection?: { saveData?: boolean; effectiveType?: string };
+        }
+      ).connection;
+      return {
+        hidden: document.hidden,
+        connection: {
+          saveData: connection?.saveData,
+          effectiveType: connection?.effectiveType,
+        },
+        pulse: document.querySelector<HTMLElement>("#internet")?.dataset.pulse,
+        focus: document.activeElement?.getAttribute("data-radar-view"),
+        atlas: document
+          .querySelector(".internet-atlas")!
+          .getBoundingClientRect()
+          .toJSON(),
+        viewport: innerHeight,
+      };
+    });
+    await testInfo.attach("radar-focus-state", {
+      contentType: "application/json",
+      body: JSON.stringify({ calls, state }),
+    });
+    console.error(JSON.stringify({ calls, state }));
+    throw error;
+  }
   await expect(
     page.getByRole("tab", { name: "Traffic", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
@@ -125,7 +173,7 @@ for (const hint of [
           const map = document.querySelector("#internet");
           events.push({
             type,
-            country: button?.dataset.country ?? button?.dataset.mapCountry,
+            country: button?.dataset.country,
             target: target?.tagName,
             prevented: event.defaultPrevented,
             scrollY,
@@ -185,6 +233,7 @@ for (const hint of [
 test("idle atlas does not speculate; intent caches tabs and hidden state cancels the queue", async ({
   page,
 }) => {
+  await allowSpeculation(page);
   const calls: string[] = [];
   await page.route("**/api/radar?*", (route) => {
     const url = new URL(route.request().url());
