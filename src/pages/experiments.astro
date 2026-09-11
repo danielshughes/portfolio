@@ -20,9 +20,10 @@ import { portfolioContent } from "../content/portfolio";
       What happens <em>if you…</em>
     </h1>
     <p class="intro-description">
-      Small experiments, made to be played with.
+      Small controls, visible consequences.
       <br />
-      Nothing connected to anything important.
+      Browser simulations are self-contained; live cards use bounded demo
+      endpoints.
     </p>
   </section>
   <div class="experiment-collection">
@@ -32,7 +33,7 @@ import { portfolioContent } from "../content/portfolio";
       tinted
       number="01"
       title="Room for one more?"
-      subtitle="More replicas. Somewhere to put them."
+      subtitle="Raise CPU demand and watch the replica target change, then see which pods fit."
       label="Kubernetes HPA / SVG simulation"
     >
       <svg
@@ -42,8 +43,8 @@ import { portfolioContent } from "../content/portfolio";
         aria-hidden="true"
       ></svg>
       <p>
-        Turn up the demand. Watch the replica target grow, then see which pods
-        actually fit.
+        Turn up CPU demand. HPA changes the target, then the scheduler tries to
+        place each pod.
       </p>
       <div class="experiment-controls" hidden>
         <label>
@@ -91,8 +92,8 @@ import { portfolioContent } from "../content/portfolio";
         </button>
       </div>
       <output aria-live="polite" aria-atomic="true">
-        The HPA sets a replica target. Workload controllers create pods; the
-        scheduler finds room. A pending pod has no placement yet.
+        HPA sets the replica target. Placement uses each pod's CPU request, so a
+        pod can stay pending when there is no room.
       </output>
       <p class="experiment-footnote">
         One CPU snapshot from two ready replicas. Each node has 2,000m available
@@ -107,7 +108,7 @@ import { portfolioContent } from "../content/portfolio";
       tinted
       number="02"
       title="Who’s allowed to do what?"
-      subtitle="An agent, some tools, and a few boundaries."
+      subtitle="Choose a scenario, set the call budget and decide whether a simulated write is allowed."
       label="Agents + MCP / scripted SVG simulation"
     >
       <svg
@@ -117,8 +118,8 @@ import { portfolioContent } from "../content/portfolio";
         aria-hidden="true"
       ></svg>
       <p>
-        A stalled collection, a tool-call budget and a host that can say no.
-        Change the scenario and follow the decisions.
+        Follow the scripted agent as it checks context, calls tools and stops at
+        a timeout, missing context or denied write.
       </p>
       <div class="experiment-controls" hidden>
         <fieldset class="scenario-choices">
@@ -160,11 +161,11 @@ import { portfolioContent } from "../content/portfolio";
         </button>
       </div>
       <output aria-live="polite" aria-atomic="true">
-        The agent proposes a tool call. This imaginary host applies its own
-        approval policy before a simulated write.
+        The script proposes a call. The host checks context, budget and approval
+        before a simulated write.
       </output>
       <details class="trace-list">
-        <summary>Read the trace</summary>
+        <summary>Follow the trace</summary>
         <ol>
           <li>Receive the task and check the available context.</li>
           <li>Propose a read-only tool call within the host's budget.</li>
@@ -186,13 +187,13 @@ import { portfolioContent } from "../content/portfolio";
       tone="sage"
       number="03"
       title="A little interference."
-      subtitle="Same wave. A different view."
+      subtitle="Compare a clean wave with the same wave after interference is added."
       label="Canvas 2D / synthetic interference"
     >
       <SignalField slot="stage" expanded externalControls />
       <p>
-        The clean reference stays above. Add interference below, then change the
-        frequency and amplitude.
+        The upper trace stays clean. Change the lower trace's noise, frequency
+        and amplitude.
       </p>
       <SignalControls expanded />
       <p class="experiment-footnote">
@@ -204,7 +205,7 @@ import { portfolioContent } from "../content/portfolio";
       tone="peach"
       number="04"
       title="The average looks fine."
-      subtitle="Until you look at the slow end."
+      subtitle="Keep most requests steady, then stretch the slowest ten."
       label="SVG / synthetic latency"
     >
       <Fragment slot="stage">
@@ -214,7 +215,7 @@ import { portfolioContent } from "../content/portfolio";
           <span>Slowest →</span>
         </p>
       </Fragment>
-      <p>Same hundred requests. Make the slowest ten slower.</p>
+      <p>Move the tail slider and watch the median stay put while the slow end grows.</p>
       <div class="experiment-controls" hidden>
         <label>
           Slow requests
@@ -235,7 +236,7 @@ import { portfolioContent } from "../content/portfolio";
         </button>
       </div>
       <output aria-live="polite" aria-atomic="true">
-        The median stays steady while the upper percentiles increase.
+        The median stays steady; the slowest requests move the upper percentiles.
       </output>
       <p class="experiment-footnote">
         Sorted samples, fixed 0–2,000 ms scale. The readout gives the final
@@ -247,7 +248,7 @@ import { portfolioContent } from "../content/portfolio";
       tone="lilac"
       number="05"
       title="Requests in flight."
-      subtitle="A little parallelism. A definite limit."
+      subtitle="Change how many requests run together and see which finish before the deadline."
       label="SVG / concurrency simulation"
     >
       <Fragment slot="stage">
@@ -257,7 +258,7 @@ import { portfolioContent } from "../content/portfolio";
           <span>Time →</span>
         </p>
       </Fragment>
-      <p>Fit the lookup inside its deadline. Queued requests count too.</p>
+      <p>Run the lookup with a different number in flight. Queued time counts against the deadline.</p>
       <div class="experiment-controls" hidden>
         <label>
           Concurrency
@@ -293,8 +294,7 @@ import { portfolioContent } from "../content/portfolio";
         </button>
       </div>
       <output aria-live="polite" aria-atomic="true">
-        Two requests at a time shorten this illustrative schedule compared with
-        a sequential lookup.
+        The readout will show how many of 12 requests meet the deadline.
       </output>
       <p class="experiment-footnote">
         Uniform duration, no retries or upstream contention. The readout gives
@@ -308,15 +308,15 @@ import { portfolioContent } from "../content/portfolio";
       tinted
       number="06"
       title="A small connected world."
-      subtitle="Give it a spin. Follow a connection."
+      subtitle="Rotate the graph or select a node to see its direct connections."
       label="Canvas 2D / imaginary 3D topology"
     >
       <div slot="stage" class="world-stage">
         <canvas hidden aria-hidden="true"></canvas>
       </div>
       <p>
-        Drag to turn, or use the rotation controls. Choose a node to follow its
-        direct connections.
+        Drag to rotate. Select a node to highlight its neighbours and dim the
+        rest.
       </p>
       <div class="experiment-controls" hidden>
         <label>
@@ -345,7 +345,7 @@ import { portfolioContent } from "../content/portfolio";
         All connections visible.
       </output>
       <details class="connection-list">
-        <summary>Read the connections</summary>
+        <summary>See the connections</summary>
         <ul>
           {connections.map((line) => (
             <li>{line}</li>
