@@ -10,7 +10,27 @@ test.use({
 test("mobile summary metadata sits close to the divider without moving the tab bar", async ({
   page,
 }) => {
+  const calls: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    const events: object[] = [];
+    Object.assign(window, { radarTabEvents: events });
+    for (const type of ["pointerdown", "pointerup", "click"])
+      document.addEventListener(type, (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (events.length >= 12) events.shift();
+        events.push({
+          type,
+          tag: target?.tagName,
+          tab: target?.closest<HTMLElement>("[data-radar-view]")?.dataset
+            .radarView,
+          scrollY,
+        });
+      });
+  });
   await page.route("**/api/radar?*", (route) => {
+    calls.push(new URL(route.request().url()).search);
     const view = new URL(route.request().url()).searchParams.get("view");
     return route.fulfill({
       json: view
@@ -27,7 +47,22 @@ test("mobile summary metadata sits close to the divider without moving the tab b
   });
   await page.goto("/experiments/#internet");
   await page.getByRole("tab", { name: "Devices", exact: true }).click();
-  await expect(page.locator(".radar-bars li")).toHaveCount(2);
+  try {
+    await expect(page.locator(".radar-bars li")).toHaveCount(2);
+  } catch (error) {
+    // Authored fixtures and bounded DOM state only, never provider responses.
+    const state = await page.evaluate(() => ({
+      events: (window as Window & { radarTabEvents?: object[] }).radarTabEvents,
+      selected: document
+        .querySelector('[data-radar-view][aria-selected="true"]')
+        ?.getAttribute("data-radar-view"),
+      source: document.querySelector(".internet-source")?.textContent,
+      summary: document.querySelector(".radar-summary-window")?.textContent,
+      busy: document.querySelector("#internet")?.getAttribute("aria-busy"),
+    }));
+    console.error(JSON.stringify({ calls, pageErrors, state }));
+    throw error;
+  }
   const gap = await page.evaluate(
     () =>
       document.querySelector(".internet-surface")!.getBoundingClientRect()

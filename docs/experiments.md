@@ -56,3 +56,5 @@ Use the [local setup](operations.md#local-development-and-tests) before testing 
 - Keep visible copy in British English, without em dashes or unsupported claims. The AI prompt requests the same style, but a prompt instruction alone is not a guarantee about generated text.
 
 `npm run quality` covers models, Worker/runtime boundaries, generated static output and browser regressions. The browser suites include fake upstream fixtures so failures and boundary states are reproducible without real credentials. Those checks do not prove Cloudflare provisioning, real AI inference, scheduled collection or Access sign-in. Verify those separately on the protected development deployment using the [operations checklist](operations.md).
+
+The mobile Radar tab test records bounded pointer targets, selected view, request paths and page errors on failure. This diagnostic output contains only authored fixture state. Use it to distinguish a missed interaction from a loading or rendering failure before changing runtime behaviour; a passing rerun alone does not establish the cause.
