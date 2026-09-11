@@ -9,6 +9,32 @@ export function sameOrigin(request: Request) {
   );
 }
 
+export async function emptyRequestBody(request: Request): Promise<boolean> {
+  if (
+    ![null, "0"].includes(request.headers.get("content-length")) ||
+    request.headers.has("transfer-encoding")
+  )
+    return false;
+  if (!request.body) return true;
+  // workerd can expose an empty POST as a non-null stream. Inspect only the
+  // first read, never accumulate or parse caller content, and bound slow input.
+  const reader = request.body.getReader();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const part = await Promise.race([
+      reader.read(),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), 1000);
+      }),
+    ]);
+    return part?.done === true;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export function isLocalPreview(
   request: Request,
   env: Pick<Env, "LOCAL_PREVIEW">,

@@ -6,7 +6,8 @@ export function securityHeaders(
   return {
     "Content-Security-Policy": [
       "default-src 'self'",
-      `script-src 'self' ${hashes.join(" ")}`.trim(),
+      `script-src 'self' https://challenges.cloudflare.com ${hashes.join(" ")}`.trim(),
+      "frame-src https://challenges.cloudflare.com",
       "style-src 'self'",
       `style-src-elem 'self' ${styles.join(" ")}`.trim(),
       "style-src-attr 'unsafe-inline'",

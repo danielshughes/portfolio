@@ -3,9 +3,10 @@ import { securityHeaders } from "../src/security/policy.ts";
 import { edgeDetails } from "./edge.ts";
 import { apiJson, isLocalPreview, sameOrigin } from "./http.ts";
 import { healthHistory, collectHealth } from "./health.ts";
-import { triage } from "./triage.ts";
+import { triage, triageConfiguration } from "./triage.ts";
 import { radarOptions } from "./radar-options.ts";
 import { collectSnapshots } from "./snapshots.ts";
+import { streamDemo } from "./stream.ts";
 export { CoordinationRoom } from "./coordination.ts";
 
 export default {
@@ -36,9 +37,14 @@ export default {
       });
     }
     if (
-      ["/api/edge", "/api/health", "/api/triage", "/api/coordination"].includes(
-        path,
-      )
+      [
+        "/api/edge",
+        "/api/health",
+        "/api/triage",
+        "/api/triage-config",
+        "/api/coordination",
+        "/api/stream",
+      ].includes(path)
     ) {
       try {
         if (
@@ -46,7 +52,15 @@ export default {
             .success
         )
           return protect(apiJson({ error: "rate_limited" }, 429));
+        if (
+          ["/api/triage", "/api/coordination", "/api/stream"].includes(path) &&
+          !(await env.EXPERIMENT_STARTS.limit({ key: path })).success
+        )
+          return protect(apiJson({ error: "rate_limited" }, 429));
         if (path === "/api/triage") return protect(await triage(request, env));
+        if (path === "/api/triage-config")
+          return protect(triageConfiguration(request, env));
+        if (path === "/api/stream") return protect(await streamDemo(request));
         if (request.method !== "GET")
           return protect(apiJson({ error: "method_not_allowed" }, 405));
         if (new URL(request.url).search)

@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+const suggestion = {
+  hypothesis: "Database waits may explain the slow tail.",
+  checks: [
+    "Inspect traces for connection waits.",
+    "Inspect connection-pool measurements.",
+  ],
+  unknown: "The cause of the wait is not established.",
+};
 
 test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
 
@@ -20,11 +28,10 @@ test("live actions wait for their lazy module before becoming enabled", async ({
   await page.route("**/api/triage?*", (route) => {
     requests++;
     return route.fulfill({
-      json: { answer: "A bounded synthetic response." },
+      json: { scenario: "latency", answer: suggestion },
     });
   });
   await page.goto("/experiments/#triage");
-  await page.locator('[data-live="triage"] > details > summary').click();
   const run = page.getByRole("button", { name: "Run triage", exact: true });
   try {
     await expect.poll(() => loading).toBe(true);
@@ -40,8 +47,8 @@ test("live actions wait for their lazy module before becoming enabled", async ({
   await expect(page.locator("[data-room-connect]")).toBeEnabled();
   await expect(page.locator("[data-room-send]")).toBeDisabled();
   await run.click();
-  await expect(page.locator("[data-triage-answer]")).toHaveText(
-    "A bounded synthetic response.",
+  await expect(page.locator("[data-triage-answer]")).toContainText(
+    suggestion.hypothesis,
   );
   expect(requests).toBe(1);
 });
@@ -77,7 +84,6 @@ test("local services explain their limits without claiming observed edge metadat
   await expect(page.locator('[data-live="edge"] .live-footnote')).toHaveText(
     "Country is approximate. Your IP address isn’t returned to this page.",
   );
-  await page.locator('[data-live="triage"] > details > summary').click();
   await page.getByRole("button", { name: "Run triage", exact: true }).click();
   await expect(page.locator("[data-triage-status]")).toHaveText(
     "Workers AI needs a Cloudflare connection. Local preview does not run inference; try this on the deployed development site.",
@@ -96,7 +102,6 @@ test("changing a pending AI scenario keeps the new scenario ready", async ({
     requested();
   });
   await page.goto("/experiments/#triage");
-  await page.locator('[data-live="triage"] > details > summary').click();
   const run = page.getByRole("button", { name: "Run triage", exact: true });
   await run.click();
   await pending;
@@ -112,7 +117,7 @@ test("edge artwork keeps moving while explored and live motion stops when inacti
 }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/experiments/#at-the-edge");
-  for (const id of ["edge", "health", "triage", "room"]) {
+  for (const id of ["edge", "health", "stream", "room", "triage"]) {
     const card = page.locator(`[data-live="${id}"]`);
     const preview = card.locator(".experiment-visual");
     await preview.scrollIntoViewIfNeeded();
@@ -127,10 +132,11 @@ test("edge artwork keeps moving while explored and live motion stops when inacti
         ),
       )
       .toBeGreaterThan(0);
-    await card.locator(".experiment-settings > summary").click();
+    if (id !== "triage")
+      await card.locator(".experiment-settings > summary").click();
     await expect(card).toHaveAttribute(
       "data-preview-motion",
-      id === "edge" ? "running" : "paused",
+      ["edge", "triage"].includes(id) ? "running" : "paused",
     );
     const openedAnimations = expect.poll(() =>
       preview.evaluate(
@@ -140,9 +146,11 @@ test("edge artwork keeps moving while explored and live motion stops when inacti
             .filter((a) => a.playState === "running").length,
       ),
     );
-    if (id === "edge") await openedAnimations.toBeGreaterThan(0);
+    if (["edge", "triage"].includes(id))
+      await openedAnimations.toBeGreaterThan(0);
     else await openedAnimations.toBe(0);
-    await card.locator(".experiment-settings > summary").click();
+    if (id !== "triage")
+      await card.locator(".experiment-settings > summary").click();
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect(card).toHaveAttribute("data-preview-motion", "paused");
     await expect
@@ -189,7 +197,7 @@ test("live cards reuse the staggered gallery and stable Explore frames", async (
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/experiments/#at-the-edge");
-  const cards = page.locator("#at-the-edge .experiment");
+  const cards = page.locator("#at-the-edge .live-grid .experiment");
   await expect(cards).toHaveCount(4);
   const [first, second] = await cards.evaluateAll((elements) =>
     elements
@@ -228,10 +236,15 @@ test("live panels remain inside the page at double text size", async ({
     }),
   );
   await page.route("**/api/triage?*", (route) =>
-    route.fulfill({ json: { answer: "BoundedModelOutput".repeat(100) } }),
+    route.fulfill({
+      json: {
+        scenario: "latency",
+        answer: { ...suggestion, hypothesis: "BoundedModelOutput".repeat(38) },
+      },
+    }),
   );
   await page.goto("/experiments/#at-the-edge");
-  for (const id of ["edge", "health", "triage", "room"])
+  for (const id of ["edge", "health", "stream", "room"])
     await page.locator(`[data-live="${id}"] > details > summary`).click();
   await page.getByRole("button", { name: "Run triage", exact: true }).click();
   await expect(page.locator("[data-triage-answer]")).toBeVisible();
@@ -280,8 +293,11 @@ test("real experiments load on request and model output is inert text", async ({
       json: {
         scenario: "latency",
         model: "fixture",
-        answer:
-          "<script>window.untrusted=true</script> Treat this as a hypothesis.",
+        answer: {
+          ...suggestion,
+          hypothesis:
+            "<script>window.untrusted=true</script> Treat this as a hypothesis.",
+        },
       },
     });
   });
@@ -290,7 +306,6 @@ test("real experiments load on request and model output is inert text", async ({
   await page.locator('[data-live="edge"] > details > summary').click();
   await expect(page.locator("[data-edge-colo]")).toHaveText("LHR");
   await expect(page.locator("[data-edge-protocol]")).toHaveText("HTTP/3");
-  await page.locator('[data-live="triage"] > details > summary').click();
   expect(inference).toBe(0);
   await page.getByRole("button", { name: "Run triage", exact: true }).click();
   await expect(page.locator("[data-triage-answer]")).toContainText("<script>");

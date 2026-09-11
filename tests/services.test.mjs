@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { runtime } from "./runtime-harness.mjs";
+import { DAILY_AI_LIMIT } from "../worker/triage.ts";
 
 test(
   "room close handlers never echo reserved WebSocket status codes",
@@ -33,6 +34,113 @@ test(
 );
 
 const origin = "https://portfolio.example";
+
+test("Cloudflare protection failures do not fall through to service work", async (t) => {
+  let upstream = 0;
+  const mf = await runtime({
+    entryPoint: "tests/fixtures/protection-failure.mjs",
+    outbound() {
+      upstream++;
+      return new Response(null, { status: 500 });
+    },
+  });
+  t.after(() => mf.dispose());
+  for (const binding of ["RADAR_INGRESS", "EXPERIMENT_STARTS"]) {
+    for (const path of [
+      "/api/triage?scenario=latency",
+      "/api/stream",
+      "/api/coordination",
+    ]) {
+      const response = await mf.dispatchFetch(origin + path, {
+        method: path.includes("coordination") ? "GET" : "POST",
+        headers: { origin, "fixture-failure": binding },
+      });
+      assert.equal(response.status, 503);
+      assert.deepEqual(await response.json(), {
+        error: "experiment_unavailable",
+      });
+    }
+  }
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    await db.prepare("SELECT used FROM ai_budget WHERE id=1").first(),
+    null,
+  );
+  assert.equal(upstream, 0);
+});
+
+test("room reconnects cannot bypass the persisted daily join allowance", async (t) => {
+  const mf = await runtime({
+    entryPoint: "tests/fixtures/coordination-budget.mjs",
+  });
+  t.after(() => mf.dispose());
+  const day = new Date().toISOString().slice(0, 10);
+  await mf.dispatchFetch(origin + "/seed", {
+    headers: { "fixture-day": day, "fixture-used": "199" },
+  });
+  const requests = await Promise.all(
+    Array.from({ length: 3 }, () =>
+      mf.dispatchFetch(origin + "/join", { headers: { upgrade: "websocket" } }),
+    ),
+  );
+  for (const response of requests)
+    if (response.webSocket) {
+      response.webSocket.accept();
+      response.webSocket.close(1000);
+    }
+  assert.deepEqual(requests.map((r) => r.status).sort(), [101, 429, 429]);
+  assert.equal(
+    (await (await mf.dispatchFetch(origin + "/budget")).json())[0].used,
+    200,
+  );
+  await mf.dispatchFetch(origin + "/seed", {
+    headers: { "fixture-day": "2000-01-01", "fixture-used": "200" },
+  });
+  const nextDay = await mf.dispatchFetch(origin + "/join", {
+    headers: { upgrade: "websocket" },
+  });
+  assert.equal(nextDay.status, 101);
+  nextDay.webSocket.accept();
+  nextDay.webSocket.close(1000);
+  assert.deepEqual(await (await mf.dispatchFetch(origin + "/budget")).json(), [
+    { day, used: 1 },
+  ]);
+});
+
+test("streaming sends a bounded fixed sequence and rejects visitor payloads", async (t) => {
+  const mf = await runtime();
+  t.after(() => mf.dispose());
+  for (const [path, init, status] of [
+    ["/api/stream", {}, 405],
+    ["/api/stream?text=attacker", { method: "POST", headers: { origin } }, 400],
+    [
+      "/api/stream",
+      { method: "POST", headers: { origin }, body: "attacker" },
+      400,
+    ],
+    [
+      "/api/stream",
+      { method: "POST", headers: { origin: "https://evil.example" } },
+      403,
+    ],
+  ])
+    assert.equal((await mf.dispatchFetch(origin + path, init)).status, status);
+  const response = await mf.dispatchFetch(origin + "/api/stream", {
+    method: "POST",
+    headers: { origin },
+  });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("cache-control"), /no-store/);
+  const text = await response.text();
+  assert.ok(text.length < 2048);
+  const frames = text.trim().split("\n").map(JSON.parse);
+  assert.deepEqual(
+    frames.map((frame) => frame.sequence),
+    [1, 2, 3, 4, 5, 6],
+  );
+  assert.equal(frames.at(-1).done, true);
+  assert.ok(frames.every((frame) => typeof frame.text === "string"));
+});
 
 test(
   "an abruptly terminated transport reaches the Durable Object close callback without throwing",
@@ -239,26 +347,112 @@ test("AI rejects arbitrary scenarios and cross-origin requests before inference"
   assert.equal(calls, 0);
 });
 test("daily inference reservations are atomic, bounded and count failures", async (t) => {
-  const mf = await runtime();
+  let verified = 0;
+  const mf = await runtime({
+    bindings: {
+      TURNSTILE_SITE_KEY: "public-fixture",
+      TURNSTILE_SECRET_KEY: "fake-verification-secret",
+    },
+    limits: { EXPERIMENT_STARTS: 100 },
+    outbound(request) {
+      verified++;
+      assert.equal(new URL(request.url).hostname, "challenges.cloudflare.com");
+      return Response.json({
+        success: true,
+        hostname: "portfolio.example",
+        action: "triage-latency",
+      });
+    },
+  });
   t.after(() => mf.dispose());
   const responses = await Promise.all(
-    Array.from({ length: 55 }, () =>
+    Array.from({ length: DAILY_AI_LIMIT + 5 }, (_, index) =>
       mf.dispatchFetch(origin + "/api/triage?scenario=latency", {
         method: "POST",
-        headers: { origin },
+        headers: {
+          origin,
+          "cf-turnstile-response": `fake-verified-token-${index}`,
+        },
       }),
     ),
   );
   assert.equal(
+    verified,
+    DAILY_AI_LIMIT + 5,
+    "every attempt reaches the verification fixture",
+  );
+  assert.equal(
     responses.filter((r) => r.status === 429).length,
     5,
-    JSON.stringify(responses.map((r) => r.status)),
+    JSON.stringify(
+      await Promise.all(
+        responses.map(async (r) => ({
+          status: r.status,
+          body: await r.clone().json(),
+        })),
+      ),
+    ),
   );
-  assert.equal(responses.filter((r) => r.status === 503).length, 50);
+  assert.equal(
+    responses.filter((r) => r.status === 503).length,
+    DAILY_AI_LIMIT,
+  );
   const db = await mf.getD1Database("HISTORY");
   assert.equal(
     (await db.prepare("SELECT used FROM ai_budget WHERE id=1").first()).used,
-    50,
+    DAILY_AI_LIMIT,
+  );
+});
+
+test("a single-use verification response cannot reserve two AI attempts", async (t) => {
+  const consumed = new Set();
+  const mf = await runtime({
+    bindings: {
+      TURNSTILE_SITE_KEY: "public-fixture",
+      TURNSTILE_SECRET_KEY: "fake-verification-secret",
+    },
+    async outbound(request) {
+      assert.equal(new URL(request.url).hostname, "challenges.cloudflare.com");
+      const { response } = await request.json();
+      const success = !consumed.has(response);
+      consumed.add(response);
+      return Response.json({
+        success,
+        hostname: "portfolio.example",
+        action: "triage-latency",
+      });
+    },
+  });
+  t.after(() => mf.dispose());
+  const invoke = () =>
+    mf.dispatchFetch(origin + "/api/triage?scenario=latency", {
+      method: "POST",
+      headers: { origin, "cf-turnstile-response": "one-use-fixture" },
+    });
+  const responses = await Promise.all([invoke(), invoke()]);
+  assert.deepEqual(responses.map((r) => r.status).sort(), [403, 503]);
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (await db.prepare("SELECT used FROM ai_budget WHERE id=1").first()).used,
+    1,
+  );
+});
+
+test("bounded-start protection is separate from general read ingress", async (t) => {
+  const mf = await runtime({ limits: { EXPERIMENT_STARTS: 1 } });
+  t.after(() => mf.dispose());
+  const invoke = () =>
+    mf.dispatchFetch(origin + "/api/triage?scenario=latency", {
+      method: "POST",
+      headers: { origin },
+    });
+  assert.equal((await invoke()).status, 403);
+  assert.equal((await invoke()).status, 429);
+  assert.equal((await mf.dispatchFetch(origin + "/api/edge")).status, 200);
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    await db.prepare("SELECT used FROM ai_budget WHERE id=1").first(),
+    null,
   );
 });
 

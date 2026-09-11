@@ -1,0 +1,66 @@
+---
+import ExperimentCard from "./ExperimentCard.astro";
+---
+
+<ExperimentCard
+  live
+  id="stream"
+  tone="lilac"
+  tinted
+  number="09"
+  title="Bit by bit."
+  subtitle="One response. A few separate arrivals."
+  label="Worker / response streaming"
+  caption="Illustrative preview; run to receive real chunks"
+>
+  <svg
+    slot="preview"
+    class="experiment-preview preview-live-stream"
+    viewBox="0 0 600 320"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path class="preview-flow" d="M65 160H535" />
+    <circle class="live-preview-traveller" cx="175" cy="160" r="5" />
+    {[90, 174, 258, 342, 426, 510].map((x, i) => (
+      <g>
+        <rect
+          class="preview-node stream-chunk"
+          data-stream-chunk
+          x={x - 25}
+          y="135"
+          width="50"
+          height="50"
+          rx="4"
+        />
+        <text x={x} y="165" text-anchor="middle">
+          {i + 1}
+        </text>
+      </g>
+    ))}
+    <text x="300" y="250" text-anchor="middle">
+      Arrivals, not a loading timer.
+    </text>
+  </svg>
+  <div class="live-controls">
+    <div class="live-actions">
+      <button type="button" data-stream-run disabled>
+        Start stream
+      </button>
+      <button type="button" data-stream-stop disabled>
+        Stop stream
+      </button>
+    </div>
+    <p class="stream-output" data-stream-output aria-label="Received text">
+      No chunks received.
+    </p>
+    <p role="status" data-stream-status>
+      No request until you press Start.
+    </p>
+    <p class="live-footnote">
+      Authored text, delivered by a real Worker. Each marker responds to a
+      received chunk. Buffering can group arrivals together; this is not a
+      network-speed test. No AI call or stored data.
+    </p>
+  </div>
+</ExperimentCard>

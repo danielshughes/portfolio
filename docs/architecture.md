@@ -16,7 +16,9 @@ Browser -> HTTPS dev hostname -> Cloudflare Access
        /radar        -> D1 cache -> KV snapshot -> Radar API
        /edge         -> allowlisted request.cf fields
        /health       -> D1 measurement history
-       /triage       -> D1 daily reservation -> Workers AI
+       /triage-config -> public verification configuration
+       /triage       -> Turnstile Siteverify -> D1 daily reservation -> Workers AI
+       /stream       -> fixed, bounded NDJSON response
        /coordination -> SQLite Durable Object -> WebSocket peers
 
 Cron (independent of visitors and Access)
@@ -28,19 +30,21 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 
 ## Code and configuration map
 
-| Responsibility                                                     | Source of truth                                                                     |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                 |
-| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                    |
-| API routing and scheduled orchestration                            | `worker/index.ts`                                                                   |
-| Radar validation and failure policy                                | `worker/radar.ts`                                                                   |
-| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                  |
-| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                               |
-| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`  |
-| Additive SQL schema                                                | `worker/migrations/`                                                                |
-| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                        |
-| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro` |
-| Trusted deployment and docs-only filtering                         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`          |
+| Responsibility                                                     | Source of truth                                                                                |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                            |
+| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                               |
+| API routing and scheduled orchestration                            | `worker/index.ts`                                                                              |
+| Radar validation and failure policy                                | `worker/radar.ts`                                                                              |
+| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                             |
+| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                                          |
+| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`             |
+| Human verification and bounded streaming                           | `worker/turnstile.ts`, `worker/stream.ts`                                                      |
+| Additive SQL schema                                                | `worker/migrations/`                                                                           |
+| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                                   |
+| Health inspection, verification and streaming clients              | `src/experiments/health-chart.ts`, `src/experiments/turnstile.ts`, `src/experiments/stream.ts` |
+| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`            |
+| Trusted deployment and docs-only filtering                         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`                     |
 
 The generated `worker/worker-configuration.d.ts` describes the actual Wrangler bindings. Regenerate it rather than maintaining a second handwritten environment interface. Resource identifiers in Wrangler are not credentials; secret values never belong there.
 
@@ -48,15 +52,19 @@ The generated `worker/worker-configuration.d.ts` describes the actual Wrangler b
 
 The [experiment behaviour contract](experiments.md) connects each interface to its model, motion lifecycle, data source and review checks.
 
-| Endpoint            | Behaviour                                       | Boundary                                                                                                        |
-| ------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `/api/radar`        | Validated Cloudflare Radar observations         | Fixed countries/views, cache and ingress/cold rate limits, no stale substitution                                |
-| `/api/edge`         | Allowlisted request metadata                    | No IP, precise location or persistence; private no-store response                                               |
-| `/api/health`       | Scheduled homepage response-header samples      | Fixed target, bounded indexed window, explicit coverage, not an uptime/SLO claim                                |
-| `/api/triage`       | Real inference for authored synthetic scenarios | Same-origin POST, no visitor prompt/body, atomic daily reservation, fixed model/token limits, inert text output |
-| `/api/coordination` | Shared sequence via WebSockets                  | Same-origin admission, fixed room, SQLite state, bounded connections/messages/sessions and hibernation          |
+| Endpoint             | Behaviour                                       | Boundary                                                                                                                       |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/radar`         | Validated Cloudflare Radar observations         | Fixed countries/views, cache and ingress/cold rate limits, no stale substitution                                               |
+| `/api/edge`          | Allowlisted request metadata                    | No IP, precise location or persistence; private no-store response                                                              |
+| `/api/health`        | Scheduled homepage response-header samples      | Fixed target, bounded indexed window, explicit coverage, not an uptime/SLO claim                                               |
+| `/api/triage-config` | Public site key and local-mode indicator        | GET only, no secrets, no query or inference                                                                                    |
+| `/api/triage`        | Real inference for authored synthetic scenarios | Same-origin POST, exact scenario, no body, single-use Turnstile validation, atomic daily reservation, fixed model/token limits |
+| `/api/stream`        | Authored text sent in a real streaming response | POST only, no query/body, bounded frames, back-pressure, no upstream or storage                                                |
+| `/api/coordination`  | Shared sequence via WebSockets                  | Same-origin admission, fixed room, SQLite state, bounded connections/messages/sessions and hibernation                         |
 
 The original Kubernetes, MCP and visual models remain browser-local simulations. They do not call these services or become evidence of production-system experience.
+
+All service requests pass a coarse, constant-key ingress limit. AI starts, stream starts and room upgrades also have separate per-path admission via `EXPERIMENT_STARTS`. These native limits are per Cloudflare location and eventually consistent, not global quotas or per-person authentication. AI reservations and room admissions have separate persisted global limits per environment. Invalid input and limiter failures do not fall through to a backend.
 
 ## Background work
 
@@ -98,19 +106,29 @@ Elapsed time measures that binding's response headers, not DNS, TLS, public rout
 
 The browser labels that returned window with its start and end dates and gives the latest sample's full date. The window is exactly one day; interval, window and expected-count constants are shared in `src/experiments/health-model.ts`. The browser rejects invalid, out-of-order or out-of-window samples before drawing. The history is a snapshot loaded on opening, not a continuously advancing live monitor. Lines join only adjacent successful slots; failures and missing intervals break the line.
 
+`src/experiments/health-chart.ts` maps pointer position to the nearest recorded sample and exposes the same selection through a native range control. Its dated readout includes HTTP outcome, elapsed time and whether the check passed. Missing slots are not invented selectable points. A single keyboard control avoids hundreds of tiny tab stops; the table remains available.
+
 ### AI triage
 
-The original agent/MCP simulation remains browser-local and scripted. The separate triage card performs real Workers AI inference only after an explicit Run action. POST requires the same Origin, an allowlisted scenario and no visitor prompt. The model receives a fixed instruction plus authored synthetic evidence, never employer data or browser identity.
+The original agent/MCP simulation remains browser-local and scripted. The separate full-width triage workbench stays open without Explore, but performs real Workers AI inference only after an explicit Run action. Its compact illustration follows the shared visibility/reduced-motion gates; it never indicates background inference. Authored scenario facts and an authored reviewed interpretation are separate from model suggestions. The reference occupies the answer column initially, then collapses when a complete answer arrives.
+
+POST requires the same Origin, exactly one allowlisted scenario and an empty body. A bounded first body read distinguishes a genuinely empty workerd stream from supplied content without parsing visitor text. The server fixes the model, prompt, token limit and schema. It never forwards caller headers, verification tokens, URLs or identity to the model.
+
+The browser loads the Turnstile SDK only on Run. `/api/triage-config` returns a public site key, not a secret. The token is sent in `cf-turnstile-response`, not a URL. `worker/turnstile.ts` validates it against Siteverify before budget reservation, requiring success, the exact request hostname and the scenario-specific action. Siteverify enforces expiry and single use. Validation is bounded, refuses redirects, has no retry/cache, and fails closed. CSP permits only the required challenge script/frame origin; the secret is a server binding. A site key and Origin header are not authentication.
 
 Local-preview requests are rejected explicitly before reserving budget because the supported local command disables remote bindings. No scripted substitute is returned. Changing the selected scenario cancels the previous request without allowing its cancellation message or answer to overwrite the new scenario.
 
-D1 atomically reserves one attempt against a single daily row before inference. Concurrent requests cannot exceed the application cap; timeouts and failed inference still consume their reservation. The model, output-token cap, deadline and temperature are fixed in `worker/triage.ts`. Output is bounded and rendered as inert text. The model has no tools, cannot execute actions and must not be treated as a confirmed diagnosis. A daily limit or provider outage produces a clear failure, not another paid provider. The UTC date resets eligibility on the next reservation; no reset Cron is needed.
+D1 atomically reserves one attempt against a single daily row before inference. Concurrent requests cannot exceed the application cap; timeouts and failed inference still consume their reservation. The model, output-token cap, deadline and temperature are fixed in `worker/triage.ts`. JSON-mode output must contain one hypothesis, two distinct proposed checks and an unknown, within bounded text sizes. Invalid structure, a reported non-stop finish or output at the token ceiling is rejected without displaying a partial answer. DOM rendering uses inert text, not model-supplied HTML. Validation establishes completeness of the display contract, not factual truth. The model has no tools and cannot execute actions. A daily limit or provider outage produces a clear failure, not another paid provider. The UTC date resets eligibility on the next reservation; no reset Cron is needed. See [AI review and evaluation](ai-review.md).
+
+### Response streaming
+
+`worker/stream.ts` emits a fixed, small sequence as newline-delimited JSON. Pull-based production honours back-pressure and cancellation; no detached timer keeps producing after cancellation. Intended spacing is 300 ms after the first frame, but buffering and slow readers can change arrival timing. The client validates order, size and the final marker, updates only on actual received frames, and cancels on Stop, disclosure closure, leaving view or hiding the page. Nothing is stored, no provider is called, and neither text nor frame count comes from visitors. The illustrative traveller stops when the experiment is opened so it cannot be confused with observed arrivals.
 
 ### Shared coordination
 
 `/api/coordination` admits same-origin WebSocket upgrades to one named room per environment. The Durable Object uses SQLite for a bounded sequence, hibernating sockets and serialised per-connection limits. Joining sends a typed `snapshot` with the current sequence, without inventing a new event. Its fixed `pulse` message increments state and broadcasts a typed `pulse` with sequence and timestamp to connected peers. It is not chat and stores no visitor identity or text.
 
-Connection count, session duration, messages per session and send spacing are bounded in `worker/coordination.ts`. An alarm closes expired sessions, allowing idle hibernation instead of an always-running timer. The browser closes connections when the card closes, leaves view or the tab becomes hidden, clears the displayed sequence, and does not reconnect in a loop. A separate stage-visibility gate suppresses animation when only the controls remain on-screen. Preview animation is illustrative; only received live pulses animate the opened diagram, travelling across the complete path with a receiver highlight. Snapshots do not animate.
+Connection count, session duration, messages per session and send spacing are bounded in `worker/coordination.ts`. A single SQLite `join_budget` row atomically caps accepted joins per UTC day, preventing repeated reconnects from resetting the overall accepted-work allowance. It survives hibernation and uses additive table creation without touching the existing sequence. Rejected requests still consume platform resources; this is not immunity to denial of service. An alarm closes expired sessions, allowing idle hibernation instead of an always-running timer. The browser closes connections when the card closes, leaves view or the tab becomes hidden, clears the displayed sequence, and does not reconnect in a loop. A separate stage-visibility gate suppresses animation when only the controls remain on-screen. Preview animation is illustrative; only received live pulses animate the opened diagram, travelling across the complete path with a receiver highlight. Snapshots do not animate.
 
 The close handler maps reserved local statuses to a valid normal-close frame rather than echoing them. In particular, an abrupt network disconnect reports `1006`, which cannot be transmitted as a WebSocket close code. Runtime regression tests cover reserved statuses and valid peer codes, plus a real transport termination through the Durable Object, its callback outcome and a successful rejoin/pulse afterwards.
 
@@ -123,7 +141,7 @@ The close handler maps reserved local statuses to a valid normal-close frame rat
 | D1 `radar_cache`      | Public Radar payloads and error backoff              | Fixed keys; bounded TTL, overwrite             | Request hostnames, identities, secrets       |
 | D1 `health_samples`   | Slot, status, elapsed milliseconds, success flag     | Retained time window; indexed primary key      | Request/response bodies or caller data       |
 | D1 `ai_budget`        | UTC day and reserved count                           | Single row                                     | Prompts, generated answers, visitor identity |
-| Durable Object SQLite | Bounded room sequence                                | Single row                                     | Chat, identity, visitor IP                   |
+| Durable Object SQLite | Bounded room sequence and daily join allowance       | One row per purpose                            | Chat, identity, visitor IP                   |
 | WebSocket attachments | Expiry, last send, message count                     | Session lifetime                               | Credentials or personal data                 |
 
 Cloudflare itself processes network metadata and Access identity as the platform operator. Its native invocation logs can retain request headers, including IP addresses. The edge endpoint excludes IPs from its response and application storage; this is not a site-wide promise that the hosting platform stores none. Native telemetry has separate retention and account quotas. Do not dump full request objects, headers, binding configuration responses or provider exceptions into application logs.
@@ -134,7 +152,7 @@ Native traces are lightly sampled and correlated with deployment metadata. Appli
 
 The required quality job always reports. Recognised docs-only changes retain redacted secret scanning but skip expensive checks and deployment; site content is code for this purpose. Workflow runs queue per ref without automatic cancellation, preventing a docs-only push from replacing pending code delivery. Pull requests have no deployment credentials. See [queue behaviour and validation](operations.md#normal-deployment) for the bounded queue and linter compatibility exception.
 
-Trusted `develop` pushes deploy through the development GitHub environment after quality passes. Production's prepared `main` path additionally requires `PRODUCTION_DEPLOY_ENABLED=true` in both the job condition and deployment script. Keep it absent or false until the owner explicitly approves publication. The script checks event, repository, branch, environment and production origin, applies D1 migrations, then streams the Radar secret into Wrangler. A failed migration prevents upload. Keep migrations additive so older Worker versions remain compatible during rollback.
+Trusted `develop` pushes deploy through the development GitHub environment after quality passes. Production's prepared `main` path additionally requires `PRODUCTION_DEPLOY_ENABLED=true` in both the job condition and deployment script. Keep it absent or false until the owner explicitly approves publication. The script checks event, repository, branch, environment and production origin, applies D1 migrations, then streams the Radar and Turnstile secrets into Wrangler. A failed migration prevents upload. Keep migrations additive so older Worker versions remain compatible during rollback.
 
 Development is configured for `dev.danhughes.uk`, protected by hostname-based Access. Production's prepared target is `danhughes.uk`, not an active release promise. Worker and preview subdomains remain disabled. A successful upload is not proof of working Access, scheduled collection or AI: verify the actual URLs and service behaviour after release. [Operations](operations.md) describes the release and recovery checks.
 

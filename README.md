@@ -48,6 +48,8 @@ Feature pull requests target `develop`, which deploys to Access-protected [devel
 
 Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for the service connections and [operations](docs/operations.md) for setup, verification, limits and recovery. No pull-request deployments or paid fallback.
 
+For your own deployment, provision separate resources and replace the hostnames, resource IDs and public Turnstile keys. Never use this site's identifiers as your deployment target. No account access is needed for the local tests.
+
 ## Contributing and data
 
 Read [AGENTS.md](AGENTS.md) for content, accessibility, security and contribution boundaries.

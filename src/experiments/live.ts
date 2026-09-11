@@ -1,13 +1,12 @@
 import { isTriageScenario, triageScenarios } from "./triage-scenarios";
-import {
-  HEALTH_INTERVAL_MS,
-  HEALTH_WINDOW_MS,
-  HEALTH_EXPECTED_SAMPLES,
-} from "./health-model";
+import { isTriageAnswer } from "./triage-answer";
+import { humanToken } from "./turnstile";
+import { mountStream } from "./stream";
+import { renderHealthChart } from "./health-chart";
+import { HEALTH_WINDOW_MS, HEALTH_EXPECTED_SAMPLES } from "./health-model";
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
-const svgNS = "http://www.w3.org/2000/svg";
 const stamp = (time: number) =>
   new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
@@ -30,12 +29,13 @@ async function readJson(
   url: string,
   signal: AbortSignal,
   method = "GET",
+  headers: Record<string, string> = {},
 ): Promise<unknown> {
   const response = await fetch(url, {
     method,
     signal,
     redirect: "error",
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...headers },
   });
   if (response.status === 429) {
     await response.body?.cancel();
@@ -69,6 +69,16 @@ async function readJson(
     offset += chunk.byteLength;
   }
   const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!response.ok && record(data) && typeof data.error === "string") {
+    if (data.error.startsWith("verification_"))
+      throw new ExperimentError(
+        "Human verification could not be completed. Press Run to try again.",
+      );
+    if (data.error === "model_response_incomplete")
+      throw new ExperimentError(
+        "The model did not return a complete answer. Nothing partial is shown. You can try another run.",
+      );
+  }
   if (!response.ok)
     throw new ExperimentError(
       response.status === 503 &&
@@ -102,6 +112,7 @@ function isSample(value: unknown): value is Sample {
 }
 
 export function mountLiveExperiments(root: HTMLElement) {
+  mountStream(root.querySelector<HTMLElement>("#stream")!);
   const q = <T extends Element>(selector: string) =>
     root.querySelector<T>(selector)!;
   const controllers = new Map<string, AbortController>();
@@ -114,6 +125,7 @@ export function mountLiveExperiments(root: HTMLElement) {
   async function run(
     name: string,
     action: (signal: AbortSignal) => Promise<void>,
+    timeoutMs = 20000,
   ) {
     if (controllers.has(name)) return;
     const controller = new AbortController();
@@ -125,7 +137,7 @@ export function mountLiveExperiments(root: HTMLElement) {
     if (button) button.disabled = true;
     try {
       await action(
-        AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
+        AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
       );
     } catch (error) {
       if (controller.signal.reason === "scenario-changed") return;
@@ -209,39 +221,7 @@ export function mountLiveExperiments(root: HTMLElement) {
       empty.textContent = samples.length ? "" : "No samples yet.";
       const table = q<HTMLDetailsElement>(".sample-table");
       table.hidden = !samples.length;
-      const scale = Math.max(100, ...samples.map((s) => s.elapsed_ms));
-      let path = "",
-        previous: Sample | undefined;
-      const failures = q<SVGGElement>("[data-health-failures]"),
-        points = q<SVGGElement>("[data-health-points]");
-      failures.replaceChildren();
-      points.replaceChildren();
-      q<HTMLElement>("[data-health-scale]").textContent =
-        `Vertical scale: 0–${Math.ceil(scale)} ms. Horizontal scale: the observed window.`;
-      for (const sample of samples) {
-        const x = Math.max(
-            0,
-            Math.min(
-              600,
-              ((sample.observed_at - start) / HEALTH_WINDOW_MS) * 600,
-            ),
-          ),
-          y = 145 - Math.min(1, sample.elapsed_ms / scale) * 130;
-        if (sample.ok) {
-          path += `${previous?.ok && sample.observed_at - previous.observed_at <= HEALTH_INTERVAL_MS ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)} `;
-          const dot = document.createElementNS(svgNS, "circle");
-          dot.setAttribute("cx", String(x));
-          dot.setAttribute("cy", String(y));
-          dot.setAttribute("r", "2");
-          points.append(dot);
-        } else {
-          const cross = document.createElementNS(svgNS, "path");
-          cross.setAttribute("d", `M${x - 3} 136l6 6m-6 0 6-6`);
-          failures.append(cross);
-        }
-        previous = sample;
-      }
-      q<SVGPathElement>("[data-health-line]").setAttribute("d", path);
+      renderHealthChart(q<HTMLElement>("#health"), samples, start);
       q<HTMLTableSectionElement>("[data-health-rows]").replaceChildren(
         ...samples
           .slice(-12)
@@ -285,36 +265,100 @@ export function mountLiveExperiments(root: HTMLElement) {
     controllers.get("triage")?.abort("scenario-changed");
     q<HTMLElement>("[data-triage-evidence]").textContent =
       triageScenarios[scenario.value].evidence;
+    q<HTMLElement>("[data-triage-question]").textContent =
+      triageScenarios[scenario.value].question;
+    q<HTMLElement>("[data-triage-interpretation]").textContent =
+      triageScenarios[scenario.value].interpretation;
     answer.textContent = "";
     answer.hidden = true;
+    q<HTMLDetailsElement>(".triage-reference").open = true;
     q<HTMLElement>("[data-triage-status]").textContent =
       "Ready. No model request until you press Run.";
   });
   triageRun.addEventListener(
     "click",
     () =>
-      void run("triage", async (signal) => {
-        const selected = scenario.value;
-        if (!isTriageScenario(selected)) return;
-        answer.textContent = "";
-        answer.hidden = true;
-        const data = await readJson(
-          `/api/triage?scenario=${encodeURIComponent(selected)}`,
-          signal,
-          "POST",
-        );
-        if (signal.aborted || scenario.value !== selected) return;
-        if (
-          !record(data) ||
-          typeof data.answer !== "string" ||
-          data.answer.length > 6000
-        )
-          throw new Error("Invalid answer");
-        answer.textContent = data.answer;
-        answer.hidden = false;
-        q<HTMLElement>("[data-triage-status]").textContent =
-          "Model response ready. Compare it with the evidence above.";
-      }),
+      void run(
+        "triage",
+        async (signal) => {
+          const selected = scenario.value;
+          if (!isTriageScenario(selected)) return;
+          answer.textContent = "";
+          answer.hidden = true;
+          q<HTMLDetailsElement>(".triage-reference").open = true;
+          const configuration = await readJson("/api/triage-config", signal);
+          if (
+            !record(configuration) ||
+            typeof configuration.local !== "boolean"
+          )
+            throw new Error("Invalid configuration");
+          let token: string | undefined;
+          if (!configuration.local) {
+            if (
+              typeof configuration.siteKey !== "string" ||
+              !configuration.siteKey
+            )
+              throw new Error("Verification unavailable");
+            q<HTMLElement>("[data-triage-status]").textContent =
+              "Checking this request…";
+            try {
+              token = await humanToken(
+                q<HTMLElement>("[data-triage-verification]"),
+                configuration.siteKey,
+                selected,
+                signal,
+              );
+            } catch {
+              if (signal.aborted) signal.throwIfAborted();
+              throw new ExperimentError(
+                "Human verification could not be completed. Press Run to try again.",
+              );
+            }
+          }
+          signal.throwIfAborted();
+          q<HTMLElement>("[data-triage-status]").textContent =
+            "The model is considering this scenario…";
+          const data = await readJson(
+            `/api/triage?scenario=${encodeURIComponent(selected)}`,
+            AbortSignal.any([signal, AbortSignal.timeout(25000)]),
+            "POST",
+            token ? { "cf-turnstile-response": token } : {},
+          );
+          if (signal.aborted || scenario.value !== selected) return;
+          if (
+            !record(data) ||
+            data.scenario !== selected ||
+            !isTriageAnswer(data.answer)
+          )
+            throw new Error("Invalid answer");
+          const heading = document.createElement("h4");
+          heading.textContent = "Model suggestion";
+          answer.append(heading);
+          const section = (label: string, text: string) => {
+            const title = document.createElement("h5");
+            title.textContent = label;
+            const paragraph = document.createElement("p");
+            paragraph.textContent = text;
+            answer.append(title, paragraph);
+          };
+          section("A possible explanation", data.answer.hypothesis);
+          const checksHeading = document.createElement("h5");
+          checksHeading.textContent = "Read-only checks to make next";
+          const checks = document.createElement("ol");
+          for (const text of data.answer.checks) {
+            const item = document.createElement("li");
+            item.textContent = text;
+            checks.append(item);
+          }
+          answer.append(checksHeading, checks);
+          section("Still unknown", data.answer.unknown);
+          answer.hidden = false;
+          q<HTMLDetailsElement>(".triage-reference").open = false;
+          q<HTMLElement>("[data-triage-status]").textContent =
+            "Answer ready. A suggestion to assess, not a verified diagnosis.";
+        },
+        120000,
+      ),
   );
 
   const room = q<HTMLElement>('[data-live="room"]'),

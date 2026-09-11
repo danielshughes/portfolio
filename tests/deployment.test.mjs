@@ -12,6 +12,7 @@ const allowed = {
   CLOUDFLARE_API_TOKEN: "fixture-deploy-credential",
   CLOUDFLARE_ACCOUNT_ID: "fixture-account",
   RADAR_API_TOKEN: "fixture-radar-credential",
+  TURNSTILE_SECRET_KEY: "fixture-turnstile-credential",
   DEPLOY_ENV: "development",
 };
 
@@ -24,6 +25,7 @@ test("development deployment rejects untrusted events, branches and missing cred
     { CLOUDFLARE_API_TOKEN: "" },
     { CLOUDFLARE_ACCOUNT_ID: "" },
     { RADAR_API_TOKEN: "" },
+    { TURNSTILE_SECRET_KEY: "" },
   ]) {
     let calls = 0;
     assert.throws(
@@ -38,17 +40,17 @@ test("development deployment rejects untrusted events, branches and missing cred
   }
 });
 
-test("schema migration precedes deployment without exposing the Radar credential", () => {
+test("schema migration precedes deployment without exposing runtime credentials", () => {
   deploy(allowed, (_command, args) => {
     assert.match(
       args[3],
-      /^env -u RADAR_API_TOKEN node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
+      /^env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
     );
     return { status: 0 };
   });
 });
 
-test("only the development secret is streamed to Wrangler, never passed in argv", () => {
+test("only environment-scoped runtime secrets are streamed to Wrangler, never passed in argv", () => {
   let calls = 0;
   assert.equal(
     deploy(allowed, (command, args, options) => {
@@ -57,10 +59,14 @@ test("only the development secret is streamed to Wrangler, never passed in argv"
       assert.deepEqual(args.slice(0, 3), ["-o", "pipefail", "-c"]);
       assert.match(
         args[3],
-        /env -u RADAR_API_TOKEN node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
+        /env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
       );
       assert.equal(
         JSON.stringify(args).includes(allowed.RADAR_API_TOKEN),
+        false,
+      );
+      assert.equal(
+        JSON.stringify(args).includes(allowed.TURNSTILE_SECRET_KEY),
         false,
       );
       assert.equal(
@@ -87,11 +93,11 @@ test("actual secret pipeline is readable by pathname on Linux and strips the con
   const result = deploy(
     { ...process.env, ...allowed },
     (command, args, options) => {
-      const probe = `node -e 'const assert=require("node:assert/strict"); const fs=require("node:fs"); assert.deepEqual(JSON.parse(fs.readFileSync("/dev/stdin", "utf8")), {RADAR_API_TOKEN:"fixture-radar-credential"}); assert.equal(process.env.RADAR_API_TOKEN, undefined);'`;
+      const probe = `node -e 'const assert=require("node:assert/strict"); const fs=require("node:fs"); assert.deepEqual(JSON.parse(fs.readFileSync("/dev/stdin", "utf8")), {RADAR_API_TOKEN:"fixture-radar-credential",TURNSTILE_SECRET_KEY:"fixture-turnstile-credential"}); assert.equal(process.env.RADAR_API_TOKEN, undefined); assert.equal(process.env.TURNSTILE_SECRET_KEY, undefined);'`;
       const actualArgs = [...args];
       actualArgs[3] = actualArgs[3]
         .replace(
-          /^env -u RADAR_API_TOKEN node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
+          /^env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
           "true && ",
         )
         .replace(

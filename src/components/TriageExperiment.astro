@@ -1,0 +1,71 @@
+---
+import { triageScenarios } from "../experiments/triage-scenarios";
+import LivePreview from "./LivePreview.astro";
+---
+
+<div class="triage-showcase">
+  <article
+    class="experiment experiment-triage"
+    id="triage"
+    data-live="triage"
+    data-tone="lilac"
+    aria-labelledby="triage-title"
+  >
+    <header class="experiment-card-heading">
+      <span class="experiment-number">11</span>
+      <div>
+        <span class="stage-label">Workers AI / synthetic incidents</span>
+        <h3 id="triage-title">A second opinion.</h3>
+        <p>A few facts. A plausible answer. Is it a good one?</p>
+      </div>
+    </header>
+    <div class="experiment-stage">
+      <div class="experiment-visual">
+        <LivePreview kind="triage" />
+      </div>
+      <span class="preview-caption">A hypothesis, not a verdict.</span>
+    </div>
+    <div class="live-controls triage-workspace">
+      <div class="triage-source">
+        <label for="triage-scenario">Choose a scenario</label>
+        <select id="triage-scenario" disabled>
+          {Object.entries(triageScenarios).map(([id, scenario]) => (
+            <option value={id}>{scenario.title}</option>
+          ))}
+        </select>
+        <h4>Scenario facts</h4>
+        <p class="triage-evidence" data-triage-evidence>
+          {triageScenarios.latency.evidence}
+        </p>
+        <p class="triage-question" data-triage-question>
+          {triageScenarios.latency.question}
+        </p>
+        <button type="button" data-triage-run disabled>
+          Run triage
+        </button>
+        <div data-triage-verification />
+        <p role="status" data-triage-status>
+          No model request until you press Run.
+        </p>
+      </div>
+      <div class="triage-result">
+        <details class="triage-reference" open>
+          <summary>Reviewed interpretation</summary>
+          <p data-triage-interpretation>
+            {triageScenarios.latency.interpretation}
+          </p>
+          <p class="live-footnote">
+            An authored reference, not another AI answer. Compare the reasoning,
+            not the wording.
+          </p>
+        </details>
+        <div class="triage-answer" data-triage-answer hidden />
+      </div>
+      <p class="live-footnote triage-footnote">
+        Real inference, invented incidents. Llama 3.3 70B via Workers AI. No
+        tools, private data or system access. Turnstile protects each request.
+        The daily demo budget is limited; answers still need judgement.
+      </p>
+    </div>
+  </article>
+</div>
