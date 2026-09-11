@@ -52,13 +52,23 @@ Keep R2 and Analytics Engine out of the portfolio's service inventory unless the
 1. Confirm the account remains on the intended Free Workers/Access plans. Do not enable a paid fallback or alter unrelated R2 subscriptions.
 2. Inspect the existing zone before changing anything. Confirm authoritative nameservers, active zone, DNSSEC, certificate coverage and CAA compatibility with Cloudflare's certificate issuers.
 3. Use strict TLS, modern minimum TLS, automatic HTTPS redirection and certificate transparency notifications. Do not blindly copy private-service geography restrictions or challenges onto a portfolio. A rule that works for a private application may block a recruiter or an API/WebSocket request.
-4. Create a hostname-based Access application for development with an explicit owner allow policy and the existing one-time PIN identity provider. Keep it out of the launcher if it is not needed there. No bypass policy and no allow-everyone rule. Preserve a recovery admin route in Cloudflare's own dashboard, not an unprotected website hostname.
+4. Create a reusable account-level owner allow policy, then attach it to a hostname-based Access application for development using the existing one-time PIN identity provider. Keep it out of the launcher if it is not needed there. No bypass policy and no allow-everyone rule. Preserve a recovery admin route in Cloudflare's own dashboard, not an unprotected website hostname.
 5. Provision environment-specific KV and D1 resources. Add their identifiers to the matching Wrangler environment. SQLite Durable Object creation is controlled by the Wrangler migration, not a manually invented namespace ID. AI is a binding, not a client credential.
 6. Create least-privilege deployment and Radar Read credentials, save them in 1Password with genuine DATE expiry fields, and populate the matching GitHub environment through stdin. Never print, put in argv or commit values.
 7. Configure branch-restricted GitHub environments and protected branch checks. Set production's enable variable only after owner approval; keep it absent or false when publication is held. Apply D1 migrations before the first Worker deployment.
 8. Deploy through CI, verify the new protected hostname, then retire an old development route and only its matching temporary Access/zone exceptions. Do not remove old access protection while its route still serves the Worker.
 
 HSTS should follow verified HTTPS/certificate behaviour, with deliberate subdomain/preload scope. A null MX and deny-all sender policy mean the domain does not receive or send mail; revise those before introducing mail. These are separate zone decisions, not settings in Wrangler.
+
+### Access policy maintenance
+
+Reusable policies are managed through `/accounts/{account_id}/access/policies`; attach their IDs to the application rather than creating legacy application-scoped policies. Reusable describes management scope, not a stronger authentication method. Before editing a shared policy, inspect every application that references it.
+
+For an existing legacy policy, Cloudflare supports an empty-body `PUT /accounts/{account_id}/access/apps/{app_id}/policies/{policy_id}/make_reusable`. Prefer this in-place conversion to deleting and rebuilding the protection. Compare rule content, attachment, priority and application settings before and after; verify the reusable-policy endpoint and flag rather than inferring scope from which list returns it. [Policy management](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/policy-management/).
+
+Keep hostname protection for this service: Cloudflare states, "Worker-level Access policies do not currently support WebSocket connections." The policy format and destination type are separate choices. Keep alternative Worker/preview URLs disabled and check anonymous page/API requests plus the authenticated room after any change. [Access for Workers](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+
+Retain HttpOnly cookies and explicit owner identity restrictions. Extra MFA or cookie-binding enforcement needs a deliberate enrolment/recovery and browser-compatibility check; it is not part of a policy-format conversion. Historical identities and authentication events are not current access grants. Remove only confirmed obsolete policies or service credentials, not identity history or system applications merely because they look unused.
 
 ## Credentials and rotation
 

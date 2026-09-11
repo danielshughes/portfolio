@@ -40,6 +40,7 @@ Keep the website, README, contributor guidance and public technical documentatio
 
 ## Secrets
 
+- Use reusable, account-level Access policies attached to the development hostname application. Do not recreate application-scoped legacy policies or switch the WebSocket service to Worker-level Access. Review policy references before cleanup, preserve the owner-only rule and verify both anonymous rejection and authenticated operation after changes. Access administration stays outside website CI.
 - Never commit or print API tokens, service credentials, Turnstile secret keys, private contact routing or values from `.env` and `.dev.vars` files.
 - Keep `.env*`, `.dev.vars*`, Wrangler local state and generated output ignored. An `.env.example` may contain key names and safe descriptions only.
 - Use environment-scoped GitHub secrets or Cloudflare secret bindings for deployment and runtime credentials.
