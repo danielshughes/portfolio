@@ -16,6 +16,8 @@ export type SnapshotCollection = {
   | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
 );
 const MAX_AGE = 3600000;
+const MAX_BUNDLE_BYTES = 100000;
+const utf8 = new TextEncoder();
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 
@@ -53,7 +55,12 @@ export async function readSnapshot(
     type: "text",
     cacheTtl: 60,
   });
-  if (!raw || raw.length > 100000) return;
+  if (
+    !raw ||
+    raw.length > MAX_BUNDLE_BYTES ||
+    utf8.encode(raw).byteLength > MAX_BUNDLE_BYTES
+  )
+    return;
   let bundle: unknown;
   try {
     bundle = JSON.parse(raw);
@@ -89,7 +96,8 @@ export async function collectSnapshots(
       country,
       views: [],
     };
-  const bundle: Record<string, unknown> = {};
+  const entries: string[] = [];
+  let bundleBytes = 2; // The enclosing JSON braces.
   const views: RadarView[] = [];
   // Fixed small batch: five upstream requests and one KV write per tick.
   // Invocation-local cache prevents an old PoP cache from perpetually renewing
@@ -118,14 +126,20 @@ export async function collectSnapshots(
     }
     const value: unknown = await response.json();
     if (snapshotPayload(value, country, view, options.now())) {
-      bundle[view] = value;
+      // Serialise each intact view once. Account for its key, colon and comma
+      // without repeatedly serialising views already accepted into the bundle.
+      const entry = `${JSON.stringify(view)}:${JSON.stringify(value)}`;
+      const bytes = utf8.encode(entry).byteLength + (entries.length ? 1 : 0);
+      if (bundleBytes + bytes > MAX_BUNDLE_BYTES) continue;
+      entries.push(entry);
+      bundleBytes += bytes;
       views.push(view);
     }
   }
-  if (Object.keys(bundle).length)
+  if (entries.length)
     await env.RADAR_SNAPSHOTS.put(
       `country:${country}`,
-      JSON.stringify(bundle),
+      `{${entries.join(",")}}`,
       { expirationTtl: 7200 },
     );
   if (!views.length)
