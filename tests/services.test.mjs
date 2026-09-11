@@ -2,6 +2,32 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runtime } from "./runtime-harness.mjs";
 
+test(
+  "room close handlers never echo reserved WebSocket status codes",
+  { timeout: 10000 },
+  async (t) => {
+    const mf = await runtime({
+      entryPoint: "tests/fixtures/coordination-close.mjs",
+    });
+    t.after(() => mf.dispose());
+    for (const [received, expected] of [
+      [1000, 1000],
+      [1001, 1001],
+      [1005, 1000],
+      [1006, 1000],
+      [1015, 1000],
+      [4001, 4001],
+    ]) {
+      const response = await mf.dispatchFetch(
+        `https://example.test/api/close?code=${received}`,
+      );
+      const body = await response.json();
+      assert.equal(response.status, 200, JSON.stringify({ received, body }));
+      assert.equal(body.code, expected);
+    }
+  },
+);
+
 const origin = "https://portfolio.example";
 test("explicit local mode survives Wrangler rewriting the request origin", async (t) => {
   const mf = await runtime({ bindings: { LOCAL_PREVIEW: "true" } });

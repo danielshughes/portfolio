@@ -112,6 +112,8 @@ D1 atomically reserves one attempt against a single daily row before inference. 
 
 Connection count, session duration, messages per session and send spacing are bounded in `worker/coordination.ts`. An alarm closes expired sessions, allowing idle hibernation instead of an always-running timer. The browser closes connections when the card closes, leaves view or the tab becomes hidden, clears the displayed sequence, and does not reconnect in a loop. A separate stage-visibility gate suppresses animation when only the controls remain on-screen. Preview animation is illustrative; only received live pulses animate the opened diagram, travelling across the complete path with a receiver highlight. Snapshots do not animate.
 
+The close handler maps reserved local statuses to a valid normal-close frame rather than echoing them. In particular, an abrupt network disconnect reports `1006`, which cannot be transmitted as a WebSocket close code. Runtime regression tests cover reserved statuses and preserve valid peer codes.
+
 ## Persistence and privacy
 
 | Storage               | Contents                                             | Lifetime / bound                               | Not stored                                   |

@@ -9,7 +9,7 @@ export async function runtime(options = {}) {
   );
   const environment = config.env.development;
   const bundle = await build({
-    entryPoints: [config.main],
+    entryPoints: [options.entryPoint ?? config.main],
     bundle: true,
     format: "esm",
     platform: "browser",
