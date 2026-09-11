@@ -44,7 +44,7 @@ Documentation-only changes run file classification and redacted secret scanning.
 
 ## Deployment
 
-Feature pull requests target `develop`, configured for Access-protected [development](https://dev.danhughes.uk). Production is on hold. Its prepared promotion path requires separate approval and an explicit enable switch. Trusted development pushes deploy after CI passes, using GitHub environment secrets and database migrations before upload.
+Feature pull requests target `develop`, which deploys to Access-protected [development](https://dev.danhughes.uk). Reviewed `develop` to `main` promotions deploy the public [portfolio](https://danhughes.uk) with the production enable switch set. Both paths require passing CI, separate GitHub environment secrets and database migrations before upload.
 
 Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for the service connections and [operations](docs/operations.md) for setup, verification, limits and recovery. No pull-request deployments or paid fallback.
 
