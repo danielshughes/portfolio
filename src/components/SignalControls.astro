@@ -1,0 +1,44 @@
+---
+interface Props {
+  expanded?: boolean;
+}
+const { expanded = false } = Astro.props;
+---
+
+<div class="signal-controls experiment-controls" hidden>
+  <label for="signal-noise">
+    Signal noise{" "}
+    <input
+      id="signal-noise"
+      type="range"
+      min="0"
+      max="100"
+      value="25"
+      aria-describedby="signal-description"
+    />
+  </label>
+  {expanded && (
+    <>
+      <label for="signal-frequency">
+        Frequency
+        <input id="signal-frequency" type="range" min="1" max="8" value="4" />
+      </label>
+      <label for="signal-amplitude">
+        Amplitude
+        <input
+          id="signal-amplitude"
+          type="range"
+          min="20"
+          max="100"
+          value="65"
+        />
+      </label>
+    </>
+  )}
+  <button type="button">Pause animation</button>
+  {expanded && (
+    <button type="button" class="signal-reset">
+      Reset
+    </button>
+  )}
+</div>

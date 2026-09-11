@@ -1,0 +1,113 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { notes } from "../content/notes";
+import { portfolioContent } from "../content/portfolio";
+---
+
+<BaseLayout
+  title="Notes | Dan Hughes"
+  description="Engineering decisions across Kubernetes, infrastructure as code, observability, incident learning and AI tooling."
+>
+  <section class="notes-intro page-intro" aria-labelledby="notes-title">
+    <p class="eyebrow">A few things worth sharing</p>
+    <h1 id="notes-title">
+      A closer <em>look.</em>
+    </h1>
+    <p class="intro-description">
+      Decisions across observability, Kubernetes, infrastructure as code and AI
+      tooling. The trade-offs, the failures worth understanding and the work
+      around the code.
+    </p>
+  </section>
+  <div class="notes-layout">
+    <nav class="notes-nav" aria-label="On this page">
+      {notes.map((note, i) => (
+        <a href={`#${note.id}`}>
+          <span>0{i + 1}</span>
+          {note.label}
+        </a>
+      ))}
+    </nav>
+    <div class="notes-body">
+      {notes.map((note, i) => (
+        <article id={note.id} class="engineering-note" data-reveal>
+          <div class="note-kicker">
+            <span>
+              0{i + 1} / {note.label}
+            </span>
+            <span>{note.tech}</span>
+          </div>
+          <h2>{note.title}</h2>
+          <p class="contribution">{note.contribution}</p>
+          <figure class="decision-figure">
+            {note.id === "observability" ? (
+              <div class="health-comparison">
+                <p class="diagram-condition">
+                  Collection has stopped. The process is still running.
+                </p>
+                <div>
+                  <span>Liveness</span>
+                  <strong>Running</strong>
+                  <small>Process check passes</small>
+                </div>
+                <div>
+                  <span>Readiness</span>
+                  <strong>Stale data</strong>
+                  <small>Freshness check fails</small>
+                </div>
+              </div>
+            ) : note.id === "ai-tooling" ? (
+              <div class="request-comparison">
+                <div>
+                  <span>Sequential scan</span>
+                  <div class="requests sequential">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <span style={`--slot:${i}`} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span>
+                    Bounded concurrency <small>(two at a time here)</small>
+                  </span>
+                  <div class="requests bounded">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <span style={`--slot:${i}`} />
+                    ))}
+                  </div>
+                </div>
+                <small>
+                  Time runs left to right. Illustrative requests, not measured
+                  timings.
+                </small>
+              </div>
+            ) : (
+              <ol>
+                {note.diagram.map((step) => (
+                  <li>{step}</li>
+                ))}
+              </ol>
+            )}
+            <figcaption>{note.diagramCaption}</figcaption>
+          </figure>
+          {note.paragraphs.map((paragraph) => (
+            <p>{paragraph}</p>
+          ))}
+          <p class="note-takeaway">{note.takeaway}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+  <section id="contact" class="notes-contact">
+    <h2>More to talk about?</h2>
+    <a
+      class="pill-link"
+      href={portfolioContent.linkedin}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Opens in a new tab."
+    >
+      Connect on LinkedIn ↗
+    </a>
+  </section>
+</BaseLayout>

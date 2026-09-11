@@ -1,45 +1,57 @@
-# Dan Hughes — Portfolio
+# Dan Hughes Portfolio
 
-Public source for a compact, evidence-led engineering portfolio focused on SRE, infrastructure, observability, incident management and practical uses of AI.
+Public source for Dan Hughes's engineering portfolio, covering observability, Kubernetes, infrastructure as code and interactive experiments.
 
-The finished site is intended to give recruiters and engineering leaders a quick, credible view of how I approach reliable systems. It will favour a small number of concrete examples over a long employment timeline or an exhaustive technology list.
+Built with Astro and TypeScript for Cloudflare Workers Static Assets. Browser-local simulations sit alongside Cloudflare Radar, request metadata, scheduled observations, bounded AI inference and shared-state experiments.
 
-## Project principles
+## Routes
 
-- **Fast to understand:** one focused page with clear information hierarchy.
-- **Evidence before assertion:** published claims must be supportable and appropriately scoped.
-- **Static by default:** essential content works without client-side JavaScript.
-- **Accessible and resilient:** semantic HTML, progressive enhancement and a WCAG 2.2 AA target.
-- **Technology with a purpose:** infrastructure choices should improve delivery, security, operability or the reader's experience.
-- **Public by design:** code and deployment configuration are inspectable; credentials and private working material are not.
+- `/`: personal homepage and featured work.
+- `/notes/`: engineering decisions and technical depth.
+- `/experiments/`: interactive models and the Internet atlas.
 
-## Target architecture
+## Local development
 
-| Layer | Choice | Purpose |
-|---|---|---|
-| Site | Astro with TypeScript, statically rendered | Small output, strong content structure and minimal browser JavaScript |
-| Edge hosting | Cloudflare Workers Static Assets | Global static delivery with room for narrowly justified Worker features later |
-| Delivery | GitHub Actions and Wrangler | Visible, repeatable quality checks and deployments |
-| Environments | Pull-request previews, persistent development and production | Test changes before promotion without mixing credentials or configuration |
-| Measurement | Standards-based metadata, automated checks and Cloudflare Web Analytics | SEO, accessibility, performance and real-user feedback without a custom analytics service |
+Use Node 24 and npm:
 
-The initial implementation will stay within Cloudflare's free allowances. R2, dynamic Worker routes and other services will be added only if the portfolio develops a real need for them.
+```sh
+npm ci
+npm run dev
+```
 
-## Delivery flow
+The pages work without credentials. For the API experiments, initialise local storage and start the Worker on port 8787:
 
-| Change | Target | Result |
-|---|---|---|
-| Feature pull request | `develop` | Quality checks and a disposable preview |
-| Merge to `develop` | Development Worker | Persistent development deployment |
-| Promotion pull request | `main` | Final review before production |
-| Merge to `main` | Production Worker | Production deployment |
+```sh
+npm run build:dev
+npx wrangler d1 migrations apply HISTORY --env development --local
+npm run dev:worker
+```
 
-Both long-lived branches require pull requests and reject deletion and force pushes. A named CI check will become mandatory after the workflow is introduced and has completed successfully.
+Astro proxies `/api` and WebSockets to the Worker. In another terminal, `npm run dev:sample` triggers a real local health check. Radar needs a server-side `RADAR_API_TOKEN`. Cloudflare edge metadata and AI inference require the deployed site; local preview explains that limitation without inventing results. See [local operations](docs/operations.md#local-development-and-tests).
 
-## Current status
+## Checks
 
-The repository foundation, branch model and security controls are in place. The next delivery step is the static Astro scaffold; there is not yet a deployed website or a supported local-development command.
+Install the browsers once, then run the complete quality gate:
 
-## Repository guidance
+```sh
+npx playwright install chromium firefox webkit
+npm run quality
+```
 
-[AGENTS.md](AGENTS.md) records the publication, security and engineering constraints that apply to every change. In particular, secrets, credentials and private working material must never enter Git, generated output or workflow logs.
+The gate covers formatting, lint, types, tests, accessibility and the build across all configured browsers. After editing GitHub Actions workflows, also run `npm run lint:workflows` (requires Go).
+
+Documentation-only changes run file classification and redacted secret scanning. They skip dependency installation, the full quality gate and deployment. Source, site content, assets, tests and configuration still run the full checks.
+
+## Deployment
+
+Feature pull requests target `develop`, which deploys to Access-protected [development](https://dev.danhughes.uk). Reviewed `develop` to `main` promotions deploy the public [portfolio](https://danhughes.uk) with the production enable switch set. Both paths require passing CI, separate GitHub environment secrets and database migrations before upload.
+
+Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for the service connections and [operations](docs/operations.md) for setup, verification, limits and recovery. No pull-request deployments or paid fallback.
+
+For your own deployment, provision separate resources and replace the hostnames, resource IDs and public Turnstile keys. Never use this site's identifiers as your deployment target. No account access is needed for the local tests.
+
+## Contributing and data
+
+Read [AGENTS.md](AGENTS.md) for content, accessibility, security and contribution boundaries.
+
+The Internet atlas uses Cloudflare Radar data under CC BY-NC 4.0, with attribution and transformation notices. See [Radar's licensing policies](https://radar.cloudflare.com/about#licensing-policies).

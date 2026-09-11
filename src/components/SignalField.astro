@@ -1,0 +1,198 @@
+---
+import SignalControls from "./SignalControls.astro";
+interface Props {
+  externalControls?: boolean;
+  expanded?: boolean;
+}
+const { expanded = false, externalControls = false } = Astro.props;
+---
+
+<figure class="signal-field" aria-labelledby="signal-title">
+  <div class="signal-heading">
+    <span id="signal-title">
+      {expanded ? "Make some noise." : "Same wave. More interference."}
+    </span>
+    <span class="mono">Signal / noise</span>
+  </div>
+  <div class="signal-comparison">
+    <div class="signal-row-label">
+      <span>Known signal</span>
+      <span class="signal-key">Reference</span>
+    </div>
+    <div class="signal-row-label noisy-label">
+      <span>Signal + noise</span>
+      <span class="noise-level">Low interference</span>
+    </div>
+    <div class="signal-display">
+      <svg
+        class="signal-fallback"
+        viewBox="0 0 600 300"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          class="signal-reference"
+          d="M0 90Q37 30 75 90T150 90T225 90T300 90T375 90T450 90T525 90T600 90"
+        />
+        <path
+          class="signal-observed"
+          d="M0 240L12 232L24 201L36 208L48 209L60 225L75 240L88 271L99 268L112 275L125 262L140 260L150 240L166 218L180 216L188 199L205 221L217 221L225 240L242 252L254 269L266 262L277 279L288 250L300 240L314 225L327 203L340 215L356 213L375 240L392 259L408 261L420 278L434 268L450 240L466 221L480 211L493 217L510 224L525 240L545 259L561 275L580 260L600 240"
+        />
+      </svg>
+      <canvas aria-hidden="true"></canvas>
+    </div>
+  </div>
+  {!externalControls && <SignalControls expanded={expanded} />}
+  <figcaption class="signal-caption" id="signal-description">
+    Synthetic waves. Add interference to the lower trace; the reference above
+    stays clean.
+  </figcaption>
+  {!expanded && (
+    <a class="text-link signal-more" href="/experiments/">
+      More things to play with <span aria-hidden="true">↗</span>
+    </a>
+  )}
+</figure>
+<script>
+  const field = document.querySelector<HTMLElement>(".signal-field");
+  const canvas = field?.querySelector("canvas");
+  const context = canvas?.getContext("2d");
+  if (field && canvas && context) {
+    const root = field.closest(".experiment") ?? field;
+    const controls = root.querySelector<HTMLElement>(".signal-controls")!;
+    const slider = controls.querySelector<HTMLInputElement>("input")!;
+    const toggle = controls.querySelector<HTMLButtonElement>("button")!;
+    const level = field.querySelector<HTMLElement>(".noise-level")!;
+    const frequency =
+      controls.querySelector<HTMLInputElement>("#signal-frequency");
+    const amplitude =
+      controls.querySelector<HTMLInputElement>("#signal-amplitude");
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    controls.hidden = false;
+    field.classList.add("has-canvas");
+    let paused = false,
+      visible = false,
+      frame = 0,
+      phase = 0,
+      previous = 0;
+    let width = 0,
+      height = 0;
+    function draw() {
+      if (!context) return;
+      const styles = getComputedStyle(field!);
+      const ink = styles.getPropertyValue("--ink").trim();
+      const accent =
+        styles.getPropertyValue("--preview-accent").trim() ||
+        styles.getPropertyValue("--orange").trim();
+      const line = styles.getPropertyValue("--line").trim();
+      // Cover the whole backing bitmap when CSS dimensions are fractional.
+      context.clearRect(0, 0, Math.ceil(width), Math.ceil(height));
+      const amount = Number(slider.value) / 100;
+      for (const [lane, colour] of [
+        [0, accent],
+        [1, ink],
+      ] as const) {
+        const baseline = height * (lane === 0 ? 0.3 : 0.8);
+        context.beginPath();
+        context.strokeStyle = line;
+        context.lineWidth = 1;
+        context.moveTo(0, baseline);
+        context.lineTo(width, baseline);
+        context.stroke();
+        context.beginPath();
+        context.strokeStyle = colour;
+        context.lineWidth = 2;
+        for (let step = 0; step <= 400; step++) {
+          const u = step / 400;
+          const signal = Math.sin(
+            u * Math.PI * 2 * Number(frequency?.value ?? 4) - phase,
+          );
+          const interference =
+            (Math.sin(u * 173 + phase * 1.3) +
+              0.55 * Math.sin(u * 397 - phase) +
+              0.3 * Math.cos(u * 751 + phase * 0.7)) /
+            1.85;
+          const value =
+            signal * (amplitude ? Number(amplitude.value) * 0.001 : 0.08) +
+            (lane === 1 ? interference * amount * 0.1 : 0);
+          const x = u * width,
+            y = baseline - value * height;
+          if (step === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+        context.stroke();
+      }
+    }
+    function tick(time: number) {
+      phase += previous ? Math.min(time - previous, 40) * 0.0006 : 0;
+      previous = time;
+      draw();
+      frame = requestAnimationFrame(tick);
+    }
+    function sync() {
+      cancelAnimationFrame(frame);
+      previous = 0;
+      const active = !paused && !reduced.matches && visible && !document.hidden;
+      toggle.textContent = reduced.matches
+        ? "Reduced motion on"
+        : paused
+          ? "Resume animation"
+          : "Pause animation";
+      toggle.disabled = reduced.matches;
+      field!.dataset.motion = active ? "running" : "paused";
+      draw();
+      if (active) frame = requestAnimationFrame(tick);
+    }
+    new ResizeObserver((entries) => {
+      width = entries[0].contentRect.width;
+      height = entries[0].contentRect.height;
+      const scale = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      draw();
+    }).observe(canvas);
+    new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      sync();
+    }).observe(field);
+    toggle.addEventListener("click", () => {
+      paused = !paused;
+      sync();
+    });
+    function updateNoise() {
+      const amount = Number(slider.value);
+      const description =
+        amount === 0
+          ? "No interference"
+          : amount < 40
+            ? "Low interference"
+            : amount < 75
+              ? "More interference"
+              : "High interference";
+      level.textContent = description;
+      slider.setAttribute(
+        "aria-valuetext",
+        `${amount} of 100, ${description.toLowerCase()}`,
+      );
+      draw();
+    }
+    slider.addEventListener("input", updateNoise);
+    frequency?.addEventListener("input", draw);
+    amplitude?.addEventListener("input", draw);
+    controls.querySelector(".signal-reset")?.addEventListener("click", () => {
+      slider.value = "25";
+      if (frequency) frequency.value = "4";
+      if (amplitude) amplitude.value = "65";
+      phase = 0;
+      paused = false;
+      updateNoise();
+      sync();
+    });
+    reduced.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
+    document.addEventListener("themechange", draw);
+    updateNoise();
+    sync();
+  }
+</script>

@@ -1,0 +1,165 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dan-hughes-portfolio-local",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page",
+  },
+  "vars": {
+    "RADAR_ENABLED": false,
+    "SITE_ENV": "development",
+    "LOCAL_PREVIEW": "false",
+    "TURNSTILE_SITE_KEY": "",
+  },
+  "ratelimits": [
+    {
+      "name": "EXPERIMENT_STARTS",
+      "namespace_id": "1003",
+      "simple": { "limit": 12, "period": 60 },
+    },
+    {
+      "name": "RADAR_INGRESS",
+      "namespace_id": "1001",
+      "simple": { "limit": 300, "period": 60 },
+    },
+    {
+      "name": "RADAR_UPSTREAM",
+      "namespace_id": "1002",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
+  "secrets": { "required": ["RADAR_API_TOKEN", "TURNSTILE_SECRET_KEY"] },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CoordinationRoom"] }],
+  "durable_objects": {
+    "bindings": [{ "name": "COORDINATION", "class_name": "CoordinationRoom" }],
+  },
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "RADAR_SNAPSHOTS", "id": "local-radar" }],
+  "d1_databases": [
+    {
+      "binding": "HISTORY",
+      "database_name": "portfolio-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "worker/migrations",
+    },
+  ],
+  "observability": {
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 0.1,
+      "invocation_logs": true,
+    },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+  },
+  "env": {
+    "development": {
+      "name": "dan-hughes-portfolio-development",
+      "routes": [{ "pattern": "dev.danhughes.uk", "custom_domain": true }],
+      "vars": {
+        "RADAR_ENABLED": true,
+        "SITE_ENV": "development",
+        "LOCAL_PREVIEW": "false",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAEwKiOJAwAjFoULs",
+      },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "triggers": { "crons": ["*/5 * * * *"] },
+      "durable_objects": {
+        "bindings": [
+          { "name": "COORDINATION", "class_name": "CoordinationRoom" },
+        ],
+      },
+      "ai": { "binding": "AI" },
+      "kv_namespaces": [
+        {
+          "binding": "RADAR_SNAPSHOTS",
+          "id": "484fcacb5bf34479b57c00abf992ddfd",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "HISTORY",
+          "database_name": "portfolio-development",
+          "database_id": "5b6ac184-5b43-4bbd-b632-72930dd30f81",
+          "migrations_dir": "worker/migrations",
+        },
+      ],
+      "ratelimits": [
+        {
+          "name": "EXPERIMENT_STARTS",
+          "namespace_id": "1003",
+          "simple": { "limit": 12, "period": 60 },
+        },
+        {
+          "name": "RADAR_INGRESS",
+          "namespace_id": "1001",
+          "simple": { "limit": 300, "period": 60 },
+        },
+        {
+          "name": "RADAR_UPSTREAM",
+          "namespace_id": "1002",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
+      "secrets": { "required": ["RADAR_API_TOKEN", "TURNSTILE_SECRET_KEY"] },
+    },
+    "production": {
+      "name": "dan-hughes-portfolio-production",
+      "routes": [{ "pattern": "danhughes.uk", "custom_domain": true }],
+      "vars": {
+        "RADAR_ENABLED": true,
+        "SITE_ENV": "production",
+        "LOCAL_PREVIEW": "false",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAEwLS8fdnPVShcn4",
+      },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "triggers": { "crons": ["2-59/5 * * * *"] },
+      "durable_objects": {
+        "bindings": [
+          { "name": "COORDINATION", "class_name": "CoordinationRoom" },
+        ],
+      },
+      "ai": { "binding": "AI" },
+      "kv_namespaces": [
+        {
+          "binding": "RADAR_SNAPSHOTS",
+          "id": "3bbf7af7f0984ec698fd41bd74fc02a1",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "HISTORY",
+          "database_name": "portfolio-production",
+          "database_id": "b3b22943-2329-4ddf-b02d-212db9ae5cd7",
+          "migrations_dir": "worker/migrations",
+        },
+      ],
+      "ratelimits": [
+        {
+          "name": "EXPERIMENT_STARTS",
+          "namespace_id": "2003",
+          "simple": { "limit": 12, "period": 60 },
+        },
+        {
+          "name": "RADAR_INGRESS",
+          "namespace_id": "2001",
+          "simple": { "limit": 300, "period": 60 },
+        },
+        {
+          "name": "RADAR_UPSTREAM",
+          "namespace_id": "2002",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
+      "secrets": { "required": ["RADAR_API_TOKEN", "TURNSTILE_SECRET_KEY"] },
+    },
+  },
+}

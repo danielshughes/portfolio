@@ -1,0 +1,107 @@
+name: Quality
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - main
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    env:
+      CI: true
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check changed files
+        id: filter
+        run: node scripts/ci-changes.mjs
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.filter.outputs.code == 'true'
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm ci
+        if: steps.filter.outputs.code == 'true'
+      - run: npm run lint:workflows
+        if: steps.filter.outputs.code == 'true'
+      - run: npx playwright install --with-deps chromium firefox webkit
+        if: steps.filter.outputs.code == 'true'
+      - run: npm run quality
+        if: steps.filter.outputs.code == 'true'
+        env:
+          PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
+      - name: Preserve failed browser evidence
+        if: failure() && steps.filter.outputs.code == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/portfolio-test-results
+          retention-days: 3
+          include-hidden-files: false
+          if-no-files-found: ignore
+      - run: npm audit --audit-level=low
+        if: steps.filter.outputs.code == 'true'
+      - name: Redacted secret scan of history and deliverables
+        shell: bash
+        run: |
+          set -euo pipefail
+          scanner_dir="$(mktemp -d "$RUNNER_TEMP/gitleaks.XXXXXX")"
+          curl --fail --silent --show-error --location https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz --output "$scanner_dir/gitleaks.tar.gz"
+          printf '%s  %s\n' '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' "$scanner_dir/gitleaks.tar.gz" | sha256sum --check --status
+          tar -xzf "$scanner_dir/gitleaks.tar.gz" -C "$scanner_dir" gitleaks
+          "$scanner_dir/gitleaks" git --redact=100 --log-opts="--all" .
+          for path in src public worker tests scripts docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
+            "$scanner_dir/gitleaks" dir --redact=100 "$path"
+          done
+          if [ -d dist ]; then
+            "$scanner_dir/gitleaks" dir --redact=100 dist
+          fi
+  deploy:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || (github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true')) && github.repository == 'danielshughes/portfolio' && needs.quality.outputs.code == 'true'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      url: ${{ github.ref == 'refs/heads/main' && 'https://danhughes.uk' || 'https://dev.danhughes.uk' }}
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
+      WRANGLER_SEND_METRICS: false
+      DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      SITE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+      SITE_URL: https://danhughes.uk
+      PRODUCTION_DEPLOY_ENABLED: ${{ vars.PRODUCTION_DEPLOY_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy the checked environment commit
+        run: node scripts/deploy.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RADAR_API_TOKEN: ${{ secrets.RADAR_API_TOKEN }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}

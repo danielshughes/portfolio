@@ -1,0 +1,313 @@
+---
+const junctions = [
+  [28, 144],
+  [132, 132],
+  [223, 84],
+  [198, 22],
+  [333, 107],
+  [402, 61],
+  [484, 88],
+  [574, 28],
+  [372, 162],
+  [490, 177],
+  [450, 18],
+];
+// A short offshoot and a longer branching chain leave deliberate open space.
+const links = [
+  { from: 0, to: 1, d: "M28 144C67 154 94 125 132 132" },
+  { from: 1, to: 2, d: "M132 132C185 144 176 96 223 84" },
+  { from: 2, to: 3, d: "M223 84C236 58 182 51 198 22" },
+  { from: 2, to: 4, d: "M223 84C271 67 289 117 333 107" },
+  { from: 4, to: 5, d: "M333 107C366 98 352 64 402 61" },
+  { from: 5, to: 6, d: "M402 61C440 54 444 101 484 88" },
+  { from: 6, to: 7, d: "M484 88C527 82 516 24 574 28" },
+  { from: 4, to: 8, d: "M333 107C358 132 339 151 372 162" },
+  { from: 8, to: 9, d: "M372 162C405 187 443 169 490 177" },
+  { from: 5, to: 10, d: "M402 61C443 67 458 47 450 18" },
+];
+---
+
+<figure class="connection-field" data-motion="idle">
+  <div class="connection-surface">
+    <svg viewBox="0 0 600 200" fill="none" aria-hidden="true">
+      <g class="connection-guides">
+        <path
+          d="M79 87C99 22 293 5 365 31M169 171C259 199 520 167 554 103"
+          stroke-dasharray="2 8"
+        />
+      </g>
+      {links.map(({ from, to, d }) => (
+        <g>
+          <path class="connection-wire" data-from={from} data-to={to} d={d} />
+          <circle class="connection-pulse" r="3" opacity="0" />
+        </g>
+      ))}
+      {junctions.map(([x, y], index) => (
+        <circle
+          class="connection-junction"
+          data-junction={index}
+          cx={x}
+          cy={y}
+          r={index === 2 ? 8 : 4}
+        />
+      ))}
+      <g class="connection-ticks">
+        <path d="M35 28H45M40 23V33M555 174H565M560 169V179" />
+      </g>
+    </svg>
+    <button
+      class="connection-trigger"
+      type="button"
+      aria-label="Send a pulse through the connection graphic"
+      aria-describedby="connection-description"
+      hidden
+    ></button>
+  </div>
+  <figcaption>
+    <span id="connection-description">Just a few connections.</span>
+    <a class="text-link" href="/experiments/">
+      Explore experiments <span aria-hidden="true">↗</span>
+    </a>
+  </figcaption>
+</figure>
+
+<style>
+  .connection-field {
+    min-width: 0;
+    width: 100%;
+    max-width: 30rem;
+    margin: 0;
+    justify-self: center;
+  }
+  .connection-surface {
+    position: relative;
+    width: 100%;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .connection-guides {
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  .connection-wire {
+    stroke: var(--muted);
+    stroke-width: 1.3;
+    vector-effect: non-scaling-stroke;
+  }
+  .connection-junction {
+    fill: var(--paper);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .connection-junction[data-junction="2"],
+  .connection-junction[data-active] {
+    fill: var(--orange);
+    stroke: var(--orange);
+  }
+  .connection-pulse {
+    fill: var(--orange);
+  }
+  .connection-ticks {
+    stroke: var(--muted);
+  }
+  .connection-trigger {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: 0;
+    background: none;
+    cursor: crosshair;
+    border-radius: 1rem;
+    touch-action: pan-y;
+  }
+  .connection-trigger:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 4px;
+  }
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--control-gap) var(--space-sm);
+    font-size: var(--type-caption);
+    color: var(--muted);
+  }
+  figcaption .text-link {
+    color: var(--ink);
+  }
+  @media (max-width: 600px) {
+    .connection-field {
+      max-width: 24rem;
+    }
+  }
+</style>
+
+<script>
+  const field = document.querySelector<HTMLElement>(".connection-field");
+  if (field) {
+    const svg = field.querySelector("svg")!;
+    const trigger = field.querySelector<HTMLButtonElement>("button")!;
+    const nodes = [
+      ...field.querySelectorAll<SVGCircleElement>(".connection-junction"),
+    ];
+    const edges = [
+      ...field.querySelectorAll<SVGPathElement>(".connection-wire"),
+    ].map((path, index) => ({
+      path,
+      from: Number(path.dataset.from),
+      to: Number(path.dataset.to),
+      length: path.getTotalLength(),
+      delay: (index * 73) % 190,
+      duration: 460 + ((index * 97) % 230),
+      dot: path.nextElementSibling as SVGCircleElement,
+    }));
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let visible = false;
+    let pageActive = true;
+    let origin = -1;
+    let lastNode = -1;
+    let lastSent = 0;
+    trigger.hidden = false;
+
+    function stop() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      field!.dataset.motion = "idle";
+      edges.forEach((edge) => edge.dot.setAttribute("opacity", "0"));
+    }
+
+    function canAnimate() {
+      return visible && pageActive && !reduced.matches && !document.hidden;
+    }
+
+    function randomOrigin() {
+      if (origin < 0) return Math.floor(Math.random() * nodes.length);
+      const choice = Math.floor(Math.random() * (nodes.length - 1));
+      return choice >= origin ? choice + 1 : choice;
+    }
+
+    function sync() {
+      if (!canAnimate()) stop();
+      else if (!frame) pulse(randomOrigin());
+    }
+
+    function pulse(nextOrigin: number) {
+      stop();
+      origin = nextOrigin;
+      nodes.forEach((node, index) =>
+        node.toggleAttribute("data-active", index === origin),
+      );
+      if (!canAnimate()) return;
+      // Hop distances only choreograph this abstract graphic. They are not telemetry.
+      const hops = nodes.map(() => Infinity);
+      hops[origin] = 0;
+      const queue = [origin];
+      for (const node of queue) {
+        for (const edge of edges) {
+          const neighbour =
+            edge.from === node ? edge.to : edge.to === node ? edge.from : -1;
+          if (neighbour >= 0 && hops[neighbour] === Infinity) {
+            hops[neighbour] = hops[node] + 1;
+            queue.push(neighbour);
+          }
+        }
+      }
+      const start = performance.now();
+      const duration = Math.max(
+        ...edges.map(
+          (edge) =>
+            Math.min(hops[edge.from], hops[edge.to]) * 230 +
+            edge.delay +
+            edge.duration,
+        ),
+      );
+      lastSent = start;
+      field!.dataset.motion = "running";
+      function tick(now: number) {
+        if (!canAnimate()) {
+          stop();
+          return;
+        }
+        const elapsed = now - start;
+        for (const edge of edges) {
+          const forward = hops[edge.from] <= hops[edge.to];
+          const progress =
+            (elapsed -
+              Math.min(hops[edge.from], hops[edge.to]) * 230 -
+              edge.delay) /
+            edge.duration;
+          const active = progress >= 0 && progress <= 1;
+          edge.dot.setAttribute("opacity", active ? "1" : "0");
+          if (active) {
+            const point = edge.path.getPointAtLength(
+              (forward ? progress : 1 - progress) * edge.length,
+            );
+            edge.dot.setAttribute("cx", String(point.x));
+            edge.dot.setAttribute("cy", String(point.y));
+          }
+        }
+        if (elapsed < duration) frame = requestAnimationFrame(tick);
+        else pulse(randomOrigin());
+      }
+      frame = requestAnimationFrame(tick);
+    }
+
+    function nearest(event: MouseEvent) {
+      const matrix = svg.getScreenCTM();
+      if (!matrix) return 2;
+      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
+        matrix.inverse(),
+      );
+      let nearestIndex = 2,
+        distance = Infinity;
+      nodes.forEach((node, index) => {
+        const next = Math.hypot(
+          point.x - node.cx.baseVal.value,
+          point.y - node.cy.baseVal.value,
+        );
+        if (next < distance) {
+          distance = next;
+          nearestIndex = index;
+        }
+      });
+      return nearestIndex;
+    }
+
+    trigger.addEventListener("click", (event) =>
+      pulse(event.detail === 0 ? 2 : nearest(event)),
+    );
+    trigger.addEventListener("focus", () => pulse(2));
+    trigger.addEventListener("pointermove", (event) => {
+      if (event.pointerType !== "mouse") return;
+      const node = nearest(event);
+      if (node !== lastNode && performance.now() - lastSent > 450) {
+        lastNode = node;
+        pulse(node);
+      }
+    });
+    trigger.addEventListener("pointerleave", () => {
+      lastNode = -1;
+    });
+    new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      sync();
+    }).observe(field);
+    document.addEventListener("visibilitychange", sync);
+    reduced.addEventListener("change", sync);
+    window.addEventListener("pagehide", () => {
+      pageActive = false;
+      sync();
+    });
+    window.addEventListener("pageshow", () => {
+      pageActive = true;
+      sync();
+    });
+  }
+</script>

@@ -1,0 +1,212 @@
+---
+import TriageExperiment from "./TriageExperiment.astro";
+import ExperimentCard from "./ExperimentCard.astro";
+import LivePreview from "./LivePreview.astro";
+import StreamExperiment from "./StreamExperiment.astro";
+import "../styles/live-experiments.css";
+---
+
+<section id="at-the-edge" class="live-experiments" aria-labelledby="live-title">
+  <p class="eyebrow">A little closer to real</p>
+  <h2 class="section-title" id="live-title">
+    Outside <em>the browser.</em>
+  </h2>
+  <p class="live-intro">
+    Real requests to Cloudflare, from connection details to a model’s second
+    opinion.
+  </p>
+  <div class="experiment-collection live-grid">
+    <ExperimentCard
+      live
+      id="edge"
+      tone="peach"
+      tinted
+      number="07"
+      title="You are here."
+      subtitle="The edge on the other end of this request."
+      label="Cloudflare / request metadata"
+      caption="Connection outline; open for observed metadata"
+    >
+      <LivePreview slot="preview" kind="edge" />
+      <div class="live-controls">
+        <dl class="edge-facts">
+          <div>
+            <dt>Country</dt>
+            <dd data-edge-country>Not loaded</dd>
+          </div>
+          <div>
+            <dt>Serving edge</dt>
+            <dd data-edge-colo>Not loaded</dd>
+          </div>
+          <div>
+            <dt>Protocol</dt>
+            <dd data-edge-protocol>Not loaded</dd>
+          </div>
+          <div>
+            <dt>TLS</dt>
+            <dd data-edge-tls>Not loaded</dd>
+          </div>
+          <div>
+            <dt>Connection round trip</dt>
+            <dd data-edge-roundTripMs>Not loaded</dd>
+          </div>
+          <div>
+            <dt>Network</dt>
+            <dd data-edge-network>Not loaded</dd>
+          </div>
+        </dl>
+        <p role="status" data-edge-status>
+          Open to inspect this request.
+        </p>
+        <button type="button" data-edge-retry hidden>
+          Try connection again
+        </button>
+        <p class="live-footnote">
+          Country is approximate. Your IP address isn’t returned to this page.
+        </p>
+      </div>
+    </ExperimentCard>
+    <ExperimentCard
+      live
+      id="health"
+      tone="sage"
+      number="08"
+      title="Still answering?"
+      subtitle="A day of checks, including the missing ones."
+      label="Cron + D1 / homepage asset checks"
+      caption="Check cadence; open for asset response headers"
+    >
+      <LivePreview slot="preview" kind="health" />
+      <figure slot="preview" class="health-figure">
+        <svg
+          viewBox="0 0 600 160"
+          role="img"
+          aria-label="Observed homepage asset response time samples"
+        >
+          <path class="health-baseline" d="M0 145H600M0 15H600" />
+          <path data-health-line fill="none" />
+          <g data-health-points fill="currentColor" />
+          <g data-health-failures />
+          <g data-health-selected aria-hidden="true" visibility="hidden">
+            <path data-health-cursor class="health-cursor" />
+            <circle data-health-ring class="health-ring" r="7" />
+          </g>
+          <text data-health-empty x="300" y="82" text-anchor="middle">
+            Open to load observed samples.
+          </text>
+        </svg>
+      </figure>
+      <div class="live-controls">
+        <div class="health-inspector" hidden>
+          <label for="health-reading">Inspect a recorded check</label>
+          <input
+            id="health-reading"
+            type="range"
+            min="0"
+            max="0"
+            value="0"
+            step="1"
+            aria-describedby="health-readout"
+          />
+          <p id="health-readout" data-health-reading />
+        </div>
+        <p class="live-footnote">
+          <span data-health-scale /> Gaps are unmeasured intervals; crosses are
+          failed checks.
+        </p>
+        <p role="status" data-health-status>
+          Open to load the measurement window.
+        </p>
+        <p class="live-footnote" data-health-window />
+        <button type="button" data-health-retry hidden>
+          Try samples again
+        </button>
+        <details class="sample-table" hidden>
+          <summary>Recent readings</summary>
+          <div class="sample-table-scroll">
+            <table>
+              <caption>Latest homepage checks (UTC)</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Time</th>
+                  <th scope="col">HTTP</th>
+                  <th scope="col">ms</th>
+                </tr>
+              </thead>
+              <tbody data-health-rows />
+            </table>
+          </div>
+        </details>
+        <p class="live-footnote">
+          One check every five minutes through this environment’s asset binding.
+          Response headers only, excluding public routing, Access and browser
+          rendering. Not uptime monitoring or an SLO.
+        </p>
+      </div>
+    </ExperimentCard>
+    <StreamExperiment />
+    <ExperimentCard
+      live
+      id="room"
+      tone="peach"
+      number="10"
+      title="On the same page."
+      subtitle="Send a pulse. Watch it arrive in another window."
+      label="Durable Object / WebSockets"
+      caption="Illustrative relay; connect to send real pulses"
+    >
+      <LivePreview slot="preview" kind="room" />
+      <div class="live-controls">
+        <div class="room-display">
+          <span>Shared sequence</span>
+          <strong data-room-sequence>Not connected</strong>
+        </div>
+        <div class="live-actions">
+          <button type="button" data-room-connect disabled>
+            Connect
+          </button>
+          <button type="button" data-room-send disabled>
+            Send pulse
+          </button>
+        </div>
+        <p role="status" data-room-status>
+          Not connected.
+        </p>
+        <p class="live-footnote">
+          A small shared demo room, not chat. No names or messages. Short
+          sessions, bounded pulses, and connections close when this view is
+          hidden. Idle connections use hibernation.
+        </p>
+      </div>
+    </ExperimentCard>
+  </div>
+  <TriageExperiment />
+  <noscript>
+    <p>
+      These optional experiments need JavaScript. The notes and simulations'
+      descriptions remain available.
+    </p>
+  </noscript>
+</section>
+<script>
+  const root = document.querySelector<HTMLElement>("#at-the-edge");
+  if (root) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void import("../experiments/live")
+          .then(({ mountLiveExperiments }) => mountLiveExperiments(root))
+          .catch(() => {
+            for (const status of root.querySelectorAll<HTMLElement>(
+              '[role="status"]',
+            ))
+              status.textContent =
+                "The interactive controls could not load. Reload to try again.";
+          });
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(root);
+  }
+</script>

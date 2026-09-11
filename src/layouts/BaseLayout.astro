@@ -1,0 +1,149 @@
+---
+import displayFont from "@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url";
+import bodyFont from "@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url";
+import "../styles/fonts.css";
+import "../styles/global.css";
+import Motion from "../components/Motion.astro";
+import ThemeControl from "../components/ThemeControl.astro";
+import { portfolioContent } from "../content/portfolio";
+import { siteEnvironment } from "../../scripts/site-environment.mjs";
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+const environment = siteEnvironment();
+const canonical = environment.origin
+  ? new URL(Astro.url.pathname, environment.origin).href
+  : undefined;
+const structuredData = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Dan Hughes",
+  url: environment.origin,
+  sameAs: [portfolioContent.linkedin],
+}).replaceAll("<", "\\u003c");
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <link
+      rel="preload"
+      href={displayFont}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={bodyFont}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <script is:inline>
+      (() => {
+        let choice = "system";
+        try {
+          choice = localStorage.getItem("portfolio-theme") || "system";
+        } catch {}
+        document.documentElement.dataset.theme = ["light", "dark"].includes(
+          choice,
+        )
+          ? choice
+          : matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="description" content={description} />
+    {environment.name === "development" ? (
+      <meta name="robots" content="noindex, nofollow" />
+    ) : (
+      <>
+        <link rel="canonical" href={canonical} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonical} />
+        <meta name="twitter:card" content="summary" />
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={structuredData}
+        ></script>
+      </>
+    )}
+    <meta name="theme-color" content="#f9f9f6" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">
+      Skip to content
+    </a>
+    <header class="site-header">
+      <a class="site-mark" href="/" aria-label="Dan Hughes portfolio home">
+        dh
+        <svg
+          class="signature-trace"
+          viewBox="0 0 42 28"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path d="M2 18H9L14 7L20 23L27 4L32 18H40" />
+          <circle cx="40" cy="18" r="2" />
+        </svg>
+      </a>
+      <nav aria-label="Main navigation">
+        <a
+          href="/notes/"
+          aria-current={
+            Astro.url.pathname.startsWith("/notes") ? "page" : undefined
+          }
+        >
+          Notes
+        </a>
+        <a
+          href="/experiments/"
+          aria-current={
+            Astro.url.pathname.startsWith("/experiments") ? "page" : undefined
+          }
+        >
+          Experiments
+        </a>
+        <a href="/#contact">
+          Contact <span aria-hidden="true">↗</span>
+        </a>
+        <ThemeControl />
+      </nav>
+    </header>
+    <main id="main-content" tabindex="-1">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <a href="/">Dan Hughes</a>
+      <span>Always tinkering.</span>
+      <a
+        href={portfolioContent.github}
+        target="_blank"
+        rel="me noopener noreferrer"
+        aria-describedby="footer-new-tab"
+      >
+        View source ↗
+      </a>
+      <span id="footer-new-tab" hidden>
+        Opens in a new tab
+      </span>
+    </footer>
+    <Motion />
+    <script>
+      import { mountSignature } from "../scripts/signature";
+      const mark = document.querySelector<HTMLElement>(".site-mark");
+      if (mark) mountSignature(mark);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS radar_cache (
+  key TEXT PRIMARY KEY,
+  body TEXT NOT NULL,
+  headers TEXT NOT NULL,
+  expires INTEGER NOT NULL
+);

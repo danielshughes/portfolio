@@ -1,0 +1,115 @@
+---
+interface Props {
+  kind: string;
+}
+const { kind } = Astro.props;
+---
+
+<svg
+  class={`experiment-preview preview-${kind}`}
+  viewBox="0 0 600 320"
+  fill="none"
+  aria-hidden="true"
+>
+  {kind === "kubernetes" ? (
+    <>
+      {[40, 225, 410].map((x, i) => (
+        <g>
+          <rect
+            class="preview-node"
+            x={x}
+            y="88"
+            width="150"
+            height="185"
+            rx="5"
+          />
+          <text x={x + 15} y="115">
+            node {i + 1}
+          </text>
+          {[0, 1, 2, 3].map((j) => (
+            <rect
+              class="preview-pod"
+              style={`--i:${i * 4 + j}`}
+              x={x + 17 + (j % 2) * 60}
+              y={145 + Math.floor(j / 2) * 60}
+              width="48"
+              height="43"
+              rx="3"
+            />
+          ))}
+        </g>
+      ))}
+      <path class="preview-flow" d="M60 42H540" />
+      <circle class="preview-bead" cx="60" cy="42" r="6" />
+    </>
+  ) : kind === "mcp" ? (
+    <>
+      <path class="preview-flow" d="M80 160H520M300 160V260" />
+      {[80, 300, 520].map((cx, i) => (
+        <g>
+          <circle class="preview-node" cx={cx} cy="160" r="48" />
+          <text x={cx} y="165" text-anchor="middle">
+            {["context", "agent", "tools"][i]}
+          </text>
+        </g>
+      ))}
+      <circle class="preview-bead" cx="80" cy="160" r="6" />
+      <text x="300" y="285" text-anchor="middle">
+        host policy
+      </text>
+    </>
+  ) : kind === "latency" ? (
+    <>
+      {Array.from({ length: 40 }, (_, i) => (
+        <rect
+          class="preview-bar"
+          style={`--i:${i}`}
+          x={30 + i * 13.5}
+          y={270 - (i < 35 ? 25 + (i % 5) * 6 : 90 + (i - 35) * 35)}
+          width="8"
+          height={i < 35 ? 25 + (i % 5) * 6 : 90 + (i - 35) * 35}
+        />
+      ))}
+      <path class="preview-axis" d="M25 280H575" />
+    </>
+  ) : kind === "requests" ? (
+    <>
+      {Array.from({ length: 8 }, (_, i) => (
+        <rect
+          class="preview-request"
+          style={`--i:${i}`}
+          x={40 + Math.floor(i / 2) * 125}
+          y={45 + i * 29}
+          width="110"
+          height="17"
+        />
+      ))}
+      <path class="preview-flow" d="M470 25V290" />
+    </>
+  ) : kind === "wave" ? (
+    <>
+      <path
+        class="preview-wave"
+        d="M-150 160Q-112 75-75 160T0 160T75 160T150 160T225 160T300 160T375 160T450 160T525 160T600 160T675 160T750 160"
+      />
+      <path class="preview-axis" d="M0 160H600" />
+    </>
+  ) : (
+    <g class="preview-orbit">
+      <path
+        class="preview-flow"
+        d="M130 160L270 65L465 110L480 240L290 270L270 65M130 160L100 255M290 270L465 110"
+      />
+      {[
+        [130, 160],
+        [270, 65],
+        [465, 110],
+        [480, 240],
+        [290, 270],
+        [100, 255],
+      ].map(([cx, cy]) => (
+        <circle class="preview-node" cx={cx} cy={cy} r="12" />
+      ))}
+    </g>
+  )}
+</svg>
