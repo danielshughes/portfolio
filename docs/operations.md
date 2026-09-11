@@ -92,7 +92,13 @@ To rotate: create the replacement with the same reviewed scope, save and re-read
 
 ## Local development and tests
 
-Use the Node version declared by `package.json`. `npm run dev` serves Astro. Build assets and apply local migrations before starting the local Worker; Astro proxies `/api` including WebSocket upgrades to that Worker. Keep local `.dev.vars` ignored, and never use real credentials in automated tests.
+Use the exact Node release in [`.nvmrc`](../.nvmrc), within the engine range declared by [`package.json`](../package.json), and its `packageManager` npm version. The [README bootstrap](../README.md#local-development) runs the declared npm without a global installation; `npm` in these examples means that version. Both CI jobs select Node from `.nvmrc` and install the declared npm before `npm ci`. Node is build/test tooling; the deployed Worker runtime remains controlled by Wrangler's compatibility configuration.
+
+The manifest's exact TypeScript aliases provide native `tsc` for Worker checking and the compatible compiler API for Astro, ESLint and source-analysis tests. `tsc6` exposes the API compiler's command-line checker. Keep both paths working when updating dependencies, and verify installed versions rather than inferring them from alias names. Directly Node-executed TypeScript uses erasable syntax and type-only imports; Astro supplies `verbatimModuleSyntax` through its base configuration, while the Worker declares it explicitly and keeps Node ambient types excluded.
+
+npm blocks unapproved dependency lifecycle scripts. `allowScripts` in the manifest pins the reviewed esbuild/workerd binary setup scripts; fsevents uses its packaged native binary without its implicit build script. Review these entries alongside dependency updates, using `npm install-scripts ls` to find new scripts. Do not blanket-approve scripts or bypass dependency peer checks. Stable Wrangler's exact Miniflare dependency is also the direct test runtime, including its upstream prerelease suffix.
+
+`npm run dev` serves Astro. Build assets and apply local migrations before starting the local Worker; Astro proxies `/api` including WebSocket upgrades to that Worker. Keep local `.dev.vars` ignored, and never use real credentials in automated tests.
 
 ```sh
 npm ci
@@ -116,6 +122,8 @@ Cloudflare states: "There is no current local simulation for Workers AI." [Local
 CI runs every configured browser. An explicit local browser subset must be reported as such. After workflow changes run `npm run lint:workflows`; after binding changes run `npm run types:worker`. Audit dependencies, run the redacted secret scan and inspect generated assets for private content. Dry-run output and test artefacts belong outside the checkout.
 
 ## Normal deployment
+
+Dependabot version updates target `develop`. Wrangler and Miniflare minor/patch updates share a group; other routine changes are grouped by ecosystem, while major migrations remain separate. GitHub security updates still target the repository's default branch, regardless of `target-branch`. Triage them promptly, prepare and verify the compatible fix on `develop`, then promote through the normal reviewed path and reconcile the alert or duplicate PR. Keep the Dependabot configuration on the default branch in sync through promotion.
 
 1. Work on a feature branch and open a PR against `develop`.
 2. The read-only required quality job always reports. Recognised documentation-only changes retain file classification and redacted secret scanning, but skip dependency/browser installation, the expensive suite and deployment; site copy and unknown files still require quality. Workflow-level PR path filters are intentionally avoided because required checks could remain pending.

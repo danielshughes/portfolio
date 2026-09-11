@@ -18,6 +18,43 @@ const workflow = readFileSync(
   "utf8",
 );
 
+test("local and CI use the declared Node and npm versions", () => {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  const node = readFileSync(".nvmrc", "utf8").trim();
+  assert.match(node, /^\d+\.\d+\.\d+$/);
+  assert.equal(
+    pkg.engines.node,
+    `>=${node} <${Number(node.split(".")[0]) + 1}`,
+  );
+  assert.match(pkg.packageManager, /^npm@\d+\.\d+\.\d+$/);
+  for (const name of ["quality", "deploy"]) {
+    const job = workflow.split(`  ${name}:\n`)[1]?.split(/\n  \w+:\n/)[0];
+    assert.ok(job, name);
+    assert.match(job, /node-version-file: \.nvmrc/);
+    assert.doesNotMatch(job, /node-version:/);
+    const bootstrap = job.indexOf('npm install --global "$(node -p');
+    assert.ok(bootstrap >= 0, `${name} installs the declared npm`);
+    assert.match(job, /require\('\.\/package\.json'\)\.packageManager/);
+    assert.ok(bootstrap < job.indexOf("run: npm ci"));
+  }
+});
+
+test("version updates follow development and keep coupled runtimes together", () => {
+  const policy = readFileSync(".github/dependabot.yml", "utf8");
+  for (const ecosystem of ["npm", "github-actions"]) {
+    const update = policy
+      .split(`package-ecosystem: ${ecosystem}\n`)[1]
+      ?.split("  - package-ecosystem:")[0];
+    assert.ok(update, ecosystem);
+    assert.match(update, /target-branch: develop/);
+    assert.match(update, /update-types: \["minor", "patch"\]/);
+  }
+  assert.match(
+    policy,
+    /cloudflare:\s*\n\s+patterns: \["wrangler", "miniflare"\]/,
+  );
+});
+
 test("quality runs for pull requests and protected branches only", () => {
   assert.match(
     workflow,

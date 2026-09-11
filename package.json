@@ -3,8 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@12.0.2",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=26.8.2 <27"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "workerd@1.20260911.1": true,
+    "fsevents": false
   },
   "scripts": {
     "dev": "astro dev",
@@ -22,7 +29,7 @@
     "types:worker": "wrangler types worker/worker-configuration.d.ts --strict-vars=false && prettier --write worker/worker-configuration.d.ts",
     "dev:worker": "wrangler dev --local --env development --ip 127.0.0.1 --port 8787 --test-scheduled --var LOCAL_PREVIEW:true",
     "dev:sample": "node scripts/local-sample.mjs",
-    "format:check": "prettier --check src tests scripts docs 'worker/*.ts' worker/tsconfig.json wrangler.jsonc playwright.config.ts astro.config.mjs eslint.config.mjs README.md AGENTS.md .prettierrc.json .github package.json",
+    "format:check": "prettier --check src tests scripts docs 'worker/*.ts' worker/tsconfig.json tsconfig.json wrangler.jsonc playwright.config.ts astro.config.mjs eslint.config.mjs README.md AGENTS.md .prettierrc.json .github package.json",
     "test:browser": "npm run build && playwright test",
     "test": "npm run test:content && npm run test:worker && npm run test:static",
     "test:worker": "node --test worker/*.test.ts",
@@ -33,17 +40,18 @@
     "@astrojs/check": "0.9.10",
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
-    "@types/node": "22.20.2",
+    "@types/node": "26.5.1",
+    "@typescript/native": "npm:typescript@7.0.2",
     "astro": "7.3.2",
     "esbuild": "0.28.2",
     "eslint": "10.10.0",
     "eslint-plugin-astro": "3.1.0",
-    "miniflare": "5.20260908.0-alpha",
+    "miniflare": "5.20260911.0-alpha",
     "prettier": "3.9.6",
     "prettier-plugin-astro": "1.0.0",
-    "typescript": "6.0.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "8.70.0",
-    "wrangler": "4.130.0"
+    "wrangler": "4.131.1"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",
