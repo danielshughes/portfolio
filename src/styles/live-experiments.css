@@ -175,6 +175,9 @@
   background: var(--preview-tint);
   border-bottom: 0;
 }
+.triage-showcase .experiment-technology {
+  margin-bottom: var(--space-xs);
+}
 .triage-showcase .experiment-visual {
   height: clamp(4rem, 8vw, 6rem);
   min-height: 0;
@@ -261,10 +264,6 @@
       stroke-dashoffset: -100;
     }
   }
-}
-.triage-showcase .stage-label {
-  color: var(--preview-accent);
-  margin-bottom: var(--space-xs);
 }
 .triage-showcase .experiment-card-heading {
   margin-bottom: 0;

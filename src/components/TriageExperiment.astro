@@ -1,5 +1,6 @@
 ---
 import { triageScenarios } from "../experiments/triage-scenarios";
+import ExperimentTechnology from "./ExperimentTechnology.astro";
 import TriageGraphic from "./TriageGraphic.astro";
 ---
 
@@ -16,9 +17,6 @@ import TriageGraphic from "./TriageGraphic.astro";
       <header class="experiment-card-heading">
         <span class="experiment-number">11</span>
         <div>
-          <span class="stage-label">
-            Workers AI + Turnstile / synthetic incidents
-          </span>
           <h3 id="triage-title">A second opinion.</h3>
           <p>Choose a fictional incident. See what the model makes of it.</p>
         </div>
@@ -36,6 +34,7 @@ import TriageGraphic from "./TriageGraphic.astro";
     </div>
     <div class="triage-lab">
       <div class="experiment-stage">
+        <ExperimentTechnology label="Workers AI + Turnstile / synthetic incidents" />
         <TriageGraphic />
       </div>
       <div class="live-controls triage-workspace">

@@ -3,6 +3,7 @@ import earth from "../assets/earth-land.json";
 import { countries, project } from "../experiments/internet-model";
 import "../styles/internet-map.css";
 import RadarTabs from "./RadarTabs.astro";
+import ExperimentTechnology from "./ExperimentTechnology.astro";
 import { radarViews } from "../experiments/radar-tabs";
 const descriptions = Object.values(radarViews);
 ---
@@ -15,11 +16,12 @@ const descriptions = Object.values(radarViews);
 >
   <header class="internet-heading">
     <div>
-      <p class="eyebrow">Cloudflare Radar / Workers + KV</p>
+      <p class="eyebrow">Further afield</p>
       <h2 id="internet-title">
         The Internet <em>has a pulse.</em>
       </h2>
       <p>A country, a week, a different rhythm.</p>
+      <ExperimentTechnology label="Radar / Workers KV" />
     </div>
     <p class="internet-source">Cloudflare Radar</p>
   </header>

@@ -11,10 +11,10 @@ const technologies = {
   world: "Canvas 2D / imaginary 3D topology",
   edge: "Workers / request.cf metadata",
   health: "Cron Triggers + D1 / asset checks",
-  stream: "Workers / Streams API",
+  stream: "Workers / Web Streams API",
   room: "Durable Objects / WebSockets",
   triage: "Workers AI + Turnstile / synthetic incidents",
-  internet: "Cloudflare Radar / Workers + KV",
+  internet: "Radar / Workers KV",
 };
 
 for (const width of [320, 390, 1280]) {
@@ -25,9 +25,7 @@ for (const width of [320, 390, 1280]) {
     await page.goto("/experiments/");
     for (const [id, technology] of Object.entries(technologies)) {
       const section = page.locator(`#${id}`);
-      const label = section.locator(
-        id === "internet" ? ".eyebrow" : ".stage-label",
-      );
+      const label = section.locator(".experiment-technology");
       await expect(label).toHaveText(technology);
       await expect(label).toBeVisible();
       expect(await label.evaluate((el) => el.closest("details"))).toBeNull();
