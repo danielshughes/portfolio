@@ -278,7 +278,8 @@ export function mountLiveExperiments(root: HTMLElement) {
     if (details.open) void action();
   }
   const scenario = q<HTMLSelectElement>("#triage-scenario"),
-    answer = q<HTMLElement>("[data-triage-answer]");
+    answer = q<HTMLElement>("[data-triage-answer]"),
+    triageRun = q<HTMLButtonElement>("[data-triage-run]");
   scenario.addEventListener("change", () => {
     if (!isTriageScenario(scenario.value)) return;
     controllers.get("triage")?.abort("scenario-changed");
@@ -289,7 +290,7 @@ export function mountLiveExperiments(root: HTMLElement) {
     q<HTMLElement>("[data-triage-status]").textContent =
       "Ready. No model request until you press Run.";
   });
-  q<HTMLButtonElement>("[data-triage-run]").addEventListener(
+  triageRun.addEventListener(
     "click",
     () =>
       void run("triage", async (signal) => {
@@ -465,4 +466,9 @@ export function mountLiveExperiments(root: HTMLElement) {
     disconnect();
     for (const controller of controllers.values()) controller.abort();
   });
+  // Native controls must not accept an interaction before the lazy handlers
+  // exist. Leave Send pulse gated separately by its WebSocket connection.
+  scenario.disabled = false;
+  triageRun.disabled = false;
+  connect.disabled = false;
 }

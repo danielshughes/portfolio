@@ -61,7 +61,7 @@ import "../styles/live-experiments.css";
           Try connection again
         </button>
         <p class="live-footnote">
-          Country is approximate. Your IP address isn’t returned or stored.
+          Country is approximate. Your IP address isn’t returned to this page.
         </p>
       </div>
     </ExperimentCard>
@@ -140,7 +140,7 @@ import "../styles/live-experiments.css";
       <LivePreview slot="preview" kind="triage" />
       <div class="live-controls">
         <label for="triage-scenario">Scenario</label>
-        <select id="triage-scenario">
+        <select id="triage-scenario" disabled>
           {Object.entries(triageScenarios).map(([id, scenario]) => (
             <option value={id}>{scenario.title}</option>
           ))}
@@ -148,7 +148,7 @@ import "../styles/live-experiments.css";
         <p class="triage-evidence" data-triage-evidence>
           {triageScenarios.latency.evidence}
         </p>
-        <button type="button" data-triage-run>
+        <button type="button" data-triage-run disabled>
           Run triage
         </button>
         <p role="status" data-triage-status>
@@ -179,7 +179,7 @@ import "../styles/live-experiments.css";
           <strong data-room-sequence>Not connected</strong>
         </div>
         <div class="live-actions">
-          <button type="button" data-room-connect>
+          <button type="button" data-room-connect disabled>
             Connect
           </button>
           <button type="button" data-room-send disabled>

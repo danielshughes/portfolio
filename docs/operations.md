@@ -25,6 +25,8 @@ The shared `observability` block explicitly enables invocation logs and traces, 
 
 These settings control Cloudflare's deployed telemetry, not a local trace collector. After deployment, confirm the resolved Worker settings and inspect an actual sampled invocation or trace. Empty results at low traffic can reflect sampling, so an enabled toggle alone is not functional evidence. Native tracing needs no extra SDK. Keep application logs free of secrets and visitor identifiers; query redaction does not sanitise arbitrary console output.
 
+Cloudflare's [invocation logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/#invocation-logs) retain request/response metadata and can include request-address headers. The edge API excludes IPs from its response and application stores; do not broaden that into a promise of no platform-level IP retention. Inspect native telemetry through allowlisted fields or aggregate checks, never by printing raw request headers or authenticated events.
+
 Cloudflare's [tracing feature documentation](https://developers.cloudflare.com/workers/observability/traces/#limits--pricing) owns beta availability and the transition to a shared log/span allowance. Check it alongside [Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/#pricing) before changing rates. Sampling reduces expected volume but does not enforce an account-wide cap or authorise a paid plan.
 
 ## Initial provisioning and domain security
