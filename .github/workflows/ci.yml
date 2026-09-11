@@ -39,13 +39,6 @@ jobs:
         if: steps.filter.outputs.code == 'true'
       - run: npx playwright install --with-deps chromium firefox webkit
         if: steps.filter.outputs.code == 'true'
-      - name: Diagnose Radar interactions on Linux
-        if: github.event_name == 'pull_request' && steps.filter.outputs.code == 'true'
-        env:
-          PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
-        run: |
-          npm run build:dev
-          npx playwright test tests/visual/mobile-polish.spec.ts tests/visual/radar-layout.spec.ts --project=webkit --grep 'mobile summary metadata|manually opened disruption details' --repeat-each=100 --max-failures=1
       - run: npm run quality
         if: steps.filter.outputs.code == 'true'
         env:
