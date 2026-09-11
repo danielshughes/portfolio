@@ -72,7 +72,7 @@ async function readJson(
   if (!response.ok && record(data) && typeof data.error === "string") {
     if (data.error.startsWith("verification_"))
       throw new ExperimentError(
-        "Human verification could not be completed. Press Run to try again.",
+        "Human verification could not be completed. Press Run triage to try again.",
       );
     if (data.error === "model_response_incomplete")
       throw new ExperimentError(
@@ -118,6 +118,18 @@ export function mountLiveExperiments(root: HTMLElement) {
   const controllers = new Map<string, AbortController>();
   const loaded = new Set<string>();
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  const triagePhases = {
+    ready: "Ready when you are.",
+    verifying: "Verifying this request.",
+    waiting: "Waiting for the model.",
+    answered: "Suggestion ready.",
+    unavailable: "No answer to show.",
+  } as const;
+  const setTriagePhase = (phase: keyof typeof triagePhases) => {
+    q<HTMLElement>("#triage").dataset.triagePhase = phase;
+    q<HTMLElement>("[data-triage-phase-label]").textContent =
+      triagePhases[phase];
+  };
   const errorText = (error: unknown) =>
     error instanceof ExperimentError
       ? error.message
@@ -135,14 +147,18 @@ export function mountLiveExperiments(root: HTMLElement) {
     status.textContent = "Loading…";
     button?.setAttribute("aria-busy", "true");
     if (button) button.disabled = true;
+    if (name === "triage") setTriagePhase("verifying");
     try {
       await action(
         AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
       );
     } catch (error) {
       if (controller.signal.reason === "scenario-changed") return;
+      if (name === "triage") setTriagePhase("unavailable");
       status.textContent = controller.signal.aborted
-        ? "Request stopped. Open again or retry when ready."
+        ? name === "triage"
+          ? "Request stopped. Press Run triage to try again."
+          : "Request stopped. Open again or retry when ready."
         : errorText(error);
       const retry = root.querySelector<HTMLButtonElement>(
         `[data-${name}-retry]`,
@@ -263,6 +279,7 @@ export function mountLiveExperiments(root: HTMLElement) {
   scenario.addEventListener("change", () => {
     if (!isTriageScenario(scenario.value)) return;
     controllers.get("triage")?.abort("scenario-changed");
+    setTriagePhase("ready");
     q<HTMLElement>("[data-triage-evidence]").textContent =
       triageScenarios[scenario.value].evidence;
     q<HTMLElement>("[data-triage-question]").textContent =
@@ -273,7 +290,7 @@ export function mountLiveExperiments(root: HTMLElement) {
     answer.hidden = true;
     q<HTMLDetailsElement>(".triage-reference").open = true;
     q<HTMLElement>("[data-triage-status]").textContent =
-      "Ready. No model request until you press Run.";
+      "Ready. No model request until you press Run triage.";
   });
   triageRun.addEventListener(
     "click",
@@ -300,7 +317,7 @@ export function mountLiveExperiments(root: HTMLElement) {
             )
               throw new Error("Verification unavailable");
             q<HTMLElement>("[data-triage-status]").textContent =
-              "Checking this request…";
+              "Verifying this request before contacting the model…";
             try {
               token = await humanToken(
                 q<HTMLElement>("[data-triage-verification]"),
@@ -311,13 +328,14 @@ export function mountLiveExperiments(root: HTMLElement) {
             } catch {
               if (signal.aborted) signal.throwIfAborted();
               throw new ExperimentError(
-                "Human verification could not be completed. Press Run to try again.",
+                "Human verification could not be completed. Press Run triage to try again.",
               );
             }
           }
           signal.throwIfAborted();
+          setTriagePhase("waiting");
           q<HTMLElement>("[data-triage-status]").textContent =
-            "The model is considering this scenario…";
+            "Waiting for the model’s response…";
           const data = await readJson(
             `/api/triage?scenario=${encodeURIComponent(selected)}`,
             AbortSignal.any([signal, AbortSignal.timeout(25000)]),
@@ -343,7 +361,7 @@ export function mountLiveExperiments(root: HTMLElement) {
           };
           section("A possible explanation", data.answer.hypothesis);
           const checksHeading = document.createElement("h5");
-          checksHeading.textContent = "Read-only checks to make next";
+          checksHeading.textContent = "Suggested read-only checks";
           const checks = document.createElement("ol");
           for (const text of data.answer.checks) {
             const item = document.createElement("li");
@@ -353,6 +371,7 @@ export function mountLiveExperiments(root: HTMLElement) {
           answer.append(checksHeading, checks);
           section("Still unknown", data.answer.unknown);
           answer.hidden = false;
+          setTriagePhase("answered");
           q<HTMLDetailsElement>(".triage-reference").open = false;
           q<HTMLElement>("[data-triage-status]").textContent =
             "Answer ready. A suggestion to assess, not a verified diagnosis.";

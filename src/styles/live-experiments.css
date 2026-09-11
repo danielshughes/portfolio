@@ -171,21 +171,96 @@
 }
 .triage-showcase .experiment-stage {
   min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  width: min(100%, 20rem);
-  align-self: center;
+  width: 100%;
+  background: var(--preview-tint);
+  border-bottom: 0;
 }
 .triage-showcase .experiment-visual {
-  height: auto;
-  aspect-ratio: 24 / 5;
+  height: clamp(4rem, 8vw, 6rem);
   min-height: 0;
 }
-.triage-showcase .preview-caption {
-  text-align: center;
-  text-transform: none;
-  letter-spacing: 0;
+.triage-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
+  gap: var(--space-md) var(--space-lg);
+  align-items: end;
+  margin-bottom: var(--heading-gap);
+}
+.triage-chooser {
+  padding: 0;
+  gap: var(--space-xs);
+}
+.triage-select {
+  position: relative;
+  min-width: 0;
+}
+.triage-select select {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+}
+.triage-select::after {
+  content: "";
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  right: 1rem;
+  top: 50%;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+.triage-graphic-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font: var(--type-caption)/1.6 var(--mono);
+  color: var(--preview-ink);
+}
+.triage-graphic-labels span:last-child {
+  text-align: right;
+}
+.triage-threads {
+  stroke: var(--preview-ink);
+  stroke-width: 1;
+  opacity: 0.35;
+}
+.triage-current {
+  stroke: var(--preview-accent);
+  stroke-width: 2;
+  stroke-dasharray: 8 92;
+  stroke-linecap: round;
+}
+.preview-live-triage path {
+  vector-effect: non-scaling-stroke;
+}
+.experiment-triage:is(
+    [data-triage-phase="answered"],
+    [data-triage-phase="unavailable"]
+  )
+  .triage-current {
+  animation: none;
+  stroke-dasharray: none;
+}
+.experiment-triage[data-triage-phase="unavailable"] .triage-current {
+  opacity: 0.25;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .triage-current {
+    animation: triage-drift 9s linear infinite;
+  }
+  .experiment-triage:is(
+      [data-triage-phase="verifying"],
+      [data-triage-phase="waiting"]
+    )
+    .triage-current {
+    animation-duration: 3s;
+  }
+  @keyframes triage-drift {
+    to {
+      stroke-dashoffset: -100;
+    }
+  }
 }
 .triage-showcase .stage-label {
   color: var(--preview-accent);
@@ -200,6 +275,9 @@
 .triage-workspace {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-lg);
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  border: 1px solid var(--line);
+  background: var(--paper);
 }
 .triage-source {
   display: grid;
@@ -238,8 +316,29 @@
   font-size: var(--type-small);
   line-height: 1.7;
 }
+.triage-answer:not([hidden]) + .triage-reference {
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-md);
+  padding-top: var(--space-sm);
+}
 .triage-reference summary {
   cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-weight: var(--weight-medium);
+}
+.triage-reference summary::before {
+  content: "+";
+  color: var(--preview-accent);
+  font-family: var(--mono);
+}
+.triage-reference[open] summary::before {
+  content: "−";
+}
+.triage-reference summary::-webkit-details-marker {
+  display: none;
 }
 .triage-reference p {
   margin-top: var(--space-sm);
@@ -249,29 +348,19 @@
   border-top: 1px solid var(--line);
   padding-top: var(--space-sm);
 }
-@media (min-width: 48rem) {
-  .triage-showcase .experiment {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-md) var(--space-lg);
-  }
-  .triage-showcase .experiment-card-heading {
-    align-self: center;
-  }
-  .triage-workspace {
-    grid-column: 1 / -1;
-  }
-}
 @media (max-width: 47.99rem) {
-  .triage-showcase .experiment-stage {
-    margin-block: var(--space-sm) var(--space-md);
-  }
+  .triage-intro,
   .triage-workspace {
     grid-template-columns: minmax(0, 1fr);
   }
   .triage-result {
     padding-left: 0;
     border-left: 0;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--line);
+  }
+  .triage-workspace {
+    gap: var(--space-md);
   }
 }
 .live-actions {
@@ -339,10 +428,6 @@
   stroke-linecap: round;
   transform-origin: 300px 150px;
 }
-.live-preview-step {
-  fill: var(--preview-ink);
-  opacity: 0.12;
-}
 .live-preview-clock-link {
   stroke-dasharray: 3 5;
 }
@@ -370,10 +455,6 @@
   }
   .live-preview-tick {
     animation: live-preview-check 5s ease-in-out infinite;
-  }
-  .live-preview-step {
-    animation: live-preview-step 6s calc(var(--step) * 1.5s) ease-in-out
-      infinite;
   }
   .live-preview-relay {
     animation: live-preview-relay 5s ease-in-out infinite;
@@ -412,17 +493,6 @@
     80%,
     90% {
       opacity: 1;
-    }
-  }
-  @keyframes live-preview-step {
-    0%,
-    45%,
-    100% {
-      opacity: 0.04;
-    }
-    15%,
-    30% {
-      opacity: 0.28;
     }
   }
   @keyframes live-preview-relay {

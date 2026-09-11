@@ -1,13 +1,13 @@
 ---
 interface Props {
-  kind: "edge" | "health" | "triage" | "room";
+  kind: "edge" | "health" | "room";
 }
 const { kind } = Astro.props;
 ---
 
 <svg
   class={`experiment-preview preview-live-${kind}`}
-  viewBox={kind === "triage" ? "60 110 480 100" : "0 0 600 320"}
+  viewBox="0 0 600 320"
   fill="none"
   aria-hidden="true"
 >
@@ -70,35 +70,6 @@ const { kind } = Astro.props;
       <text x="300" y="275" text-anchor="middle">
         A check, then another.
       </text>
-    </>
-  ) : kind === "triage" ? (
-    <>
-      <path class="preview-flow" d="M140 160H460" />
-      <circle class="live-preview-traveller" cx="175" cy="160" r="5" />
-      {[70, 240, 410].map((x, i) => (
-        <g>
-          <rect
-            class="preview-node"
-            x={x}
-            y="120"
-            width="120"
-            height="80"
-            rx="4"
-          />
-          <rect
-            class="live-preview-step"
-            x={x}
-            y="120"
-            width="120"
-            height="80"
-            rx="4"
-            style={`--step: ${i}`}
-          />
-          <text x={x + 60} y="165" text-anchor="middle">
-            {["evidence", "model", "checks"][i]}
-          </text>
-        </g>
-      ))}
     </>
   ) : (
     <>

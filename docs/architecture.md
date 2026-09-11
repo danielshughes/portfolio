@@ -110,7 +110,7 @@ The browser labels that returned window with its start and end dates and gives t
 
 ### AI triage
 
-The original agent/MCP simulation remains browser-local and scripted. The separate full-width triage workbench stays open without Explore, but performs real Workers AI inference only after an explicit Run action. Its compact illustration follows the shared visibility/reduced-motion gates; it never indicates background inference. Authored scenario facts and an authored reviewed interpretation are separate from model suggestions. The reference occupies the answer column initially, then collapses when a complete answer arrives.
+The original agent/MCP simulation remains browser-local and scripted. The separate full-width triage incident lab stays open without Explore, but performs real Workers AI inference only after an explicit Run action. Its shallow, full-width illustration follows shared visibility/reduced-motion gates. Decorative idle movement is not background inference; request labels follow verification, response waiting and completion/failure callbacks without exposing model internals. Authored scenario facts and an authored reviewed interpretation are separate from model suggestions. The reference occupies the answer column initially, then collapses beneath a complete answer. Desktop evidence/result columns stack in reading order on mobile.
 
 POST requires the same Origin, exactly one allowlisted scenario and an empty body. A bounded first body read distinguishes a genuinely empty workerd stream from supplied content without parsing visitor text. The server fixes the model, prompt, token limit and schema. It never forwards caller headers, verification tokens, URLs or identity to the model.
 
