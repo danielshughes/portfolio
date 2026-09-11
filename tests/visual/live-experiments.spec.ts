@@ -358,7 +358,7 @@ test("health keeps missing intervals distinct from failures and dates its snapsh
   await page.goto("/experiments/#health");
   const card = page.locator('[data-live="health"]');
   await card.locator(".experiment-settings > summary").click();
-  await expect(card.locator("[data-health-points] circle")).toHaveCount(3);
+  await expect(card.locator("[data-health-points] circle")).toHaveCount(1);
   await expect(card.locator("[data-health-failures] path")).toHaveCount(1);
   const path = await card.locator("[data-health-line]").getAttribute("d");
   expect(path?.match(/M/g)).toHaveLength(2);

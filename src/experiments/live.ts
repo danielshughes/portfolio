@@ -224,7 +224,7 @@ export function mountLiveExperiments(root: HTMLElement) {
       renderHealthChart(q<HTMLElement>("#health"), samples, start);
       q<HTMLTableSectionElement>("[data-health-rows]").replaceChildren(
         ...samples
-          .slice(-12)
+          .slice(-5)
           .reverse()
           .map((s) => {
             const row = document.createElement("tr");
