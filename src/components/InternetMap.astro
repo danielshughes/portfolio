@@ -3,6 +3,7 @@ import earth from "../assets/earth-land.json";
 import { countries, project } from "../experiments/internet-model";
 import "../styles/internet-map.css";
 import RadarTabs from "./RadarTabs.astro";
+import ExperimentTechnology from "./ExperimentTechnology.astro";
 import { radarViews } from "../experiments/radar-tabs";
 const descriptions = Object.values(radarViews);
 ---
@@ -19,7 +20,8 @@ const descriptions = Object.values(radarViews);
       <h2 id="internet-title">
         The Internet <em>has a pulse.</em>
       </h2>
-      <p>A country, a week, a different rhythm.</p>
+      <p>Pick a country and scrub through its observed week.</p>
+      <ExperimentTechnology label="Radar / Workers KV" />
     </div>
     <p class="internet-source">Cloudflare Radar</p>
   </header>
@@ -112,10 +114,12 @@ const descriptions = Object.values(radarViews);
     <div class="internet-reading">
       <div class="internet-reading-heading">
         <span class="radar-text-slot">
-          <span data-radar-reading-label>Observed / traffic index</span>
+          <span data-radar-reading-label>
+            {radarViews.traffic.readingLabel}
+          </span>
           <span
             class="radar-text-sizer"
-            data-copy="Observed / traffic index"
+            data-copy={radarViews.traffic.readingLabel}
             aria-hidden="true"
             inert
           />
@@ -236,7 +240,7 @@ const descriptions = Object.values(radarViews);
     <div class="internet-footer-context">
       <div class="radar-description-slot radar-text-slot">
         <p class="radar-description" id="radar-description">
-          The daily rhythm of HTTP requests seen by Cloudflare.
+          Relative HTTP request volume across this country's observed week.
         </p>
         {descriptions.map((view) => (
           <span

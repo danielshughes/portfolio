@@ -106,6 +106,9 @@ test("Internet map keeps observed provenance visible and responds to country and
     map.getByText("Cloudflare Radar · observed data", { exact: true }),
   ).toBeVisible();
   await expect(map.getByText("Updated", { exact: false })).toBeVisible();
+  await expect(map.locator(".experiment-technology")).toHaveText(
+    "Radar / Workers KV",
+  );
   await map.getByRole("button", { name: "Japan", exact: true }).click();
   await expect(
     map.getByRole("button", { name: "Japan", exact: true }),

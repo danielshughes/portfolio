@@ -64,12 +64,17 @@
 .experiment[data-tinted] .experiment-stage {
   background: var(--preview-tint);
 }
-.stage-label,
+.experiment-technology,
 .preview-caption {
   display: block;
   font: var(--type-micro)/1.6 var(--mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+.experiment-technology {
+  display: flex;
+  flex-wrap: wrap;
+  color: var(--ink);
 }
 .preview-caption {
   color: var(--ink);

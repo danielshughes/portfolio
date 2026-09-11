@@ -1,5 +1,6 @@
 ---
 import ExperimentPreview from "./ExperimentPreview.astro";
+import ExperimentTechnology from "./ExperimentTechnology.astro";
 interface Props {
   id: string;
   number: string;
@@ -42,7 +43,7 @@ const Heading = live ? "h3" : "h2";
     </div>
   </header>
   <div class="experiment-stage">
-    <span class="stage-label">{label}</span>
+    <ExperimentTechnology label={label} />
     <div class="experiment-visual">
       <slot name="preview">
         <ExperimentPreview kind={id} />

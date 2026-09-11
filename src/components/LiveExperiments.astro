@@ -7,13 +7,13 @@ import "../styles/live-experiments.css";
 ---
 
 <section id="at-the-edge" class="live-experiments" aria-labelledby="live-title">
-  <p class="eyebrow">A little closer to real</p>
+  <p class="eyebrow">A few live requests</p>
   <h2 class="section-title" id="live-title">
     Outside <em>the browser.</em>
   </h2>
   <p class="live-intro">
-    Real requests to Cloudflare, from connection details to a model’s second
-    opinion.
+    These cards make bounded requests to Cloudflare, then show exactly what
+    comes back.
   </p>
   <div class="experiment-collection live-grid">
     <ExperimentCard
@@ -23,9 +23,9 @@ import "../styles/live-experiments.css";
       tinted
       number="07"
       title="You are here."
-      subtitle="The edge on the other end of this request."
-      label="Cloudflare / request metadata"
-      caption="Connection outline; open for observed metadata"
+      subtitle="Your request, at the edge."
+      label="Workers / request.cf metadata"
+      caption="Illustration; open to inspect the metadata returned for this request"
     >
       <LivePreview slot="preview" kind="edge" />
       <div class="live-controls">
@@ -72,9 +72,9 @@ import "../styles/live-experiments.css";
       tone="sage"
       number="08"
       title="Still answering?"
-      subtitle="A day of checks, including the missing ones."
-      label="Cron + D1 / homepage asset checks"
-      caption="Check cadence; open for asset response headers"
+      subtitle="A day of scheduled checks, including gaps."
+      label="Cron Triggers + D1 / asset checks"
+      caption="Scheduled checks; open to inspect recorded response headers"
     >
       <LivePreview slot="preview" kind="health" />
       <figure slot="preview" class="health-figure">
@@ -151,9 +151,9 @@ import "../styles/live-experiments.css";
       tone="peach"
       number="10"
       title="On the same page."
-      subtitle="Send a pulse. Watch it arrive in another window."
-      label="Durable Object / WebSockets"
-      caption="Illustrative relay; connect to send real pulses"
+      subtitle="Connect two windows and send a numbered pulse between them."
+      label="Durable Objects / WebSockets"
+      caption="Shared sequence; connect to send a real pulse"
     >
       <LivePreview slot="preview" kind="room" />
       <div class="live-controls">
