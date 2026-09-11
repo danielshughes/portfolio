@@ -6,6 +6,8 @@ import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { runtime } from "./runtime-harness.mjs";
 import { DAILY_AI_LIMIT } from "../worker/triage.ts";
+import { radarUpstream } from "./fixtures/radar-upstream.mjs";
+import { countries } from "../src/experiments/internet-model.ts";
 
 test(
   "room close handlers never echo reserved WebSocket status codes",
@@ -468,17 +470,37 @@ test("scheduled collection measures this environment's assets without depending 
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
   const time = Math.floor(Date.now() / 300000) * 300000;
-  await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  const collection = await worker.scheduled({
+    scheduledTime: time,
+    cron: "*/5 * * * *",
+  });
   const db = await mf.getD1Database("HISTORY");
   const rows = (await db.prepare("SELECT * FROM health_samples").all()).results;
   assert.equal(rows.length, 1);
   assert.equal(rows[0].ok, 1);
   assert.equal(radarCalls, 1);
+  assert.equal(collection.outcome, "exception");
+  assert.equal(
+    (await (await mf.getKVNamespace("RADAR_SNAPSHOTS")).list()).keys.length,
+    0,
+  );
   await db
     .prepare("INSERT INTO health_samples VALUES (?,503,10,0)")
     .bind(time - 8 * 86400000)
     .run();
+  // The disposable KV fixture must retain an older bundle and its expiry when
+  // this attempt has nothing usable. It must not renew absent observations.
+  const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+  const country = countries[Math.floor(time / 300000) % countries.length].code;
+  const key = `country:${country}`;
+  const prior = JSON.stringify({
+    traffic: { fetchedAt: "2026-09-09T00:00:00Z" },
+  });
+  await kv.put(key, prior, { expirationTtl: 1200 });
+  const previousKeys = (await kv.list()).keys;
   await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  assert.equal(await kv.get(key), prior);
+  assert.deepEqual((await kv.list()).keys, previousKeys);
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS count FROM health_samples").first())
       .count,
@@ -489,9 +511,9 @@ test("scheduled collection measures this environment's assets without depending 
 test("a health storage failure does not prevent scheduled Radar collection", async (t) => {
   let calls = 0;
   const mf = await runtime({
-    outbound() {
+    outbound(request) {
       calls++;
-      return new Response(null, { status: 503 });
+      return radarUpstream(request.url);
     },
   });
   t.after(() => mf.dispose());
@@ -499,8 +521,129 @@ test("a health storage failure does not prevent scheduled Radar collection", asy
   // Only the disposable fixture database is altered.
   await db.exec("DROP TABLE health_samples");
   const worker = await mf.getWorker();
-  await worker.scheduled({ scheduledTime: Date.now(), cron: "*/5 * * * *" });
-  assert.equal(calls, 1);
+  const time = Date.now();
+  const collection = await worker.scheduled({
+    scheduledTime: time,
+    cron: "*/5 * * * *",
+  });
+  assert.equal(collection.outcome, "exception");
+  assert.equal(calls, 5);
+  const country = countries[Math.floor(time / 300000) % countries.length].code;
+  const bundle = await (
+    await mf.getKVNamespace("RADAR_SNAPSHOTS")
+  ).get(`country:${country}`, "json");
+  assert.deepEqual(Object.keys(bundle), [
+    "traffic",
+    "bots",
+    "devices",
+    "protocols",
+  ]);
+});
+
+test("scheduled results distinguish complete, partial, disabled and missing credentials", async (t) => {
+  for (const [mode, expected, views, calls] of [
+    ["complete", "ok", ["traffic", "bots", "devices", "protocols"], 5],
+    ["partial", "exception", ["traffic", "bots"], 4],
+    ["disabled", "ok", [], 0],
+    ["missing", "exception", [], 0],
+  ])
+    await t.test(mode, async (t) => {
+      let attempts = 0;
+      const mf = await runtime({
+        bindings: {
+          RADAR_ENABLED: mode !== "disabled",
+          ...(mode === "missing" ? { RADAR_API_TOKEN: "" } : {}),
+        },
+        outbound(request) {
+          attempts++;
+          return radarUpstream(
+            request.url,
+            mode === "partial" ? "DEVICE_TYPE" : undefined,
+          );
+        },
+      });
+      t.after(() => mf.dispose());
+      const time = Math.floor(Date.now() / 300000) * 300000;
+      const collection = await (
+        await mf.getWorker()
+      ).scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+      assert.equal(collection.outcome, expected);
+      assert.equal(attempts, calls);
+      const db = await mf.getD1Database("HISTORY");
+      assert.equal(
+        (
+          await db
+            .prepare("SELECT COUNT(*) AS count FROM health_samples WHERE ok=1")
+            .first()
+        ).count,
+        1,
+      );
+      const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+      const country =
+        countries[Math.floor(time / 300000) % countries.length].code;
+      const bundle = await kv.get(`country:${country}`, "json");
+      assert.deepEqual(Object.keys(bundle ?? {}), views);
+    });
+});
+
+test("scheduled snapshot bounds preserve readable whole views without extra upstream work", async (t) => {
+  for (const oversized of [false, true])
+    await t.test(
+      oversized ? "partial oversized traffic" : "complete ordinary bundle",
+      async (t) => {
+        let calls = 0;
+        const mf = await runtime({
+          outbound(request) {
+            calls++;
+            return radarUpstream(
+              request.url,
+              undefined,
+              oversized ? Array(100).fill("x".repeat(1400)) : [],
+            );
+          },
+        });
+        t.after(() => mf.dispose());
+        const time = Date.now();
+        const result = await (
+          await mf.getWorker()
+        ).scheduled({
+          scheduledTime: time,
+          cron: "*/5 * * * *",
+        });
+        assert.equal(result.outcome, oversized ? "exception" : "ok");
+        assert.equal(calls, 5);
+        const country =
+          countries[Math.floor(time / 300000) % countries.length].code;
+        const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+        const raw = await kv.get(`country:${country}`);
+        assert.ok(Buffer.byteLength(raw) <= 100000);
+        const bundle = JSON.parse(raw);
+        const views = oversized
+          ? ["bots", "devices", "protocols"]
+          : ["traffic", "bots", "devices", "protocols"];
+        assert.deepEqual(Object.keys(bundle), views);
+        for (const view of views) {
+          const response = await mf.dispatchFetch(
+            `${origin}/api/radar?country=${country}&view=${view}`,
+          );
+          assert.equal(response.status, 200);
+          assert.equal(response.headers.get("x-radar-storage"), "snapshot");
+          assert.deepEqual(await response.json(), bundle[view]);
+        }
+        assert.equal(calls, 5);
+        const db = await mf.getD1Database("HISTORY");
+        assert.equal(
+          (
+            await db
+              .prepare(
+                "SELECT COUNT(*) AS count FROM health_samples WHERE ok=1",
+              )
+              .first()
+          ).count,
+          1,
+        );
+      },
+    );
 });
 
 test("valid recent KV snapshots serve without upstream access and expire honestly", async (t) => {

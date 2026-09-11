@@ -10,13 +10,9 @@ The browser requests verification only on Run. Local preview explains the unavai
 
 ## Interface and checks
 
-The AI incident lab stays open at full width below the compact cards, with no Explore gate. Its shallow artwork spans the frame at all widths and uses shared visibility/reduced-motion gates. Idle motion is decorative; verifying/waiting labels follow real browser callbacks, and completed/failed states settle. Never imply background inference or reveal model internals. Before an answer, the second column contains the prepared interpretation, not an empty answer placeholder. A complete model suggestion appears before the collapsed reference, alongside the facts on desktop and beneath them on mobile. Use the shared lilac palette, typography and spacing. Empty verification containers must not reserve rows.
+The [experiment interface contract](experiments.md#worker-backed-experiments) owns layout, motion, accessible controls and request-state presentation. Evaluate whether those states truthfully distinguish decorative movement, human verification and real model-response waiting; never imply background inference or expose model internals.
 
 Copy must distinguish the fictional, fixed scenario from a fresh model response and the prepared reference. Describe output checks as suggestions, never checks performed by the model. The interface accepts only the scenario choice, not visitor-written facts. Avoid instructions that imply a free-text prompt or access to live systems; keep verification and model-response waiting explicit.
-
-Loading public configuration is preparation, not human verification. Local availability checks must not claim that verification or model inference is taking place. Begin those specific states only in the configured public-verification path.
-
-The fixed streaming demo completes the compact collection. Its received-text area starts with an honest short empty state, not blank reserved space. The health chart gains a pointer readout and one native range control for keyboard/touch inspection of actual recorded checks, including failures. Missing intervals remain gaps, not invented selectable points.
 
 `tests/triage.test.mjs` and the real-runtime service suite cover injected bodies, duplicate/encoded parameters, prototype names, forged origins, missing/replayed/wrong-host/wrong-action tokens, verifier failure, fixed inference inputs, incomplete model results and concurrent quota exhaustion. They use fake bindings only. Browser regressions cover lazy verification, inert rendering, cancellation, always-open layout, narrow screens and enlarged text.
 

@@ -37,8 +37,13 @@ export function mountSignature(mark: HTMLElement) {
     );
   }
 
-  mark.addEventListener("pointerenter", draw);
-  mark.addEventListener("focus", draw);
+  mark.addEventListener("pointerenter", (event) => {
+    if (event.pointerType === "touch" || event.buttons !== 0) return;
+    draw();
+  });
+  mark.addEventListener("focus", () => {
+    if (mark.matches(":focus-visible")) draw();
+  });
   preference.addEventListener("change", () => {
     const previous = drawing;
     drawing = null;

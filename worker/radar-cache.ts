@@ -1,4 +1,5 @@
 import { countries } from "../src/experiments/internet-model.ts";
+import { radarViewIds } from "../src/experiments/radar-views.ts";
 import { MAX_BACKOFF_SECONDS, type RadarOptions } from "./radar.ts";
 
 // Access-fronted Workers cannot use Cache API. Reuse the development D1
@@ -6,9 +7,7 @@ import { MAX_BACKOFF_SECONDS, type RadarOptions } from "./radar.ts";
 const keys = new Set([
   "/api/.radar/v1/backoff",
   ...countries.flatMap(({ code }) =>
-    ["traffic", "bots", "devices", "protocols"].map(
-      (view) => `/api/.radar/v2/${code}/${view}`,
-    ),
+    radarViewIds.map((view) => `/api/.radar/v2/${code}/${view}`),
   ),
 ]);
 function cacheKey(value: string) {
