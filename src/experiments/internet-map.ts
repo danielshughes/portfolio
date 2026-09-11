@@ -237,9 +237,7 @@ export function mountInternetMap(root: HTMLElement) {
     query(".radar-bars").replaceChildren();
     query(".radar-summary-window").textContent = "Loading the observed week…";
     query("[data-radar-reading-label]").textContent =
-      view === "traffic"
-        ? "Observed / traffic index"
-        : `Observed / ${radarViews[view].title.toLowerCase()}`;
+      radarViews[view].readingLabel;
     query("label[for=internet-time]").textContent = "Time in observed week";
     query("#internet-time-help").textContent =
       "Peak traffic in this country's week = 100. Gaps are missing readings.";

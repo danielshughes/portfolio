@@ -192,7 +192,7 @@ test("playground has readable diagrams without JavaScript", async ({
   const page = await context.newPage();
   await page.goto("/experiments/");
   await page.locator("#world .experiment-settings > summary").click();
-  await page.getByText("Read the connections", { exact: true }).click();
+  await page.getByText("See the connections", { exact: true }).click();
   await expect(
     page.getByText("Store: API, Worker", { exact: true }),
   ).toBeVisible();

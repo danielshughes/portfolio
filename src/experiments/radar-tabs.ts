@@ -6,31 +6,36 @@ export type { RadarView } from "./radar-views";
 export const radarViews = {
   traffic: {
     title: "Traffic",
-    description: "The daily rhythm of HTTP requests seen by Cloudflare.",
+    readingLabel: "Observed traffic, normalised to 100",
+    description:
+      "Relative HTTP request volume across this country's observed week.",
     guide:
-      "Read the shape, not the size. Each country's peak is 100; a dip alone does not establish an outage.",
+      "Compare the line with itself: this country's peak is 100. A dip alone does not establish an outage.",
   },
   bots: {
     title: "Bots",
-    description: "How much HTTP traffic looks automated?",
+    readingLabel: "Observed automated share",
+    description: "Share of HTTP requests likely to be automated.",
     guide:
-      "Likely automated is not the same as malicious. This is not a count of AI agents.",
+      "Likely automated does not mean malicious. This is not a count of AI agents.",
   },
   devices: {
     title: "Devices",
-    description: "The devices behind the requests.",
+    readingLabel: "Observed device share",
+    description: "Share of requests by device type.",
     guide:
-      "Bars show the share of requests, not unique people. Unknown devices remain in Other.",
+      "Bars show request share, not unique people. Unclassified devices stay in Other.",
   },
   protocols: {
     title: "Protocols",
-    description: "Which HTTP versions carry the traffic?",
+    readingLabel: "Observed HTTP version share",
+    description: "Share of requests by HTTP version.",
     guide:
-      "Each bar is a share of requests. HTTP/3 uses QUIC; this chart does not measure speed or security.",
+      "Bars show request share. HTTP/3 uses QUIC; this chart does not measure speed or security.",
   },
 } satisfies Record<
   RadarView,
-  { title: string; description: string; guide: string }
+  { title: string; readingLabel: string; description: string; guide: string }
 >;
 export function mountRadarTabs(
   root: HTMLElement,

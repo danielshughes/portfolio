@@ -175,7 +175,7 @@ test("Radar loads automatically and tabs keep their view across every country", 
   await map.getByRole("tab", { name: "Bots", exact: true }).click();
   await expect(
     map.getByText(
-      "Likely automated is not the same as malicious. This is not a count of AI agents.",
+      "Likely automated does not mean malicious. This is not a count of AI agents.",
     ),
   ).toBeVisible();
   await expect(map.locator(".radar-bars")).toContainText("65%");
