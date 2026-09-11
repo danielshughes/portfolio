@@ -1,6 +1,46 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { radar } from "./radar-fixture";
+
+test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
+
+test("direct Radar fragment exposes the atlas and starts its visible pulse", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/api/radar?*", (route) =>
+    route.fulfill({ json: radar() }),
+  );
+  await page.goto("/experiments/#internet");
+  const map = page.locator("#internet");
+  try {
+    await expect(map.locator(".internet-value")).toHaveText("50");
+    // Deliberately no corrective scroll: native fragment placement is the
+    // behaviour under test, separate from the lifecycle precondition below.
+    await expect(map.locator(".internet-atlas")).toBeInViewport();
+    await expect(
+      map.locator(".internet-pin.is-selected .internet-pin-halo"),
+    ).toHaveCSS("animation-play-state", "running");
+  } catch (error) {
+    const state = await page.evaluate(() => ({
+      scrollY,
+      viewport: { width: innerWidth, height: innerHeight },
+      hidden: document.hidden,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      pulse: document.querySelector<HTMLElement>("#internet")?.dataset.pulse,
+      value: document.querySelector(".internet-value")?.textContent,
+      atlas: document
+        .querySelector(".internet-atlas")
+        ?.getBoundingClientRect()
+        .toJSON(),
+    }));
+    await testInfo.attach("radar-fragment-state", {
+      body: JSON.stringify(state),
+      contentType: "application/json",
+    });
+    throw error;
+  }
+});
+
 test("automatic Radar loading has no manual refresh or completion clutter", async ({
   page,
 }) => {
@@ -56,6 +96,10 @@ test("map pulse respects motion preferences and stops offscreen without a pause 
   );
   await page.goto("/experiments/#internet");
   const map = page.locator("#internet");
+  const atlas = map.locator(".internet-atlas");
+  // This case tests pulse lifecycle, not native fragment-scroll placement.
+  await atlas.scrollIntoViewIfNeeded();
+  await expect(atlas).toBeInViewport();
   const halo = map.locator(".internet-pin.is-selected .internet-pin-halo");
   await expect(
     map.getByRole("button", { name: "Pause map pulse", exact: true }),
