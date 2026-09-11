@@ -36,14 +36,14 @@ model certainty where none exists.
 
 ### Browser simulations
 
-| Card | Supporting copy |
-| --- | --- |
-| Room for one more? | Subtitle: “Raise CPU demand and watch the replica target change, then see which pods fit.” Body: “Turn up CPU demand. HPA changes the target, then the scheduler tries to place each pod.” Output: “HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.” |
+| Card                      | Supporting copy                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Room for one more?        | Subtitle: “Raise CPU demand and watch the replica target change, then see which pods fit.” Body: “Turn up CPU demand. HPA changes the target, then the scheduler tries to place each pod.” Output: “HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.”                                                                        |
 | Who's allowed to do what? | Subtitle: “Choose a scenario, set the call budget and decide whether a simulated write is allowed.” Body: “Follow the scripted agent as it checks context, calls tools and stops at a timeout, missing context or denied write.” Output: “The script proposes a call. The host checks context, budget and approval before a simulated write.” Change the disclosure label to “Follow the trace”. |
-| A little interference. | Subtitle: “Compare a clean wave with the same wave after interference is added.” Body: “The upper trace stays clean. Change the lower trace's noise, frequency and amplitude.” Caption: “Synthetic waves. The upper trace is the reference; the lower trace has added interference.” |
-| The average looks fine. | Subtitle: “Keep most requests steady, then stretch the slowest ten.” Body: “Move the tail slider and watch the median stay put while the slow end grows.” Output: “The median stays steady; the slowest requests move the upper percentiles.” |
-| Requests in flight. | Subtitle: “Change how many requests run together and see which finish before the deadline.” Body: “Run the lookup with a different number in flight. Queued time counts against the deadline.” Replace the static output with: “The readout will show how many of 12 requests meet the deadline.” |
-| A small connected world. | Subtitle: “Rotate the graph or select a node to see its direct connections.” Body: “Drag to rotate. Select a node to highlight its neighbours and dim the rest.” Change the disclosure label to “See the connections”. |
+| A little interference.    | Subtitle: “Compare a clean wave with the same wave after interference is added.” Body: “The upper trace stays clean. Change the lower trace's noise, frequency and amplitude.” Caption: “Synthetic waves. The upper trace is the reference; the lower trace has added interference.”                                                                                                             |
+| The average looks fine.   | Subtitle: “Keep most requests steady, then stretch the slowest ten.” Body: “Move the tail slider and watch the median stay put while the slow end grows.” Output: “The median stays steady; the slowest requests move the upper percentiles.”                                                                                                                                                    |
+| Requests in flight.       | Subtitle: “Change how many requests run together and see which finish before the deadline.” Body: “Run the lookup with a different number in flight. Queued time counts against the deadline.” Replace the static output with: “The readout will show how many of 12 requests meet the deadline.”                                                                                                |
+| A small connected world.  | Subtitle: “Rotate the graph or select a node to see its direct connections.” Body: “Drag to rotate. Select a node to highlight its neighbours and dim the rest.” Change the disclosure label to “See the connections”.                                                                                                                                                                           |
 
 Existing footnotes remain the source of quantitative and simulation limits. Only
 shorten one when the replacement says the same thing more clearly.
@@ -52,15 +52,17 @@ shorten one when the replacement says the same thing more clearly.
 
 Change the heading subtitle to: “Pick a country and scrub through its observed
 week.” Change the reading label to: “Observed traffic, normalised to 100”.
+Other views use similarly explicit labels: “Observed automated share”, “Observed
+device share” and “Observed HTTP version share”.
 
 Use these tab descriptions and guides:
 
-| View | Description | Guide |
-| --- | --- | --- |
-| Traffic | “Relative HTTP request volume across this country's observed week.” | “Compare the line with itself: this country's peak is 100. A dip alone does not establish an outage.” |
-| Bots | “Share of HTTP requests likely to be automated.” | “Likely automated does not mean malicious. This is not a count of AI agents.” |
-| Devices | “Share of requests by device type.” | “Bars show request share, not unique people. Unclassified devices stay in Other.” |
-| Protocols | “Share of requests by HTTP version.” | “Bars show request share. HTTP/3 uses QUIC; this chart does not measure speed or security.” |
+| View      | Description                                                         | Guide                                                                                                 |
+| --------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Traffic   | “Relative HTTP request volume across this country's observed week.” | “Compare the line with itself: this country's peak is 100. A dip alone does not establish an outage.” |
+| Bots      | “Share of HTTP requests likely to be automated.”                    | “Likely automated does not mean malicious. This is not a count of AI agents.”                         |
+| Devices   | “Share of requests by device type.”                                 | “Bars show request share, not unique people. Unclassified devices stay in Other.”                     |
+| Protocols | “Share of requests by HTTP version.”                                | “Bars show request share. HTTP/3 uses QUIC; this chart does not measure speed or security.”           |
 
 Keep the event, attribution, licence and transformation wording. “No reported
 events” must continue to be distinct from “no outage”. The map remains labelled
@@ -72,12 +74,12 @@ Use “A few live requests” as the eyebrow and keep “Outside the browser.”
 section heading. Replace the section introduction with: “These cards make bounded
 requests to Cloudflare, then show exactly what comes back.”
 
-| Card | Supporting copy |
-| --- | --- |
-| You are here. | Subtitle: “Your request, at the edge.” Caption: “Illustration; open to inspect the metadata returned for this request.” Keep the approximate-country and no-IP boundary. |
-| Still answering? | Subtitle: “A day of scheduled checks, including gaps.” Caption: “Scheduled checks; open to inspect recorded response headers.” Keep the distinction between observed checks, missing rows and failed checks. |
-| Bit by bit. | Subtitle: “Start a response and watch six chunks arrive.” Caption: “Illustration; run it to receive six real chunks.” Keep the buffering and no-speed-test boundary. |
-| On the same page. | Subtitle: “Connect two windows and send a numbered pulse between them.” Caption: “Shared sequence; connect to send a real pulse.” Keep the illustrative-travel and no-message boundary. |
+| Card              | Supporting copy                                                                                                                                                                                                                                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| You are here.     | Subtitle: “Your request, at the edge.” Caption: “Illustration; open to inspect the metadata returned for this request.” Keep the approximate-country and no-IP boundary.                                                                                                                                              |
+| Still answering?  | Subtitle: “A day of scheduled checks, including gaps.” Caption: “Scheduled checks; open to inspect recorded response headers.” Keep the distinction between observed checks, missing rows and failed checks.                                                                                                          |
+| Bit by bit.       | Subtitle: “Start a response and watch six chunks arrive.” Caption: “Illustration; run it to receive six real chunks.” Keep the buffering and no-speed-test boundary.                                                                                                                                                  |
+| On the same page. | Subtitle: “Connect two windows and send a numbered pulse between them.” Caption: “Shared sequence; connect to send a real pulse.” Keep the illustrative-travel and no-message boundary.                                                                                                                               |
 | A second opinion. | Subtitle: “Choose a fictional incident and get a hypothesis, two checks and the unknowns.” Replace the reference footnote with: “This is the authored baseline for comparison. The model sees only the selected facts and question.” Keep the existing model, Turnstile, D1, no-tools and no-live-systems boundaries. |
 
 The generated answer labels stay: “Model suggestion”, “A possible explanation”,

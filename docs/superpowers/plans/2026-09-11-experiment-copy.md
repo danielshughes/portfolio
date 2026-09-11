@@ -26,10 +26,12 @@
 ### Task 1: Rewrite browser-simulation supporting copy
 
 **Files:**
+
 - Modify: `src/pages/experiments.astro:17-355`
 - Test: `tests/visual/experiment-copy.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Existing `ExperimentCard` slots and controls.
 - Produces: The same six browser simulations with clearer subtitles, body copy, outputs and disclosure labels.
 
@@ -39,12 +41,30 @@ Create a Playwright test that opens `/experiments/`, checks the six existing car
 
 ```ts
 const expected = [
-  ["Room for one more?", "Raise CPU demand and watch the replica target change, then see which pods fit."],
-  ["Who’s allowed to do what?", "Choose a scenario, set the call budget and decide whether a simulated write is allowed."],
-  ["A little interference.", "Compare a clean wave with the same wave after interference is added."],
-  ["The average looks fine.", "Keep most requests steady, then stretch the slowest ten."],
-  ["Requests in flight.", "Change how many requests run together and see which finish before the deadline."],
-  ["A small connected world.", "Rotate the graph or select a node to see its direct connections."],
+  [
+    "Room for one more?",
+    "Raise CPU demand and watch the replica target change, then see which pods fit.",
+  ],
+  [
+    "Who’s allowed to do what?",
+    "Choose a scenario, set the call budget and decide whether a simulated write is allowed.",
+  ],
+  [
+    "A little interference.",
+    "Compare a clean wave with the same wave after interference is added.",
+  ],
+  [
+    "The average looks fine.",
+    "Keep most requests steady, then stretch the slowest ten.",
+  ],
+  [
+    "Requests in flight.",
+    "Change how many requests run together and see which finish before the deadline.",
+  ],
+  [
+    "A small connected world.",
+    "Rotate the graph or select a node to see its direct connections.",
+  ],
 ] as const;
 ```
 
@@ -59,28 +79,52 @@ Expected: FAIL because the current subtitles still contain the abstract supporti
 Apply these replacements in `src/pages/experiments.astro`:
 
 ```astro
-subtitle="Raise CPU demand and watch the replica target change, then see which pods fit."
-<p>Turn up CPU demand. HPA changes the target, then the scheduler tries to place each pod.</p>
-<output aria-live="polite" aria-atomic="true">HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.</output>
-
-subtitle="Choose a scenario, set the call budget and decide whether a simulated write is allowed."
-<p>Follow the scripted agent as it checks context, calls tools and stops at a timeout, missing context or denied write.</p>
-<output aria-live="polite" aria-atomic="true">The script proposes a call. The host checks context, budget and approval before a simulated write.</output>
+subtitle="Raise CPU demand and watch the replica target change, then see which
+pods fit."
+<p>
+  Turn up CPU demand. HPA changes the target, then the scheduler tries to place
+  each pod.
+</p>
+<output aria-live="polite" aria-atomic="true">
+  HPA sets the replica target. Placement uses each pod's CPU request, so a pod
+  can stay pending when there is no room.
+</output>
+subtitle="Choose a scenario, set the call budget and decide whether a simulated
+write is allowed."
+<p>
+  Follow the scripted agent as it checks context, calls tools and stops at a
+  timeout, missing context or denied write.
+</p>
+<output aria-live="polite" aria-atomic="true">
+  The script proposes a call. The host checks context, budget and approval
+  before a simulated write.
+</output>
 <summary>Follow the trace</summary>
-
 subtitle="Compare a clean wave with the same wave after interference is added."
-<p>The upper trace stays clean. Change the lower trace's noise, frequency and amplitude.</p>
-
+<p>
+  The upper trace stays clean. Change the lower trace's noise, frequency and
+  amplitude.
+</p>
 subtitle="Keep most requests steady, then stretch the slowest ten."
-<p>Move the tail slider and watch the median stay put while the slow end grows.</p>
-<output aria-live="polite" aria-atomic="true">The median stays steady; the slowest requests move the upper percentiles.</output>
-
-subtitle="Change how many requests run together and see which finish before the deadline."
-<p>Run the lookup with a different number in flight. Queued time counts against the deadline.</p>
-<output aria-live="polite" aria-atomic="true">The readout will show how many of 12 requests meet the deadline.</output>
-
+<p>
+  Move the tail slider and watch the median stay put while the slow end grows.
+</p>
+<output aria-live="polite" aria-atomic="true">
+  The median stays steady; the slowest requests move the upper percentiles.
+</output>
+subtitle="Change how many requests run together and see which finish before the
+deadline."
+<p>
+  Run the lookup with a different number in flight. Queued time counts against
+  the deadline.
+</p>
+<output aria-live="polite" aria-atomic="true">
+  The readout will show how many of 12 requests meet the deadline.
+</output>
 subtitle="Rotate the graph or select a node to see its direct connections."
-<p>Drag to rotate. Select a node to highlight its neighbours and dim the rest.</p>
+<p>
+  Drag to rotate. Select a node to highlight its neighbours and dim the rest.
+</p>
 <summary>See the connections</summary>
 ```
 
@@ -102,12 +146,14 @@ git commit -S -m "copy: clarify browser experiments"
 ### Task 2: Rewrite live, streaming and AI card copy
 
 **Files:**
+
 - Modify: `src/components/LiveExperiments.astro:9-189`
 - Modify: `src/components/StreamExperiment.astro:5-65`
 - Modify: `src/components/TriageExperiment.astro:16-75`
 - Test: `tests/visual/experiment-copy.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Existing live card components and lazy runtime module.
 - Produces: Clear live request descriptions with unchanged controls, safety copy and lazy loading behaviour.
 
@@ -139,22 +185,24 @@ Apply these replacements:
 
 ```astro
 <p class="eyebrow">A few live requests</p>
-<p class="live-intro">These cards make bounded requests to Cloudflare, then show exactly what comes back.</p>
-
-subtitle="Your request, at the edge."
-caption="Illustration; open to inspect the metadata returned for this request"
-
-subtitle="A day of scheduled checks, including gaps."
-caption="Scheduled checks; open to inspect recorded response headers"
-
-subtitle="Start a response and watch six chunks arrive."
-caption="Illustration; run it to receive six real chunks"
-
-subtitle="Connect two windows and send a numbered pulse between them."
-caption="Shared sequence; connect to send a real pulse"
-
-<p>Choose a fictional incident and get a hypothesis, two checks and the unknowns.</p>
-<p class="live-footnote">This is the authored baseline for comparison. The model sees only the selected facts and question.</p>
+<p class="live-intro">
+  These cards make bounded requests to Cloudflare, then show exactly what comes
+  back.
+</p>
+subtitle="Your request, at the edge." caption="Illustration; open to inspect the
+metadata returned for this request" subtitle="A day of scheduled checks,
+including gaps." caption="Scheduled checks; open to inspect recorded response
+headers" subtitle="Start a response and watch six chunks arrive."
+caption="Illustration; run it to receive six real chunks" subtitle="Connect two
+windows and send a numbered pulse between them." caption="Shared sequence;
+connect to send a real pulse"
+<p>
+  Choose a fictional incident and get a hypothesis, two checks and the unknowns.
+</p>
+<p class="live-footnote">
+  This is the authored baseline for comparison. The model sees only the selected
+  facts and question.
+</p>
 ```
 
 Keep the existing model, Turnstile, D1, no-tools, no-live-systems, no-IP and illustrative-travel boundaries. Do not alter runtime status messages unless a test proves they contradict the new copy.
@@ -175,12 +223,14 @@ git commit -S -m "copy: clarify live experiments"
 ### Task 3: Rewrite Radar and AI scenario wording
 
 **Files:**
+
 - Modify: `src/components/InternetMap.astro:17-32,114-172,279-315`
 - Modify: `src/experiments/radar-tabs.ts:6-30`
 - Modify: `src/experiments/triage-scenarios.ts:2-29`
 - Test: `tests/visual/experiment-copy.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Typed `RadarView` metadata and typed `triageScenarios` records.
 - Produces: Concrete tab descriptions, reading guides and scenario questions without changing data interpretation or validation.
 
@@ -265,10 +315,12 @@ git commit -S -m "copy: make Radar and AI guidance concrete"
 ### Task 4: Align experiment documentation
 
 **Files:**
+
 - Modify: `docs/experiments.md:5-13,30-48,81-92`
 - Modify: `AGENTS.md` if any copy rule becomes stale
 
 **Interfaces:**
+
 - Consumes: The final component and typed-data wording from Tasks 1 to 3.
 - Produces: Current documentation describing the shared copy pattern and the same evidence boundaries.
 
@@ -300,10 +352,12 @@ git commit -S -m "docs: align experiment copy guidance"
 ### Task 5: Full verification and visual review
 
 **Files:**
+
 - Test: `tests/visual/experiment-copy.spec.ts`
 - Test: Existing experiment, Radar, accessibility and typography suites
 
 **Interfaces:**
+
 - Consumes: All copy changes from Tasks 1 to 4.
 - Produces: Evidence that copy renders, wraps and remains accessible without changing experiment behaviour.
 

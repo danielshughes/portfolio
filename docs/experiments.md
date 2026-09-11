@@ -31,7 +31,7 @@ The finite request, placement and latency animations show a state transition, th
 
 ## Radar atlas
 
-Traffic, Bots, Devices and Protocols retain the same selected country, map and selection-control positions. Each tab has its own description, reading guide and observed time window. The active chart panel sizes naturally: category summaries must not reserve the unrelated Traffic controls' height. On mobile the footer follows that content, rather than leaving an empty chart-sized box. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
+Traffic, Bots, Devices and Protocols retain the same selected country, map and selection-control positions. Each tab has its own description, reading label, reading guide and observed time window. The active chart panel sizes naturally: category summaries must not reserve the unrelated Traffic controls' height. On mobile the footer follows that content, rather than leaving an empty chart-sized box. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
 
 Clicking or tapping near a country marker selects the nearest rendered dot within a bounded radius. Blank map areas do nothing and scrolling remains native. The labelled country buttons provide the equivalent keyboard and screen-reader interaction, without overlapping invisible targets on the map. Summary bars use the shared spacing token between rows, beginning just below the country heading and ending close to their date/source text.
 

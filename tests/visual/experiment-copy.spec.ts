@@ -16,7 +16,8 @@ const browserExperiments = [
   {
     id: "wave",
     title: "A little interference.",
-    subtitle: "Compare a clean wave with the same wave after interference is added.",
+    subtitle:
+      "Compare a clean wave with the same wave after interference is added.",
   },
   {
     id: "latency",
@@ -32,7 +33,8 @@ const browserExperiments = [
   {
     id: "world",
     title: "A small connected world.",
-    subtitle: "Rotate the graph or select a node to see its direct connections.",
+    subtitle:
+      "Rotate the graph or select a node to see its direct connections.",
   },
 ] as const;
 
@@ -48,12 +50,22 @@ test("browser experiment titles and supporting copy are concrete", async ({
   );
   for (const { id, title, subtitle } of browserExperiments) {
     const card = page.locator(`#${id}`);
-    await expect(card.getByRole("heading", { name: title, exact: true })).toBeVisible();
-    await expect(card.locator(".experiment-card-heading p")).toHaveText(subtitle);
+    await expect(
+      card.getByRole("heading", { name: title, exact: true }),
+    ).toBeVisible();
+    await expect(card.locator(".experiment-card-heading p")).toHaveText(
+      subtitle,
+    );
   }
-  await expect(page.locator("#kubernetes .experiment-settings summary")).toContainText(
-    "Explore",
+  await expect(page.locator("#kubernetes output")).toHaveText(
+    "HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.",
   );
+  await expect(page.locator("#requests output")).toHaveText(
+    "The readout will show how many of 12 requests meet the deadline.",
+  );
+  await expect(
+    page.locator("#kubernetes .experiment-settings summary"),
+  ).toContainText("Explore");
   await page.locator("#mcp > .experiment-settings > summary").click();
   await expect(page.locator("#mcp .trace-list > summary")).toContainText(
     "Follow the trace",
@@ -62,9 +74,6 @@ test("browser experiment titles and supporting copy are concrete", async ({
     "Follow the scripted agent as it checks context, calls tools and stops at a timeout, missing context or denied write.",
   );
   await page.locator("#kubernetes > .experiment-settings > summary").click();
-  await expect(page.locator("#kubernetes output")).toHaveText(
-    "HPA sets the replica target. Placement uses each pod's CPU request, so a pod can stay pending when there is no room.",
-  );
   await page.locator("#wave > .experiment-settings > summary").click();
   await expect(
     page.locator("#wave .experiment-desk > p:not(.experiment-footnote)"),
@@ -78,9 +87,6 @@ test("browser experiment titles and supporting copy are concrete", async ({
     "Move the tail slider and watch the median stay put while the slow end grows.",
   );
   await page.locator("#requests > .experiment-settings > summary").click();
-  await expect(page.locator("#requests output")).toHaveText(
-    "The readout will show how many of 12 requests meet the deadline.",
-  );
   await page.locator("#world > .experiment-settings > summary").click();
   await expect(page.locator("#world .connection-list > summary")).toContainText(
     "See the connections",
@@ -179,15 +185,17 @@ test("Radar and AI scenario copy stays concrete and attributed", async ({
     radar.getByRole("link", { name: /Cloudflare Radar/ }),
   ).toHaveAttribute("href", "https://radar.cloudflare.com/");
   const triage = page.locator("#triage");
+  await triage.scrollIntoViewIfNeeded();
+  await expect(triage.locator("#triage-scenario")).toBeEnabled();
   const scenarios = [
     "What could explain the slow requests, and what should be checked next?",
     "Why might telemetry be dropping while application health checks still pass?",
     "Why are four pods pending when node CPU usage is low? Explain placement, not why HPA chose eight.",
   ];
   for (const [index, question] of scenarios.entries()) {
-    await triage.locator("#triage-scenario").selectOption(
-      ["latency", "telemetry", "replicas"][index],
-    );
+    await triage
+      .locator("#triage-scenario")
+      .selectOption(["latency", "telemetry", "replicas"][index]);
     await expect(triage.locator("[data-triage-question]")).toHaveText(question);
   }
 });
