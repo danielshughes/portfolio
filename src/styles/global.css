@@ -650,9 +650,6 @@ main,
   font-size: var(--type-section);
 }
 @media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
   .project {
     --preview-engaged: 0;
   }

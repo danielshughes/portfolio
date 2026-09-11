@@ -1,5 +1,24 @@
 import { expect, test } from "@playwright/test";
 
+test("a direct experiment link settles before its controls can be used", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/experiments/#room");
+  const positions = await page.locator("#room").evaluate(async (room) => {
+    const tops = [room.getBoundingClientRect().top];
+    for (let frame = 0; frame < 4; frame++) {
+      await new Promise(requestAnimationFrame);
+      tops.push(room.getBoundingClientRect().top);
+    }
+    return tops;
+  });
+  expect(Math.max(...positions) - Math.min(...positions)).toBeLessThanOrEqual(
+    1,
+  );
+  await expect(page.locator("#room")).toBeInViewport();
+});
+
 test("late fonts do not move already-readable content", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   let releaseFonts!: () => void;
