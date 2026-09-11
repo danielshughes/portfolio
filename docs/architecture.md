@@ -1,6 +1,6 @@
 # Architecture
 
-Astro renders the pages at build time. Cloudflare serves static assets without invoking application code; only `/api/*` reaches the Worker. Each environment has separate bindings, runtime credentials and storage. Development is the active delivery target; production is held behind an explicit release switch. Configuration is not proof of deployment.
+Astro renders the pages at build time. Cloudflare serves static assets without invoking application code; only `/api/*` reaches the Worker. Each environment has separate bindings, runtime credentials and storage. Development is Access-protected; approved production promotions target the public apex through an explicit release switch. Configuration is not proof of deployment.
 
 ## Request and delivery paths
 
@@ -24,7 +24,7 @@ Cron (independent of visitors and Access)
   -> fixed country Radar views -> validated KV bundle
 ```
 
-Access applies to the whole development hostname, not merely HTML. The Worker has no public `workers.dev` or version-preview URL. Production configuration uses its own Worker and storage; its future cache path uses Cache API instead of development's D1 cache. There is no origin server, Pages project, R2 asset bucket or separate API domain.
+Access applies to the whole development hostname, not merely HTML. Both Workers have no public `workers.dev` or version-preview URL. Production uses its own Worker and storage, with Cache API instead of development's D1 cache. There is no origin server, Pages project, R2 asset bucket or separate API domain.
 
 ## Code and configuration map
 

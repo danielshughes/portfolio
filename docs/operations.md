@@ -1,21 +1,21 @@
 # Cloudflare operations
 
-Development is the only authorised release target. Production is on hold. This guide describes the checked-in implementation and how to verify a deployment; dated release evidence must identify what actually ran, rather than treating this guide as proof that every service is live.
+Development is Access-protected at `dev.danhughes.uk`; approved production promotions target the public `danhughes.uk` apex. This guide describes the checked-in implementation and how to verify a deployment; dated release evidence must identify what actually ran, rather than treating this guide as proof that every service is live.
 
 ## Configuration ownership
 
 `wrangler.jsonc` owns Worker names, environment bindings, routes, schedules, rate-limit namespaces, migrations and sampling. Do not make undocumented dashboard changes to values that Wrangler will overwrite. Zone security, Access applications/policies, API credentials, GitHub environments and branch protections are managed separately. Their exact private IDs, vault references, verification evidence and recovery versions belong in the owner's private operational record, not a public README.
 
-| Setting                                 | Development                                                  | Prepared production                          |
-| --------------------------------------- | ------------------------------------------------------------ | -------------------------------------------- |
-| Git branch / GitHub environment         | `develop` / `development`                                    | `main` / `production`                        |
-| Custom hostname                         | `dev.danhughes.uk`                                           | `danhughes.uk`                               |
-| Access                                  | Owner-only hostname application                              | Public site if later approved                |
-| Search indexing                         | Meta/header noindex; robots disallow; no production metadata | Production build metadata only when approved |
-| Worker, KV, D1, DO and Radar credential | Development-specific                                         | Separate production resources                |
-| Radar response cache                    | D1                                                           | Cache API                                    |
-| Scheduled asset probe                   | Development ASSETS binding                                   | Production ASSETS binding                    |
-| Deploy enablement                       | Trusted checked development push                             | Explicit switch required; currently held     |
+| Setting                                 | Development                                                  | Production                                    |
+| --------------------------------------- | ------------------------------------------------------------ | --------------------------------------------- |
+| Git branch / GitHub environment         | `develop` / `development`                                    | `main` / `production`                         |
+| Custom hostname                         | `dev.danhughes.uk`                                           | `danhughes.uk`                                |
+| Access                                  | Owner-only hostname application                              | Public site                                   |
+| Search indexing                         | Meta/header noindex; robots disallow; no production metadata | Canonical, sitemap and public metadata        |
+| Worker, KV, D1, DO and Radar credential | Development-specific                                         | Separate production resources                 |
+| Radar response cache                    | D1                                                           | Cache API                                     |
+| Scheduled asset probe                   | Development ASSETS binding                                   | Production ASSETS binding                     |
+| Deploy enablement                       | Trusted checked development push                             | Approved promotion and explicit enable switch |
 
 No-index directives are not security. Access is the actual development boundary. The two environments do not share room state, budgets, data or runtime credentials. Account-wide quotas are still shared.
 
@@ -37,7 +37,7 @@ Cloudflare's [tracing feature documentation](https://developers.cloudflare.com/w
 4. Create a hostname-based Access application for development with an explicit owner allow policy and the existing one-time PIN identity provider. Keep it out of the launcher if it is not needed there. No bypass policy and no allow-everyone rule. Preserve a recovery admin route in Cloudflare's own dashboard, not an unprotected website hostname.
 5. Provision environment-specific KV and D1 resources. Add their identifiers to the matching Wrangler environment. SQLite Durable Object creation is controlled by the Wrangler migration, not a manually invented namespace ID. AI is a binding, not a client credential.
 6. Create least-privilege deployment and Radar Read credentials, save them in 1Password with genuine DATE expiry fields, and populate the matching GitHub environment through stdin. Never print, put in argv or commit values.
-7. Configure branch-restricted GitHub environments and protected branch checks. Keep production's enable variable absent or false. Apply D1 migrations before the first Worker deployment.
+7. Configure branch-restricted GitHub environments and protected branch checks. Set production's enable variable only after owner approval; keep it absent or false when publication is held. Apply D1 migrations before the first Worker deployment.
 8. Deploy through CI, verify the new protected hostname, then retire an old development route and only its matching temporary Access/zone exceptions. Do not remove old access protection while its route still serves the Worker.
 
 HSTS should follow verified HTTPS/certificate behaviour, with deliberate subdomain/preload scope. A null MX and deny-all sender policy mean the domain does not receive or send mail; revise those before introducing mail. These are separate zone decisions, not settings in Wrangler.
@@ -92,7 +92,9 @@ CI runs every configured browser. An explicit local browser subset must be repor
 5. The script validates repository, event and branch; applies additive remote SQL migrations; uploads the Worker, static assets and runtime Radar secret; and applies routes, bindings, migrations and Cron configuration.
 6. Read the deployment result and perform the live checklist below. Record commit SHA, Action run, Worker version, checks, schedule evidence and remaining limits in the release record.
 
-Production remains disabled in the workflow and deployment script unless `PRODUCTION_DEPLOY_ENABLED` is exactly `true`. Enabling it requires fresh owner approval, a reviewed `develop` to `main` promotion, correct production environment secrets and production metadata checks. Do not set the switch merely to make a test or Action pass.
+Production remains disabled in the workflow and deployment script unless `PRODUCTION_DEPLOY_ENABLED` is exactly `true`. The owner has approved publication; retain reviewed `develop` to `main` promotions, separate production environment secrets and production metadata checks. A later hold requires disabling the switch. Do not change it merely to make a test or Action pass.
+
+Before promoting, reconcile any previous production merge back into `develop` through a reviewed PR so strict required checks can pass against the current base. Preserve both persistent branches after merging. Verify the trusted `main` push and live apex independently of the earlier development release. For production, run the live checklist without Access credentials and require public canonical, OG and structured metadata, an indexable robots file and the production sitemap. Development must retain its Access and no-index boundary.
 
 GitHub's [concurrency queue](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency) uses `queue: max`; it is bounded, and arrival order is not a guarantee of commit order. Check the final deployed SHA after a burst of pushes. The pinned actionlint release lacks that field, so `.github/actionlint.yaml` suppresses only its exact unknown-key diagnostic for this workflow. `tests/ci-workflow.test.mjs` validates the queue/cancellation combination. Remove that exception when the linter supports the field; all other workflow and shell diagnostics remain enforced.
 
@@ -118,7 +120,7 @@ The account has other workloads. The application's caps bound its own work; they
 | Static Assets       | Served asset-first; no application invocation for ordinary page assets. [Billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)                                                                                                                                                                                                                              |
 | Worker CPU/requests | Free currently allows 100,000 requests/day and 10 ms CPU per HTTP invocation. Waiting on I/O is not CPU time. Inspect real invocation CPU and failures; a timeout or per-location limiter is not a CPU guarantee. [Limits](https://developers.cloudflare.com/workers/platform/limits/)                                                                                                                           |
 | Cron and Radar      | The configured five-minute development cadence projects 288 ticks/day, at most five upstream Radar calls and one KV write per tick. Country rotation comes from the model list. This is a configuration budget, not evidence that a deployed version has received Cron events. Do not count prepared production as active.                                                                                       |
-| KV                  | The configured cadence projects at most 288 writes/day for development, or 576 if both environments are later approved and run. This is below Free's 1,000 writes/day before other account use, not proof of deployed usage. Reads are separate. Snapshot TTL is two hours; eligibility is one hour. [KV limits](https://developers.cloudflare.com/kv/platform/limits/)                                          |
+| KV                  | The configured cadence projects at most 288 writes/day per environment, or 576 with both running. This is below Free's 1,000 writes/day before other account use, not proof of deployed usage. Reads are separate. Snapshot TTL is two hours; eligibility is one hour. [KV limits](https://developers.cloudflare.com/kv/platform/limits/)                                                                        |
 | D1                  | Free currently includes 5 million rows read/day, 100,000 rows written/day and 5 GB total storage. Health retention is seven days, the displayed window one day, AI budget one row, cache keys finite. Native ingress is per location, not a global D1 quota. [D1 pricing and allowance behaviour](https://developers.cloudflare.com/d1/platform/pricing/)                                                        |
 | Workers AI          | Free currently includes 10,000 neurons/day. The application permits 50 attempts per environment/day with a fixed small model and 180 output-token cap. Failed attempts count. Neurons depend on the model's input/output rates and other account use; inspect usage rather than equating requests with neurons. [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)             |
 | Durable Objects     | Use Free-compatible SQLite storage and WebSocket hibernation. One bounded room, 12 connections, two-minute sessions, 30 messages/session and at least one second between sends. These are workload limits, not an exemption from account request/storage quotas. [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/)                                                  |
