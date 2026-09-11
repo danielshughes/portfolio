@@ -144,27 +144,34 @@ test("Radar and AI scenario copy stays concrete and attributed", async ({
   const views = [
     [
       "Traffic",
+      "Observed traffic, normalised to 100",
       "Relative HTTP request volume across this country's observed week.",
       "Compare the line with itself: this country's peak is 100. A dip alone does not establish an outage.",
     ],
     [
       "Bots",
+      "Observed automated share",
       "Share of HTTP requests likely to be automated.",
       "Likely automated does not mean malicious. This is not a count of AI agents.",
     ],
     [
       "Devices",
+      "Observed device share",
       "Share of requests by device type.",
       "Bars show request share, not unique people. Unclassified devices stay in Other.",
     ],
     [
       "Protocols",
+      "Observed HTTP version share",
       "Share of requests by HTTP version.",
       "Bars show request share. HTTP/3 uses QUIC; this chart does not measure speed or security.",
     ],
   ] as const;
-  for (const [tab, description, guide] of views) {
+  for (const [tab, readingLabel, description, guide] of views) {
     await radar.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(radar.locator("[data-radar-reading-label]")).toHaveText(
+      readingLabel,
+    );
     await expect(radar.locator("#radar-description")).toHaveText(description);
     await expect(radar.locator("[data-radar-guide]")).toHaveText(guide);
   }

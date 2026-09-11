@@ -3,27 +3,27 @@ export const triageScenarios = {
   latency: {
     title: "The slow tail",
     question:
-      "What could explain the slow tail, and what should be inspected next?",
+      "What could explain the slow requests, and what should be checked next?",
     interpretation:
-      "Database connection wait is a useful lead, not a confirmed cause. Inspect traces and pool measurements. A change happening after a deployment does not establish that the deployment caused it.",
+      "Database wait is a lead, not a confirmed cause. Check traces and pool measurements. A change after deployment does not prove causation.",
     evidence:
       "Synthetic API: median latency 80 ms, p99 1,800 ms. Error rate steady at 0.2%. Database connection wait increased after a deployment. No trace samples have been checked yet.",
   },
   telemetry: {
     title: "The quiet dashboard",
     question:
-      "What might be preventing telemetry delivery while application health checks pass?",
+      "Why might telemetry be dropping while application health checks still pass?",
     interpretation:
-      "HTTP 429 and a filling collector queue point towards throttling and back-pressure. Passing application checks do not prove telemetry is arriving. The source does not establish increased traffic or the destination's limiting policy.",
+      "HTTP 429 responses and a collector queue at 85% point to throttling or back-pressure. Passing application checks do not prove telemetry is arriving. The evidence does not show higher traffic or the destination's limit.",
     evidence:
       "Synthetic collector: queue 85% full, dropped spans increasing, destination returns HTTP 429. Application health checks still pass. No change in application request rate. Only one telemetry destination is configured.",
   },
   replicas: {
     title: "Nowhere to land",
     question:
-      "Why might the four pods remain pending despite low node CPU usage? Explain pod placement, not why HPA chose eight replicas.",
+      "Why are four pods pending when node CPU usage is low? Explain placement, not why HPA chose eight.",
     interpretation:
-      "The scheduler considers resource requests against node capacity. Low measured CPU does not mean new requests fit. HPA recommends a replica count; it does not add nodes or place pods. The pending pods' exact requests and other scheduling constraints still need inspection.",
+      "The scheduler compares resource requests with node capacity. Low measured CPU does not mean requests fit. HPA chooses a target but does not place pods or add nodes. Pending requests and scheduling constraints still need checking.",
     evidence:
       "Synthetic Kubernetes workload: HPA recommends 8 replicas, 4 ready and 4 pending. Events report insufficient CPU. Node usage is low but existing resource requests reserve most allocatable CPU. No memory or affinity information is available.",
   },

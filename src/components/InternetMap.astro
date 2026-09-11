@@ -20,7 +20,7 @@ const descriptions = Object.values(radarViews);
       <h2 id="internet-title">
         The Internet <em>has a pulse.</em>
       </h2>
-      <p>A country, a week, a different rhythm.</p>
+      <p>Pick a country and scrub through its observed week.</p>
       <ExperimentTechnology label="Radar / Workers KV" />
     </div>
     <p class="internet-source">Cloudflare Radar</p>
@@ -113,11 +113,11 @@ const descriptions = Object.values(radarViews);
     </div>
     <div class="internet-reading">
       <div class="internet-reading-heading">
-        <span class="radar-text-slot">
-          <span data-radar-reading-label>Observed / traffic index</span>
+          <span class="radar-text-slot">
+          <span data-radar-reading-label>{radarViews.traffic.readingLabel}</span>
           <span
             class="radar-text-sizer"
-            data-copy="Observed / traffic index"
+            data-copy={radarViews.traffic.readingLabel}
             aria-hidden="true"
             inert
           />
