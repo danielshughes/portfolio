@@ -386,14 +386,7 @@ test("daily inference reservations are atomic, bounded and count failures", asyn
   assert.equal(
     responses.filter((r) => r.status === 429).length,
     5,
-    JSON.stringify(
-      await Promise.all(
-        responses.map(async (r) => ({
-          status: r.status,
-          body: await r.clone().json(),
-        })),
-      ),
-    ),
+    `unexpected response statuses: ${responses.map((response) => response.status).join(", ")}`,
   );
   assert.equal(
     responses.filter((r) => r.status === 503).length,
