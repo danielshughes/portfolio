@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runtime } from "./runtime-harness.mjs";
+import { radarUpstream } from "./fixtures/radar-upstream.mjs";
 
 const summary = {
   success: true,
@@ -85,6 +86,52 @@ test("workerd caches non-429 backoff across countries", async (t) => {
       502,
     );
   assert.equal(calls, 1);
+});
+
+test("both environment caches round-trip every supported view and reject inherited names", async (t) => {
+  for (const environment of ["development", "production"])
+    await t.test(environment, async (t) => {
+      let calls = 0;
+      const mf = await runtime({
+        bindings: { SITE_ENV: environment },
+        outbound(request) {
+          calls++;
+          return radarUpstream(request.url);
+        },
+      });
+      t.after(() => mf.dispose());
+      const request = (view) =>
+        mf.dispatchFetch(
+          `https://portfolio.example/api/radar?country=GB&view=${view}`,
+        );
+      for (const view of ["traffic", "bots", "devices", "protocols"]) {
+        const first = await request(view);
+        assert.equal(first.status, 200);
+        const data = await first.json();
+        assert.equal(data.view, view);
+        const cached = await request(view);
+        assert.equal(cached.status, 200);
+        assert.deepEqual(await cached.json(), data);
+      }
+      for (const view of ["unknown", "__proto__", "constructor", "toString"])
+        assert.equal((await request(view)).status, 400);
+      assert.equal(calls, 5);
+      const db = await mf.getD1Database("HISTORY");
+      const rows = (
+        await db.prepare("SELECT key FROM radar_cache ORDER BY key").all()
+      ).results;
+      assert.equal(rows.length, environment === "development" ? 4 : 0);
+      if (environment === "development")
+        assert.deepEqual(
+          rows.map((row) => row.key),
+          [
+            "/api/.radar/v2/GB/bots",
+            "/api/.radar/v2/GB/devices",
+            "/api/.radar/v2/GB/protocols",
+            "/api/.radar/v2/GB/traffic",
+          ],
+        );
+    });
 });
 
 test("development caches in D1 behind Access, ignores request host and expires entries", async (t) => {

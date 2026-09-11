@@ -65,6 +65,9 @@ test("rejects unsupported and duplicate views before fetching", async () => {
   const h = harness();
   for (const q of [
     "country=GB&view=secrets",
+    "country=GB&view=constructor",
+    "country=GB&view=__proto__",
+    "country=GB&view=toString",
     "country=GB&view=bots&view=devices",
     "country=GB&view=bots&extra=1",
   ])

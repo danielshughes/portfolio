@@ -1,5 +1,7 @@
 import { radarTime } from "./radar-client";
 import type { RadarSummary } from "./radar-summary";
+import type { RadarView } from "./radar-views";
+export type { RadarView } from "./radar-views";
 
 export const radarViews = {
   traffic: {
@@ -26,8 +28,10 @@ export const radarViews = {
     guide:
       "Each bar is a share of requests. HTTP/3 uses QUIC; this chart does not measure speed or security.",
   },
-};
-export type RadarView = keyof typeof radarViews;
+} satisfies Record<
+  RadarView,
+  { title: string; description: string; guide: string }
+>;
 export function mountRadarTabs(
   root: HTMLElement,
   select: (view: RadarView) => void,

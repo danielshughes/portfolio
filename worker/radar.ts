@@ -1,4 +1,8 @@
 import { countries } from "../src/experiments/internet-model.ts";
+import {
+  isRadarView,
+  radarDimensions,
+} from "../src/experiments/radar-views.ts";
 
 const HOUR = 3_600_000;
 const MAX_BODY = 262_144;
@@ -6,11 +10,6 @@ const MAX_EVENTS = 100;
 const CACHE_SECONDS = 3600;
 export const MAX_BACKOFF_SECONDS = 86400;
 const TIMEOUT_MS = 10_000;
-const dimensions: Record<string, string> = {
-  bots: "BOT_CLASS",
-  devices: "DEVICE_TYPE",
-  protocols: "HTTP_VERSION",
-};
 
 function summary(value: unknown) {
   const body = result(value),
@@ -283,7 +282,7 @@ export async function handleRadar(
     url.searchParams.getAll("country").length !== 1 ||
     url.searchParams.getAll("view").length > 1 ||
     entries.some(([key]) => !["country", "view"].includes(key)) ||
-    !["traffic", ...Object.keys(dimensions)].includes(view) ||
+    !isRadarView(view) ||
     !countries.some((item) => item.code === country)
   )
     return json({ error: "invalid_country" }, 400);
@@ -369,7 +368,7 @@ export async function handleRadar(
     let payload;
     if (view !== "traffic") {
       payload = summary(
-        await get(`http/summary/${dimensions[view]}`, { dateRange: "7d" }),
+        await get(`http/summary/${radarDimensions[view]}`, { dateRange: "7d" }),
       );
     } else {
       const series = traffic(
