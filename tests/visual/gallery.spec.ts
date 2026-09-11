@@ -1,6 +1,42 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+for (const colourScheme of ["light", "dark"] as const) {
+  test(`both galleries balance neutral and tinted cards in ${colourScheme}`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: colourScheme });
+    await page.goto("/experiments/");
+    const plain = await page
+      .locator("html")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    for (const collection of await page
+      .locator(".experiment-collection")
+      .all()) {
+      const colours = await collection
+        .locator(".experiment-stage")
+        .evaluateAll((stages) =>
+          stages.map((stage) => ({
+            background: getComputedStyle(stage).backgroundColor,
+            accent: getComputedStyle(stage)
+              .getPropertyValue("--preview-ink")
+              .trim(),
+          })),
+        );
+      expect(colours.some((colour) => colour.background === plain)).toBe(true);
+      expect(colours.some((colour) => colour.background !== plain)).toBe(true);
+      for (const [i, colour] of colours.entries()) {
+        expect(colour.accent).not.toBe("");
+        if (colour.background === plain) continue;
+        if (i > 0)
+          expect(colour.background).not.toBe(colours[i - 1].background);
+        if (i > 1)
+          expect(colour.background).not.toBe(colours[i - 2].background);
+      }
+    }
+  });
+}
+
 for (const id of ["kubernetes", "mcp", "latency", "requests"]) {
   test(`${id} animation can pause, finish and replay without changing its result`, async ({
     page,
@@ -32,13 +68,33 @@ for (const id of ["kubernetes", "mcp", "latency", "requests"]) {
   });
 }
 
+test("opening the model keeps the same accent as its preview", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/experiments/");
+  const card = page.locator("#mcp");
+  const previewColour = await card
+    .locator(".preview-bead")
+    .evaluate((el) => getComputedStyle(el).fill);
+  await card.locator(".experiment-settings > summary").click();
+  await expect(card.locator(".system-chart .budget").first()).toBeVisible();
+  expect(
+    await card
+      .locator(".system-chart .budget")
+      .first()
+      .evaluate((el) => getComputedStyle(el).fill),
+  ).toBe(previewColour);
+});
+
 test("all experiments have visible previews in a staggered gallery", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/experiments/");
-  await expect(page.locator(".experiment")).toHaveCount(6);
-  await expect(page.locator(".experiment > .experiment-stage")).toHaveCount(6);
+  await expect(page.locator("[data-experiment]")).toHaveCount(6);
+  await expect(page.locator("[data-live]")).toHaveCount(4);
+  await expect(page.locator(".experiment > .experiment-stage")).toHaveCount(10);
   const a = (await page.locator("#kubernetes").boundingBox())!,
     b = (await page.locator("#mcp").boundingBox())!;
   expect(b.x).toBeGreaterThan(a.x + a.width);
@@ -64,6 +120,8 @@ test("Kubernetes shows pending pods and adding capacity allows placement", async
   await card.getByLabel("CPU demand").fill("4000");
   await card.getByLabel("Nodes", { exact: true }).fill("1");
   await expect(card.locator("output")).toContainText("8 pending");
+  await expect(card.locator(".step-text")).toHaveText("8 pods still pending");
+  await expect(card.locator("output")).toContainText("1 node,");
   await card.getByLabel("Nodes", { exact: true }).fill("3");
   await expect(card.locator("output")).toContainText("0 pending");
   await card.getByRole("button", { name: "Reset", exact: true }).click();

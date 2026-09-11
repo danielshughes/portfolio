@@ -25,9 +25,11 @@ async function expectPartialStroke(mark: Locator) {
 }
 
 async function finishStroke(mark: Locator) {
-  await mark
-    .locator("path")
-    .evaluate((path) => path.getAnimations()[0].finish());
+  await mark.evaluate((root) =>
+    root
+      .getAnimations({ subtree: true })
+      .forEach((animation) => animation.finish()),
+  );
   await expect(mark.locator("path")).toHaveCSS("stroke-dashoffset", "0px");
   await expect(mark.locator("circle")).toHaveCSS("opacity", "1");
 }

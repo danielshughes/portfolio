@@ -1,11 +1,22 @@
 import { handleRadar } from "./radar.ts";
 import { securityHeaders } from "../src/security/policy.ts";
+import { edgeDetails } from "./edge.ts";
+import { apiJson, isLocalPreview, sameOrigin } from "./http.ts";
+import { healthHistory, collectHealth } from "./health.ts";
+import { triage } from "./triage.ts";
+import { radarOptions } from "./radar-options.ts";
+import { collectSnapshots } from "./snapshots.ts";
+export { CoordinationRoom } from "./coordination.ts";
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const path = new URL(request.url).pathname;
     const protect = (response: Response) => {
-      const secured = new Response(response.body, response);
+      const secured = new Response(response.body, {
+        status: response.status,
+        headers: response.headers,
+        ...(response.webSocket ? { webSocket: response.webSocket } : {}),
+      });
       for (const [key, value] of Object.entries(
         securityHeaders(env.SITE_ENV !== "production"),
       ))
@@ -13,24 +24,63 @@ export default {
       return secured;
     };
     if (path === "/api/radar") {
-      return protect(
-        await handleRadar(request, {
-          enabled: String(env.RADAR_ENABLED) === "true",
-          ingress: env.RADAR_INGRESS,
-          upstream: env.RADAR_UPSTREAM,
-          token: env.RADAR_API_TOKEN,
-          now: Date.now,
-          fetch: (url, init) => fetch(url, init),
-          reportFailure: (stage, kind) =>
-            console.warn(
-              JSON.stringify({ event: "radar_failure", stage, kind }),
+      return ctx.tracing.enterSpan("radar", async (span) => {
+        span.setAttribute("deployment.version", env.CF_VERSION_METADATA.id);
+        const response = await handleRadar(request, radarOptions(env));
+        span.setAttribute("http.response.status_code", response.status);
+        span.setAttribute(
+          "radar.snapshot",
+          response.headers.get("x-radar-storage") === "snapshot",
+        );
+        return protect(response);
+      });
+    }
+    if (
+      ["/api/edge", "/api/health", "/api/triage", "/api/coordination"].includes(
+        path,
+      )
+    ) {
+      try {
+        if (
+          !(await env.RADAR_INGRESS.limit({ key: "experiments-ingress" }))
+            .success
+        )
+          return protect(apiJson({ error: "rate_limited" }, 429));
+        if (path === "/api/triage") return protect(await triage(request, env));
+        if (request.method !== "GET")
+          return protect(apiJson({ error: "method_not_allowed" }, 405));
+        if (new URL(request.url).search)
+          return protect(apiJson({ error: "invalid_query" }, 400));
+        if (path === "/api/edge")
+          return protect(
+            apiJson(
+              {
+                mode: isLocalPreview(request, env) ? "local" : "observed",
+                ...edgeDetails(
+                  isLocalPreview(request, env) ? undefined : request.cf,
+                ),
+              },
+              200,
+              "private, no-store",
             ),
-          cache: {
-            match: (key) => caches.default.match(key),
-            put: (key, response) => caches.default.put(key, response),
-          },
-        }),
-      );
+          );
+        if (path === "/api/health")
+          return protect(await healthHistory(env, Date.now()));
+        if (!sameOrigin(request))
+          return protect(apiJson({ error: "origin_not_allowed" }, 403));
+        return protect(
+          await env.COORDINATION.getByName("demonstration-room").fetch(request),
+        );
+      } catch {
+        console.warn(
+          JSON.stringify({
+            event: "experiment_unavailable",
+            path,
+            version: env.CF_VERSION_METADATA.id,
+          }),
+        );
+        return protect(apiJson({ error: "experiment_unavailable" }, 503));
+      }
     }
     if (path.startsWith("/api/"))
       return protect(
@@ -40,5 +90,27 @@ export default {
         ),
       );
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(event, env, ctx) {
+    await ctx.tracing.enterSpan("scheduled-collection", async (span) => {
+      span.setAttribute("deployment.version", env.CF_VERSION_METADATA.id);
+      const jobs = ["health", "radar"];
+      const results = await Promise.allSettled([
+        collectHealth(env, event.scheduledTime),
+        collectSnapshots(env, event.scheduledTime, radarOptions(env)),
+      ]);
+      results.forEach((result, index) => {
+        if (result.status === "rejected")
+          console.warn(
+            JSON.stringify({
+              event: "scheduled_collection_failed",
+              service: jobs[index],
+              version: env.CF_VERSION_METADATA.id,
+            }),
+          );
+      });
+      if (results.some((result) => result.status === "rejected"))
+        throw new Error("Scheduled collection incomplete");
+    });
   },
 } satisfies ExportedHandler<Env>;

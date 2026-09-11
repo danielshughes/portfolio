@@ -19,7 +19,7 @@ export function latencies(tail: number): number[] {
   if (!Number.isFinite(tail) || tail < 100 || tail > 2000)
     throw new RangeError("Tail must be between 100 and 2000 ms");
   return Array.from({ length: 100 }, (_, i) =>
-    i < 90 ? 35 + ((i * 17) % 55) : tail * (0.8 + (i - 90) / 45),
+    i < 90 ? 35 + ((i * 17) % 55) : tail * (0.9 + (i - 90) / 90),
   );
 }
 

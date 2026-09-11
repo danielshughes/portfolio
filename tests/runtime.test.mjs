@@ -86,6 +86,33 @@ test("workerd caches non-429 backoff across countries", async (t) => {
     );
   assert.equal(calls, 1);
 });
+
+test("development caches in D1 behind Access, ignores request host and expires entries", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    outbound() {
+      calls++;
+      return Response.json(summary);
+    },
+  });
+  t.after(() => mf.dispose());
+  const request = (host) =>
+    mf.dispatchFetch(`https://${host}/api/radar?country=GB&view=devices`);
+  assert.equal((await request("portfolio.example")).status, 200);
+  const db = await mf.getD1Database("HISTORY");
+  const row = await db.prepare("SELECT * FROM radar_cache").first();
+  assert.equal(row.key, "/api/.radar/v2/GB/devices");
+  assert.equal((await request("other.example")).status, 200);
+  assert.equal(calls, 1);
+  await db.prepare("UPDATE radar_cache SET expires=0").run();
+  assert.equal((await request("portfolio.example")).status, 200);
+  assert.equal(calls, 2);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS count FROM radar_cache").first())
+      .count,
+    1,
+  );
+});
 test("workerd ingress binding limits invalid requests", async (t) => {
   const mf = await runtime({ limits: { RADAR_INGRESS: 1 } });
   t.after(() => mf.dispose());
@@ -102,4 +129,26 @@ test("workerd ingress binding limits invalid requests", async (t) => {
       .status,
     429,
   );
+});
+
+test("development retains long upstream rate-limit backoff across countries", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    outbound() {
+      calls++;
+      return new Response(null, {
+        status: 429,
+        headers: { "retry-after": "7200" },
+      });
+    },
+  });
+  t.after(() => mf.dispose());
+  for (const country of ["GB", "JP"]) {
+    const response = await mf.dispatchFetch(
+      `https://portfolio.example/api/radar?country=${country}`,
+    );
+    assert.equal(response.status, 429);
+    assert(Number(response.headers.get("retry-after")) > 3600);
+  }
+  assert.equal(calls, 1);
 });

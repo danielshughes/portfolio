@@ -56,14 +56,14 @@ export const notes = [
       "An authentication failure in that pipeline exposed a fail-open check. Error classification was tightened so authentication failures block progress, and the pipeline was re-run to process missing rules. Build review also caught a masked dependency-install failure: an unsuccessful install now fails the build.",
     ],
     takeaway:
-      "The network-policy step creates the required requests; it does not assume access exists. Collector configuration is published only once the required rules are confirmed live.",
+      "The pipeline distinguishes authentication failures from transient service errors. That distinction determines when publication stops, instead of treating every failed check alike.",
     diagram: [
       "Declare + validate",
-      "Confirm network rules",
+      "Check network rules",
       "Publish to collectors",
     ],
     diagramCaption:
-      "Simplified onboarding path: publication waits for the required network rules, not merely a successful render.",
+      "Onboarding includes network-rule checks and explicit error handling, not just a successful render.",
   },
   {
     id: "technical-leadership",

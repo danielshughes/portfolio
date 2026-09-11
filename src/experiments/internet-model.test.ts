@@ -2,26 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   countries,
-  sampleWeek,
   pointAt,
   eventsAt,
   chartPath,
   project,
 } from "./internet-model.ts";
 
-test("sample weeks are deterministic, bounded and never claim real observations", () => {
+test("supported countries have unique codes and bounded map coordinates", () => {
+  assert.equal(
+    new Set(countries.map(({ code }) => code)).size,
+    countries.length,
+  );
   for (const country of countries) {
-    const week = sampleWeek(country.code);
-    assert.equal(week.mode, "sample");
-    assert.deepEqual(week, sampleWeek(country.code));
-    assert.equal(week.values.length, 168);
-    assert.ok(
-      week.values.every(
-        (value) => value === null || (value >= 0 && value <= 100),
-      ),
-    );
+    assert.match(country.code, /^[A-Z]{2}$/);
+    assert.ok(country.lat >= -90 && country.lat <= 90);
+    assert.ok(country.lon >= -180 && country.lon <= 180);
   }
-  assert.throws(() => sampleWeek("XX"));
 });
 
 test("cursor clamps to the available window and never turns missing data into zero", () => {
@@ -32,10 +28,12 @@ test("cursor clamps to the available window and never turns missing data into ze
 });
 
 test("disruption intervals include start but exclude end", () => {
-  const week = sampleWeek("JP");
-  assert.equal(eventsAt(week.events, 71).length, 0);
-  assert.equal(eventsAt(week.events, 72).length, 1);
-  assert.equal(eventsAt(week.events, 78).length, 0);
+  const events = [
+    { start: 72, end: 78, description: "Authored interval fixture" },
+  ];
+  assert.equal(eventsAt(events, 71).length, 0);
+  assert.equal(eventsAt(events, 72).length, 1);
+  assert.equal(eventsAt(events, 78).length, 0);
 });
 
 test("the chart breaks its line across missing values", () => {

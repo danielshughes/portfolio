@@ -1,6 +1,84 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+for (const width of [320, 390, 1440])
+  test(`3D node labels stay contained and separate at ${width}px across rotation and tilt`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addInitScript(() => {
+      const clear = CanvasRenderingContext2D.prototype.clearRect;
+      const text = CanvasRenderingContext2D.prototype.fillText;
+      CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+        if (this.canvas.closest("#world")) this.canvas.dataset.labels = "[]";
+        return clear.apply(this, args);
+      };
+      CanvasRenderingContext2D.prototype.fillText = function (...args) {
+        if (this.canvas.closest("#world")) {
+          const [value, x, y] = args,
+            metrics = this.measureText(value);
+          const labels = JSON.parse(this.canvas.dataset.labels ?? "[]");
+          labels.push({
+            value,
+            left: x - metrics.width / 2,
+            right: x + metrics.width / 2,
+            top: y - metrics.actualBoundingBoxAscent,
+            bottom: y + metrics.actualBoundingBoxDescent,
+          });
+          this.canvas.dataset.labels = JSON.stringify(labels);
+        }
+        return text.apply(this, args);
+      };
+    });
+    await page.goto("/experiments/#world");
+    const card = page.locator("#world");
+    await card.locator(".experiment-settings > summary").click();
+    for (const [rotation, tilt] of [
+      [308, 36],
+      ...Array.from({ length: 13 }, (_, i) =>
+        [-60, -30, 0, 30, 60].map((angle) => [i * 30, angle]),
+      ).flat(),
+    ]) {
+      await card.getByLabel("Rotation", { exact: true }).fill(String(rotation));
+      await card.getByLabel("Tilt", { exact: true }).fill(String(tilt));
+      await expect
+        .poll(
+          () =>
+            card.locator("canvas").evaluate((canvas) => {
+              const labels: {
+                left: number;
+                right: number;
+                top: number;
+                bottom: number;
+              }[] = JSON.parse(canvas.dataset.labels ?? "[]");
+              return (
+                labels.length === 6 &&
+                labels.every(
+                  (label) =>
+                    label.left >= 0 &&
+                    label.top >= 0 &&
+                    label.right <= canvas.clientWidth &&
+                    label.bottom <= canvas.clientHeight &&
+                    labels.every(
+                      (other) =>
+                        other === label ||
+                        label.right + 2 <= other.left ||
+                        other.right + 2 <= label.left ||
+                        label.bottom + 2 <= other.top ||
+                        other.bottom + 2 <= label.top,
+                    ),
+                )
+              );
+            }),
+          {
+            message: `labels clip or overlap at rotation ${rotation}, tilt ${tilt}`,
+          },
+        )
+        .toBe(true);
+    }
+  });
+
 test("signature endpoint waits for the trace to finish", async ({ page }) => {
   await page.goto("/");
   await page.locator(".site-mark").hover();

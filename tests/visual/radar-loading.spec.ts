@@ -1,6 +1,35 @@
 import { expect, test } from "@playwright/test";
 import { radar } from "./radar-fixture";
 
+test("a delayed Radar module never paints a sample chart before initialisation", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/_astro/*.js", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.route("**/api/radar?*", (route) =>
+    route.fulfill({ json: radar("GB") }),
+  );
+  await page.goto("/experiments/#internet", { waitUntil: "commit" });
+  const map = page.locator("#internet");
+  await expect(map).toBeVisible();
+  await expect(map.locator(".internet-chart-line")).toHaveAttribute("d", "");
+  await expect(map.locator(".internet-value")).toHaveText("Not loaded");
+  const controls = await map.locator(".internet-countries").boundingBox();
+  expect(controls?.height).toBeGreaterThan(40);
+  release();
+  await expect(map).not.toHaveAttribute("data-initialising", "");
+  await expect(map.locator(".internet-value")).toHaveText("50");
+  expect((await map.locator(".internet-countries").boundingBox())?.height).toBe(
+    controls?.height,
+  );
+});
+
 const summary = (country: string, view: string) => ({
   ...radar(country),
   view,

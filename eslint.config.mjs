@@ -57,8 +57,7 @@ export default [
   {
     files: [
       "src/**/*.ts",
-      "worker/index.ts",
-      "worker/radar.ts",
+      "worker/*.ts",
       "tests/visual/**/*.ts",
       "playwright.config.ts",
     ],

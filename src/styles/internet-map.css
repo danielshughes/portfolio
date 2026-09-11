@@ -224,10 +224,6 @@
   stroke-dasharray: 3 3;
   vector-effect: non-scaling-stroke;
 }
-.internet-event-band {
-  fill: var(--small-accent);
-  opacity: 0.12;
-}
 .internet-history figcaption {
   font: var(--type-micro)/1.5 var(--mono);
   margin-top: 0.75rem;
@@ -311,6 +307,16 @@
 }
 .internet [hidden] {
   display: none !important;
+}
+/* Reserve the interactive geometry before modules load, without exposing
+   inactive controls or flashing an invented chart during a restored scroll. */
+.internet[data-initialising] :is(.radar-tabs, .internet-countries)[hidden] {
+  display: flex !important;
+  visibility: hidden;
+}
+.internet[data-initialising] .internet-time-controls[hidden] {
+  display: block !important;
+  visibility: hidden;
 }
 @media (prefers-reduced-motion: no-preference) {
   .internet-pin.is-selected .internet-pin-halo {
@@ -439,6 +445,8 @@
 }
 .radar-summary {
   min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
 }
 /* Inactive views still establish their intrinsic size, but expose no controls. */
 #radar-panel,
@@ -468,13 +476,17 @@
 .radar-bars {
   list-style: none;
   padding: 0;
-  margin: 1.25rem 0;
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: var(--space-sm);
 }
 .radar-bars li {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.8rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
   font-size: var(--type-small);
   overflow-wrap: anywhere;
 }

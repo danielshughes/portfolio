@@ -1,0 +1,62 @@
+# Experiment behaviour and review contract
+
+An experiment's heading, explanation, graphic, controls and readout must describe the same behaviour. Automated checks establish specific guarantees, not a visual design verdict. Review the rendered page as well as the underlying model before release.
+
+## Browser-local simulations
+
+| Experiment                | What the controls actually change                               | Expected result and boundary                                                                                                                                                                                                                                                                 |
+| ------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Room for one more?        | CPU demand, CPU request, target utilisation and available nodes | From a fixed initial replica snapshot, the simplified HPA calculation determines desired replicas; placement is limited separately by node capacity. Pending pods stay visible. This is a CPU-only snapshot and illustrative placement, not a complete Kubernetes scheduler, VPA or cluster. |
+| Who's allowed to do what? | Scenario, tool-call budget and explicit approval for a write    | The scripted host enforces approval, missing-context, timeout and budget boundaries. The trace describes the calls actually permitted. It is not a live agent or an MCP server connection.                                                                                                   |
+| A little interference.    | Frequency, amplitude and interference                           | The reference and lower trace share the base wave; interference changes only the lower trace. Pause and Reset work independently of the explanatory readout. This does not recover signals or detect incidents.                                                                              |
+| The average looks fine.   | Latency of the slowest ten synthetic requests                   | The unchanged requests remain below the adjustable tail, including at the minimum setting. The median stays fixed while tail percentiles change. The chart settles on the computed distribution; it does not need perpetual motion.                                                          |
+| Requests in flight.       | Concurrency, request duration and a shared lookup deadline      | Queued time counts against the deadline. Outlines show planned work, hatching shows interrupted work and the readout gives the result at the deadline. No real requests, retries or upstream contention are simulated.                                                                       |
+| A small connected world.  | Rotation, tilt, drag and node selection                         | Selection highlights direct neighbours and dims unrelated connections. Labels remain inside the canvas at the supported extreme angles and viewport sizes. This is imaginary geometry, not service discovery or telemetry.                                                                   |
+
+`src/playground/models.ts` and `simulations.ts` define the quantitative rules. Keep the Kubernetes replica bounds and tolerance disclosed alongside the controls. The HPA recommendation and the capacity to place it are different results: extra replicas must not silently become extra nodes. The renderer explicitly reports any remaining pending pods.
+
+The finite request, placement and latency animations show a state transition, then finish. Wave and world motion can continue until paused. Every renderer respects disclosure state, viewport visibility, hidden tabs and reduced motion. Readouts and approval decisions must not wait for visual playback. Projected world nodes can coincide as the camera turns; labels avoid other labels and nodes, with short connector lines for displaced labels.
+
+## Radar atlas
+
+Traffic, Bots, Devices and Protocols retain the same selected country and fixed map/chart frame. Each tab has its own description, reading guide and observed time window. Traffic is normalised within a country; category percentages describe observed requests, not people. A selected-country pulse is a visual selection cue, not measured packets or activity.
+
+Loading, unavailable and a genuinely absent reading are distinct. Never fill missing observations with synthetic data. Reported disruptions come from the supplied events and scope, not from dips in the chart; no returned events does not prove no outages. Replay scrubs an observed week and must not imply live traffic.
+
+Keep the attribution, licence and transformation notice visible. On development, D1 caches only fixed country/view keys and one shared backoff key. Successful data and upstream backoff have different maximum lifetimes: the latter must honour a longer valid Retry-After without making stale data eligible.
+
+## Worker-backed experiments
+
+| Experiment        | Real interaction                                                                                            | Illustration and limits                                                                                                                                                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| You are here.     | Opening or retrying requests the serving edge's allowlisted metadata.                                       | The connection illustration keeps moving while open and visible, but is not a packet route. Missing local metadata stays missing. No IP address or precise location is returned or stored by the experiment.                                       |
+| Still answering?  | Opening retrieves a bounded, dated history of scheduled homepage ASSETS HEAD checks.                        | The closed preview illustrates check cadence. The opened chart shows only observed rows, gaps and failures, with a table alternative. It does not measure the public hostname, Access, browser rendering or independent uptime.                    |
+| A second opinion. | An explicit Run sends one fixed synthetic scenario to Workers AI after reserving budget.                    | Preview flow is illustrative. Output is inert text, not a tool call or action. Invalid input, unavailable inference and exhausted budget are distinct failures; no fabricated response or paid fallback is allowed.                                |
+| On the same page. | Connect receives the current shared sequence; Send pulse increments and broadcasts it to connected clients. | Joining receives a typed `snapshot` without animating an event. Only a typed `pulse` triggers travel from window A through the shared sequence to window B and the receiver highlight. Travel is illustrative, not a measurement of delivery time. |
+
+Health readouts identify the actual window start/end and latest sample date. They must remain truthful if the page stays open across a date boundary. The exact one-day window, cadence and expected count are shared between the Worker and renderer in `src/experiments/health-model.ts`. Missing samples are gaps, failed checks have separate marks and lines do not bridge failed or missing slots. Reject malformed, unordered, duplicate or out-of-window rows before drawing.
+
+The room clears its displayed sequence on disconnect. Closing the card, hiding the tab or taking the card out of view disconnects it without an automatic retry loop. The graphic has a separate visibility gate: a reader can keep the controls and connection on-screen while the diagram is above the viewport, without animating off-screen. Reduced motion and disconnect cancel both travel and arrival effects.
+
+Connect checks the current card bounds instead of waiting for a potentially delayed intersection notification. Changing a pending AI scenario aborts the old request and leaves the new scenario ready; its cancellation must not overwrite that state.
+
+### Local preview is not the Cloudflare edge
+
+Use the [local setup](operations.md#local-development-and-tests) before testing the Worker-backed cards. Local WebSockets use real local Durable Object state. `npm run dev:sample` collects one real local ASSETS measurement; it does not start a Cron scheduler or measure the deployed hostname. Edge metadata is deliberately absent on loopback because Wrangler's seeded values do not describe the visitor's actual connection. Workers AI has no local emulator: Run explains that limitation before spending any inference budget. Real model output must be checked on the protected development deployment, never substituted with an unlabelled fixture.
+
+## Review checklist
+
+- Check each control at its initial, minimum, maximum and meaningful failure state. Compare visible results with the model, not just a snapshot of the page.
+- Open and close at the same pointer position. Frames must not resize or move the Explore target. Check keyboard operation and meaningful values as well as pointer input.
+- Exercise Reset, Replay, Pause, disclosure closure, hidden tabs, viewport changes and reduced motion where applicable. Stop finite animations at their final state; do not confuse deliberate completion with a broken animation.
+- Inspect desktop and mobile in both palettes, including long labels, enlarged text, extreme 3D rotations and open controls. Retain a readable alternative to canvas or SVG-only information.
+- Verify that browser-local simulations make no external service calls. For live experiments, check loading, empty, unavailable and real-success paths independently.
+- Test health history with success, failure and missing slots together. Test room initial state, two-client broadcast, reconnect/disconnect and off-screen graphics separately.
+- Review every Radar view and country, source dates, reported-event scope, failure/retry behaviour and stable tab geometry.
+- Keep visible copy in British English, without em dashes or unsupported claims. The AI prompt requests the same style, but a prompt instruction alone is not a guarantee about generated text.
+
+`npm run quality` covers models, Worker/runtime boundaries, generated static output and browser regressions. The browser suites include fake upstream fixtures so failures and boundary states are reproducible without real credentials. Those checks do not prove Cloudflare provisioning, real AI inference, scheduled collection or Access sign-in. Verify those separately on the protected development deployment using the [operations checklist](operations.md).
+
+The mobile Radar tab test records bounded pointer targets, selected view, request paths and page errors on failure. This diagnostic output contains only authored fixture state. Use it to distinguish a missed interaction from a loading or rendering failure before changing runtime behaviour; a passing rerun alone does not establish the cause.
+
+The scroll reduced-motion check targets an actual `data-reveal` section, not a note preview whose entrance motion is intentionally absent. Wait for `pageshow` and the initial off-screen observation before crossing the threshold. It uses keyboard exploration because a tiny wheel delta can produce no input event in WebKit. Assert cancellation of that section's captured animation, not the presence of an unrelated animation elsewhere or natural completion after its duration.

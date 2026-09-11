@@ -1,0 +1,144 @@
+---
+interface Props {
+  kind: "edge" | "health" | "triage" | "room";
+}
+const { kind } = Astro.props;
+---
+
+<svg
+  class={`experiment-preview preview-live-${kind}`}
+  viewBox="0 0 600 320"
+  fill="none"
+  aria-hidden="true"
+>
+  {kind === "edge" ? (
+    <>
+      <path
+        class="preview-flow"
+        d="M155 146H445m-10-7 10 7-10 7M445 176H155m10-7-10 7 10 7"
+      />
+      <rect
+        class="preview-node"
+        x="35"
+        y="113"
+        width="120"
+        height="92"
+        rx="5"
+      />
+      <path class="preview-flow" d="M60 220H130M95 205V220" />
+      <circle class="preview-node" cx="490" cy="160" r="45" />
+      <circle class="live-preview-halo" cx="490" cy="160" r="55" />
+      <circle class="live-preview-traveller" cx="175" cy="146" r="5" />
+      <circle
+        class="live-preview-traveller live-preview-return"
+        cx="175"
+        cy="176"
+        r="4"
+      />
+      <text x="95" y="162" text-anchor="middle">
+        browser
+      </text>
+      <text x="490" y="165" text-anchor="middle">
+        edge
+      </text>
+      <text x="300" y="258" text-anchor="middle">
+        One request. One serving edge.
+      </text>
+    </>
+  ) : kind === "health" ? (
+    <>
+      <circle class="preview-node" cx="300" cy="150" r="76" />
+      {Array.from({ length: 12 }, (_, i) => {
+        const angle = (i * Math.PI) / 6;
+        return (
+          <path
+            class="preview-flow"
+            d={`M${300 + Math.sin(angle) * 62} ${150 - Math.cos(angle) * 62}L${300 + Math.sin(angle) * 68} ${150 - Math.cos(angle) * 68}`}
+          />
+        );
+      })}
+      <path class="live-preview-hand" d="M300 150V98" />
+      <circle class="live-preview-pin" cx="300" cy="150" r="5" />
+      <path class="preview-flow live-preview-clock-link" d="M388 150H485" />
+      <circle class="live-preview-tick" cx="485" cy="150" r="9" />
+      <text x="115" y="146" text-anchor="middle">
+        every
+      </text>
+      <text x="115" y="168" text-anchor="middle">
+        5 minutes
+      </text>
+      <text x="300" y="275" text-anchor="middle">
+        A check, then another.
+      </text>
+    </>
+  ) : kind === "triage" ? (
+    <>
+      <path class="preview-flow" d="M140 160H460" />
+      <circle class="live-preview-traveller" cx="175" cy="160" r="5" />
+      {[70, 240, 410].map((x, i) => (
+        <g>
+          <rect
+            class="preview-node"
+            x={x}
+            y="120"
+            width="120"
+            height="80"
+            rx="4"
+          />
+          <rect
+            class="live-preview-step"
+            x={x}
+            y="120"
+            width="120"
+            height="80"
+            rx="4"
+            style={`--step: ${i}`}
+          />
+          <text x={x + 60} y="165" text-anchor="middle">
+            {["evidence", "model", "checks"][i]}
+          </text>
+        </g>
+      ))}
+      <path class="preview-flow" d="M300 200V245" />
+      <text x="300" y="275" text-anchor="middle">
+        A hypothesis, not a verdict.
+      </text>
+    </>
+  ) : (
+    <>
+      <path class="preview-flow" d="M90 160H510" />
+      <circle class="live-preview-relay" cx="90" cy="160" r="6" />
+      <circle
+        class="live-preview-relay live-preview-relay-back"
+        cx="90"
+        cy="160"
+        r="4"
+      />
+      <circle class="preview-node" cx="90" cy="160" r="40" />
+      <circle class="preview-node" cx="510" cy="160" r="40" />
+      <rect
+        class="preview-node"
+        x="225"
+        y="113"
+        width="150"
+        height="94"
+        rx="4"
+      />
+      <text x="300" y="140" text-anchor="middle">
+        shared
+      </text>
+      <text x="300" y="191" text-anchor="middle">
+        sequence
+      </text>
+      <text x="90" y="228" text-anchor="middle">
+        window A
+      </text>
+      <text x="510" y="228" text-anchor="middle">
+        window B
+      </text>
+      <circle class="live-preview-halo" cx="510" cy="160" r="48" />
+      <circle class="room-pulse" cx="300" cy="160" r="7" />
+      <circle class="room-arrival" cx="510" cy="160" r="45" />
+    </>
+  )}
+</svg>

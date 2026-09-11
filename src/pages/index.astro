@@ -48,7 +48,6 @@ const [discipline, role] = copy.headline.split(", ");
         href="/notes/#observability"
         class="project project-observe"
         aria-labelledby="observe-title"
-        data-reveal
       >
         <div class="project-art chart-art" aria-hidden="true">
           <span class="art-label">PROCESS ALIVE ≠ DATA FRESH</span>
@@ -81,7 +80,6 @@ const [discipline, role] = copy.headline.split(", ");
         href="/notes/#ai-tooling"
         class="project project-ai ai-section"
         aria-labelledby="agents-title"
-        data-reveal
       >
         <div class="project-art agent-art" aria-hidden="true">
           <span class="art-label">CONTEXT MEETS CAPABILITY</span>
@@ -118,7 +116,6 @@ const [discipline, role] = copy.headline.split(", ");
         href="/notes/#kubernetes-iac"
         class="project project-infra"
         aria-labelledby="infra-title"
-        data-reveal
       >
         <div class="project-art pipeline-art" aria-hidden="true">
           <span class="art-label">KUBERNETES / TERRAFORM / GITOPS</span>
@@ -149,7 +146,6 @@ const [discipline, role] = copy.headline.split(", ");
         href="/notes/#technical-leadership"
         class="project project-people"
         aria-labelledby="people-title"
-        data-reveal
       >
         <div class="project-art people-art" aria-hidden="true">
           <span class="art-label">TECHNICAL LEADERSHIP</span>
@@ -220,7 +216,16 @@ const [discipline, role] = copy.headline.split(", ");
         rel="noopener noreferrer"
         title="Opens in a new tab."
       >
-        Say hello<span aria-hidden="true">↗</span>
+        Say hello
+        <svg
+          class="contact-arrow"
+          viewBox="0 0 32 32"
+          fill="none"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M7 25 25 7M7 7h18v18" />
+        </svg>
       </a>
     </h2>
     <div class="contact-bottom">

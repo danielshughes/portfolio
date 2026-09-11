@@ -8,23 +8,27 @@ export function mountSignature(mark: HTMLElement) {
 
   function draw() {
     if (preference.matches || drawing) return;
+    const length = `${path.getTotalLength()}px`;
     const trace = path.animate(
       [
-        { strokeDasharray: "100", strokeDashoffset: "100" },
-        { strokeDasharray: "100", strokeDashoffset: "0" },
+        { strokeDasharray: length, strokeDashoffset: length },
+        { strokeDasharray: length, strokeDashoffset: "0px" },
       ],
-      { duration: 650, easing: "ease-out" },
+      { duration: 650, easing: "linear", fill: "forwards" },
     );
-    const endpoint = circle.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: 650,
-      easing: "steps(1, end)",
-    });
+    const endpoint = circle.animate(
+      [{ opacity: 0 }, { opacity: 0, offset: 650 / 780 }, { opacity: 1 }],
+      {
+        duration: 780,
+        easing: "linear",
+        fill: "forwards",
+      },
+    );
     drawing = { trace, endpoint };
-    void trace.finished.then(
+    void Promise.all([trace.finished, endpoint.finished]).then(
       () => {
         // A cancelled run must never settle a newer interaction.
         if (drawing?.trace !== trace) return;
-        endpoint.finish();
         trace.cancel();
         endpoint.cancel();
         drawing = null;

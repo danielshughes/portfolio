@@ -4,6 +4,7 @@ const HOUR = 3_600_000;
 const MAX_BODY = 262_144;
 const MAX_EVENTS = 100;
 const CACHE_SECONDS = 3600;
+export const MAX_BACKOFF_SECONDS = 86400;
 const TIMEOUT_MS = 10_000;
 const dimensions: Record<string, string> = {
   bots: "BOT_CLASS",
@@ -67,6 +68,7 @@ export interface RadarOptions {
     put(key: string, response: Response): Promise<void>;
   };
   reportFailure?: (stage: string, kind: string) => void;
+  snapshot?: (country: string, view: string) => Promise<Response | undefined>;
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -293,6 +295,8 @@ export async function handleRadar(
   try {
     const cached = await options.cache.match(key);
     if (cached) return cached;
+    const snapshot = await options.snapshot?.(country!, view);
+    if (snapshot) return snapshot;
     const backoff = await options.cache.match(backoffKey);
     if (backoff) {
       const until = Number(backoff.headers.get("x-retry-at"));
@@ -350,7 +354,7 @@ export async function handleRadar(
         await response.body?.cancel();
         throw new RateLimit(
           Number.isFinite(seconds)
-            ? Math.min(86400, Math.max(1, Math.ceil(seconds)))
+            ? Math.min(MAX_BACKOFF_SECONDS, Math.max(1, Math.ceil(seconds)))
             : 60,
         );
       }

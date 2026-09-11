@@ -172,11 +172,14 @@ test("Internet map makes no external calls and has an honest no-script view", as
   const map = page.locator("#internet");
   await expect(map.locator(".internet-atlas")).toBeVisible();
   await expect(
-    map.getByText("Sample data · not live", { exact: true }),
+    map.getByText("Cloudflare Radar", { exact: true }).first(),
   ).toBeVisible();
-  await expect(
-    map.getByText("Enable JavaScript to load Cloudflare Radar."),
-  ).toBeVisible();
+  await expect(map.locator(".internet-chart-line")).toHaveAttribute("d", "");
+  // Text selectors skip noscript nodes, even in a script-disabled context.
+  await expect(map.locator(".internet-noscript")).toBeVisible();
+  await expect(map.locator(".internet-noscript")).toHaveText(
+    "Enable JavaScript to load Cloudflare Radar.",
+  );
   await expect(map.getByRole("slider")).toHaveCount(0);
   expect(external).toEqual([]);
   await context.close();

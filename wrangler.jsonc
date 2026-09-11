@@ -12,7 +12,11 @@
     "run_worker_first": ["/api/*"],
     "not_found_handling": "404-page",
   },
-  "vars": { "RADAR_ENABLED": false, "SITE_ENV": "development" },
+  "vars": {
+    "RADAR_ENABLED": false,
+    "SITE_ENV": "development",
+    "LOCAL_PREVIEW": "false",
+  },
   "ratelimits": [
     {
       "name": "RADAR_INGRESS",
@@ -26,16 +30,61 @@
     },
   ],
   "secrets": { "required": ["RADAR_API_TOKEN"] },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CoordinationRoom"] }],
+  "durable_objects": {
+    "bindings": [{ "name": "COORDINATION", "class_name": "CoordinationRoom" }],
+  },
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "RADAR_SNAPSHOTS", "id": "local-radar" }],
+  "d1_databases": [
+    {
+      "binding": "HISTORY",
+      "database_name": "portfolio-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "worker/migrations",
+    },
+  ],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 0.1,
     "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 0.1,
+      "invocation_logs": true,
+    },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
   },
   "env": {
     "development": {
       "name": "dan-hughes-portfolio-development",
-      "routes": [{ "pattern": "dev.dlhs.co.uk", "custom_domain": true }],
-      "vars": { "RADAR_ENABLED": true, "SITE_ENV": "development" },
+      "routes": [{ "pattern": "dev.danhughes.uk", "custom_domain": true }],
+      "vars": {
+        "RADAR_ENABLED": true,
+        "SITE_ENV": "development",
+        "LOCAL_PREVIEW": "false",
+      },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "triggers": { "crons": ["*/5 * * * *"] },
+      "durable_objects": {
+        "bindings": [
+          { "name": "COORDINATION", "class_name": "CoordinationRoom" },
+        ],
+      },
+      "ai": { "binding": "AI" },
+      "kv_namespaces": [
+        {
+          "binding": "RADAR_SNAPSHOTS",
+          "id": "484fcacb5bf34479b57c00abf992ddfd",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "HISTORY",
+          "database_name": "portfolio-development",
+          "database_id": "5b6ac184-5b43-4bbd-b632-72930dd30f81",
+          "migrations_dir": "worker/migrations",
+        },
+      ],
       "ratelimits": [
         {
           "name": "RADAR_INGRESS",
@@ -52,7 +101,34 @@
     },
     "production": {
       "name": "dan-hughes-portfolio-production",
-      "vars": { "RADAR_ENABLED": false, "SITE_ENV": "production" },
+      "routes": [{ "pattern": "danhughes.uk", "custom_domain": true }],
+      "vars": {
+        "RADAR_ENABLED": true,
+        "SITE_ENV": "production",
+        "LOCAL_PREVIEW": "false",
+      },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "triggers": { "crons": ["2-59/5 * * * *"] },
+      "durable_objects": {
+        "bindings": [
+          { "name": "COORDINATION", "class_name": "CoordinationRoom" },
+        ],
+      },
+      "ai": { "binding": "AI" },
+      "kv_namespaces": [
+        {
+          "binding": "RADAR_SNAPSHOTS",
+          "id": "3bbf7af7f0984ec698fd41bd74fc02a1",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "HISTORY",
+          "database_name": "portfolio-production",
+          "database_id": "b3b22943-2329-4ddf-b02d-212db9ae5cd7",
+          "migrations_dir": "worker/migrations",
+        },
+      ],
       "ratelimits": [
         {
           "name": "RADAR_INGRESS",

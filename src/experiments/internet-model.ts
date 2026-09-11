@@ -9,31 +9,10 @@ export const countries = [
   { code: "AU", name: "Australia", short: "AU", lat: -25, lon: 134 },
 ] as const;
 
-export interface SampleEvent {
+export interface EventInterval {
   start: number;
   end: number;
   description: string;
-}
-export interface SampleWeek {
-  mode: "sample";
-  values: (number | null)[];
-  events: SampleEvent[];
-}
-
-export function sampleWeek(code: string): SampleWeek {
-  const country = countries.findIndex((country) => country.code === code);
-  if (country < 0) throw new Error("Unsupported sample country");
-  return {
-    mode: "sample",
-    values: Array.from({ length: 168 }, (_, hour) => {
-      if (hour >= 110 && hour < 113) return null;
-      const day = Math.sin(((hour + country * 3) / 24) * Math.PI * 2);
-      const small = Math.cos(hour * 1.3 + country) * 3;
-      const dip = hour >= 72 && hour < 78 ? 0.35 : 1;
-      return Math.round((72 + day * 20 + small) * dip);
-    }),
-    events: [{ start: 72, end: 78, description: "Illustrative disruption" }],
-  };
 }
 
 export function project(lon: number, lat: number): [number, number] {
@@ -46,7 +25,7 @@ export function pointAt(values: (number | null)[], index: number) {
   );
 }
 
-export function eventsAt(events: SampleEvent[], hour: number) {
+export function eventsAt(events: EventInterval[], hour: number) {
   return events.filter((event) => hour >= event.start && hour < event.end);
 }
 

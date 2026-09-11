@@ -82,25 +82,63 @@ for (const width of [320, 390, 768, 1440]) {
 test("scroll motion responds to a live reduced-motion preference", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    window.addEventListener(
+      "pageshow",
+      () => {
+        Object.assign(window, { motionPageShown: true });
+      },
+      { once: true },
+    );
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/");
+  await page.waitForFunction(
+    () => (window as Window & { motionPageShown?: boolean }).motionPageShown,
+  );
+  const section = page.locator(".off-clock[data-reveal]");
+  // Establish the initial off-screen observation before crossing the reveal
+  // threshold. Navigation's load event alone does not settle observers.
+  await section.evaluate(
+    (element) =>
+      new Promise<void>((resolve) => {
+        const observer = new IntersectionObserver(([entry]) => {
+          if (!entry.isIntersecting) {
+            observer.disconnect();
+            resolve();
+          }
+        });
+        observer.observe(element);
+      }),
+  );
   // Mark exploration with real input, then place the target deterministically.
-  // A wheel delta is not a cross-browser guarantee of exact scroll distance.
-  await page.mouse.wheel(0, 1);
-  await page
-    .locator(".ai-heading")
-    .evaluate((element) =>
-      element.scrollIntoView({ block: "center", behavior: "instant" }),
-    );
+  // A tiny wheel delta can produce no input event in WebKit.
+  // Note previews deliberately have no entrance animation. Inspect this
+  // section's own animation, not an unrelated caret or hover elsewhere.
+  await page.keyboard.press("PageDown");
+  await section.evaluate((element) =>
+    element.scrollIntoView({ block: "center", behavior: "instant" }),
+  );
   await expect
-    .poll(() => page.evaluate(() => document.getAnimations().length))
+    .poll(() => section.evaluate((element) => element.getAnimations().length))
     .toBeGreaterThan(0);
-  await expect(page.locator(".ai-heading")).toBeInViewport();
+  const animation = await section.evaluateHandle(
+    (element) => element.getAnimations()[0],
+  );
+  await expect(section).toBeInViewport();
   await page.emulateMedia({ reducedMotion: "reduce" });
+  // Cancellation returns an animation to idle. Natural completion must not
+  // satisfy the reduced-motion check merely because the duration elapsed.
   await expect
-    .poll(() => page.evaluate(() => document.getAnimations().length))
+    .poll(() => animation.evaluate((value) => value?.playState))
+    .toBe("idle");
+  await expect
+    .poll(() => section.evaluate((element) => element.getAnimations().length))
     .toBe(0);
-  await expect(page.locator(".ai-heading")).toBeVisible();
+  await expect(section).toBeVisible();
+  await expect(section).toHaveCSS("opacity", "1");
+  await expect(section).toHaveCSS("transform", "none");
+  await animation.dispose();
 });
 
 test("essential content works without JavaScript", async ({ browser }) => {

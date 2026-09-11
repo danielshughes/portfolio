@@ -81,7 +81,9 @@ const { expanded = false, externalControls = false } = Astro.props;
       if (!context) return;
       const styles = getComputedStyle(field!);
       const ink = styles.getPropertyValue("--ink").trim();
-      const accent = styles.getPropertyValue("--orange").trim();
+      const accent =
+        styles.getPropertyValue("--preview-accent").trim() ||
+        styles.getPropertyValue("--orange").trim();
       const line = styles.getPropertyValue("--line").trim();
       // Cover the whole backing bitmap when CSS dimensions are fractional.
       context.clearRect(0, 0, Math.ceil(width), Math.ceil(height));
