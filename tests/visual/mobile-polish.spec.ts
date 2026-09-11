@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { radar } from "./radar-fixture";
 
 test.use({
+  trace: "retain-on-failure",
+  screenshot: "only-on-failure",
   viewport: { width: 402, height: 874 },
   deviceScaleFactor: 3,
   hasTouch: true,

@@ -124,7 +124,7 @@ Connection count, session duration, messages per session and send spacing are bo
 | Durable Object SQLite | Bounded room sequence                                | Single row                                     | Chat, identity, visitor IP                   |
 | WebSocket attachments | Expiry, last send, message count                     | Session lifetime                               | Credentials or personal data                 |
 
-Cloudflare itself processes network metadata and Access identity as the platform operator. The application's no-IP-storage claim does not imply Cloudflare never sees an IP. Native telemetry has separate retention and account quotas. Do not dump full request objects, headers, binding configuration responses or provider exceptions into logs.
+Cloudflare itself processes network metadata and Access identity as the platform operator. Its native invocation logs can retain request headers, including IP addresses. The edge endpoint excludes IPs from its response and application storage; this is not a site-wide promise that the hosting platform stores none. Native telemetry has separate retention and account quotas. Do not dump full request objects, headers, binding configuration responses or provider exceptions into application logs.
 
 Native traces are lightly sampled and correlated with deployment metadata. Application log messages exclude credentials and visitor identifiers. Query parameters are redacted from native request logs. Avoid treating sampling as a hard account-wide event cap.
 

@@ -1,6 +1,8 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { radar } from "./radar-fixture";
 
+test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
+
 const summaries = {
   bots: ["human", "bot"],
   devices: ["desktop", "mobile", "other"],

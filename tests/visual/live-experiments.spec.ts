@@ -1,6 +1,51 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+test.use({ trace: "retain-on-failure", screenshot: "only-on-failure" });
+
+test("live actions wait for their lazy module before becoming enabled", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let loading = false;
+  await page.route("**/_astro/live.*.js", async (route) => {
+    loading = true;
+    await paused;
+    await route.continue();
+  });
+  let requests = 0;
+  await page.route("**/api/triage?*", (route) => {
+    requests++;
+    return route.fulfill({
+      json: { answer: "A bounded synthetic response." },
+    });
+  });
+  await page.goto("/experiments/#triage");
+  await page.locator('[data-live="triage"] > details > summary').click();
+  const run = page.getByRole("button", { name: "Run triage", exact: true });
+  try {
+    await expect.poll(() => loading).toBe(true);
+    await expect(run).toBeDisabled();
+    await expect(page.locator("#triage-scenario")).toBeDisabled();
+    await expect(page.locator("[data-room-connect]")).toBeDisabled();
+    expect(requests).toBe(0);
+  } finally {
+    release();
+  }
+  await expect(run).toBeEnabled();
+  await expect(page.locator("#triage-scenario")).toBeEnabled();
+  await expect(page.locator("[data-room-connect]")).toBeEnabled();
+  await expect(page.locator("[data-room-send]")).toBeDisabled();
+  await run.click();
+  await expect(page.locator("[data-triage-answer]")).toHaveText(
+    "A bounded synthetic response.",
+  );
+  expect(requests).toBe(1);
+});
+
 test("local services explain their limits without claiming observed edge metadata", async ({
   page,
 }) => {
@@ -29,6 +74,9 @@ test("local services explain their limits without claiming observed edge metadat
     "Local preview. Connection metadata is available on the deployed site.",
   );
   await expect(page.locator("[data-edge-colo]")).toHaveText("Not supplied");
+  await expect(page.locator('[data-live="edge"] .live-footnote')).toHaveText(
+    "Country is approximate. Your IP address isn’t returned to this page.",
+  );
   await page.locator('[data-live="triage"] > details > summary').click();
   await page.getByRole("button", { name: "Run triage", exact: true }).click();
   await expect(page.locator("[data-triage-status]")).toHaveText(

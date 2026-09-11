@@ -25,6 +25,21 @@ test("quality runs for pull requests and protected branches only", () => {
   );
 });
 
+test("failed browser evidence is bounded and excludes hidden files", () => {
+  const step = workflow.match(
+    /- name: Preserve failed browser evidence\n([\s\S]*?)(?=\n      -|\n  deploy:)/,
+  )?.[1];
+  assert.ok(step);
+  assert.match(
+    step,
+    /if: failure\(\) && steps\.filter\.outputs\.code == 'true'/,
+  );
+  assert.match(step, /uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(step, /path: \$\{\{ runner.temp \}\}\/portfolio-test-results/);
+  assert.match(step, /retention-days: 3/);
+  assert.match(step, /include-hidden-files: false/);
+});
+
 test("documentation-only changes still receive the redacted history secret scan", () => {
   const step = workflow.match(
     /- name: Redacted secret scan of history and deliverables\n([\s\S]*?)(?=\n  deploy:)/,
