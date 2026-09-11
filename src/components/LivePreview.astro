@@ -7,7 +7,7 @@ const { kind } = Astro.props;
 
 <svg
   class={`experiment-preview preview-live-${kind}`}
-  viewBox="0 0 600 320"
+  viewBox={kind === "triage" ? "60 110 480 100" : "0 0 600 320"}
   fill="none"
   aria-hidden="true"
 >
@@ -99,10 +99,6 @@ const { kind } = Astro.props;
           </text>
         </g>
       ))}
-      <path class="preview-flow" d="M300 200V245" />
-      <text x="300" y="275" text-anchor="middle">
-        A hypothesis, not a verdict.
-      </text>
     </>
   ) : (
     <>

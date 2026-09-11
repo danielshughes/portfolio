@@ -25,6 +25,7 @@ export function deploy(env = process.env, run = spawnSync) {
     "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID",
     "RADAR_API_TOKEN",
+    "TURNSTILE_SECRET_KEY",
   ])
     if (!env[name]) throw new Error(`Missing deployment setting: ${name}`);
 
@@ -36,7 +37,7 @@ export function deploy(env = process.env, run = spawnSync) {
       "-o",
       "pipefail",
       "-c",
-      `env -u RADAR_API_TOKEN node node_modules/wrangler/bin/wrangler.js d1 migrations apply HISTORY --env ${environment} --remote && node -e 'process.stdout.write(JSON.stringify({RADAR_API_TOKEN:process.env.RADAR_API_TOKEN}))' | env -u RADAR_API_TOKEN node node_modules/wrangler/bin/wrangler.js deploy --env ${environment} --secrets-file /dev/stdin`,
+      `env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/wrangler/bin/wrangler.js d1 migrations apply HISTORY --env ${environment} --remote && node -e 'process.stdout.write(JSON.stringify({RADAR_API_TOKEN:process.env.RADAR_API_TOKEN,TURNSTILE_SECRET_KEY:process.env.TURNSTILE_SECRET_KEY}))' | env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/wrangler/bin/wrangler.js deploy --env ${environment} --secrets-file /dev/stdin`,
     ],
     {
       env: { ...env, CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false" },

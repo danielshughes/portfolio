@@ -89,6 +89,38 @@
   stroke: var(--line);
   stroke-width: 1;
 }
+.health-cursor {
+  stroke: var(--preview-accent);
+  stroke-dasharray: 3 5;
+  opacity: 0.5;
+}
+.health-ring {
+  fill: var(--paper);
+  fill-opacity: 0.5;
+  stroke: var(--preview-accent);
+  stroke-width: 2;
+}
+[data-health-selected] {
+  pointer-events: none;
+}
+.health-figure svg {
+  cursor: crosshair;
+}
+.health-inspector {
+  display: grid;
+  gap: var(--space-xs);
+}
+.health-inspector input {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--preview-accent);
+}
+.health-inspector p {
+  min-height: 3.2em;
+  font: var(--type-caption)/1.6 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
 .health-figure text {
   fill: var(--ink);
   stroke: none;
@@ -120,17 +152,145 @@
   line-height: 1.7;
 }
 .triage-answer {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: var(--type-small);
   line-height: 1.7;
   padding-block: var(--space-sm);
   border-top: 1px solid var(--line);
 }
+.triage-showcase {
+  margin-top: var(--section-space);
+  padding-top: var(--section-space);
+  border-top: 1px solid var(--line);
+}
+.triage-showcase .experiment {
+  margin: 0;
+}
+.triage-showcase .experiment-stage {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  width: min(100%, 20rem);
+  align-self: center;
+}
+.triage-showcase .experiment-visual {
+  height: auto;
+  aspect-ratio: 24 / 5;
+  min-height: 0;
+}
+.triage-showcase .preview-caption {
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.triage-showcase .stage-label {
+  color: var(--preview-accent);
+  margin-bottom: var(--space-xs);
+}
+.triage-showcase .experiment-card-heading {
+  margin-bottom: 0;
+}
+.triage-showcase [data-triage-verification]:empty {
+  display: none;
+}
+.triage-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-lg);
+}
+.triage-source {
+  display: grid;
+  align-content: start;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.triage-source h4,
+.triage-answer h4 {
+  font-size: var(--type-reading);
+  font-weight: var(--weight-medium);
+  margin: 0;
+}
+.triage-answer h5 {
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+  margin-block: var(--space-md) var(--space-xs);
+}
+.triage-answer p,
+.triage-answer ol {
+  margin: 0;
+}
+.triage-answer ol {
+  padding-left: 1.4em;
+}
+.triage-result {
+  min-width: 0;
+  padding-left: var(--space-lg);
+  border-left: 1px solid var(--line);
+}
+.triage-question {
+  font-size: var(--type-small);
+  line-height: 1.7;
+}
+.triage-reference {
+  font-size: var(--type-small);
+  line-height: 1.7;
+}
+.triage-reference summary {
+  cursor: pointer;
+}
+.triage-reference p {
+  margin-top: var(--space-sm);
+}
+.triage-footnote {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-sm);
+}
+@media (min-width: 48rem) {
+  .triage-showcase .experiment {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-md) var(--space-lg);
+  }
+  .triage-showcase .experiment-card-heading {
+    align-self: center;
+  }
+  .triage-workspace {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 47.99rem) {
+  .triage-showcase .experiment-stage {
+    margin-block: var(--space-sm) var(--space-md);
+  }
+  .triage-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .triage-result {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
 .live-actions {
   display: flex;
   gap: var(--space-sm);
   flex-wrap: wrap;
+}
+.stream-output {
+  min-height: 1.7em;
+  font: var(--type-small)/1.7 var(--mono);
+  overflow-wrap: anywhere;
+}
+.stream-chunk[data-received] {
+  fill: var(--preview-accent);
+  fill-opacity: 0.25;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stream-chunk {
+    transition:
+      fill 180ms,
+      fill-opacity 180ms;
+  }
 }
 .room-display {
   display: grid;
@@ -185,6 +345,9 @@
 }
 .experiment-room:has(.experiment-settings[open])
   :is(.live-preview-relay, .live-preview-halo) {
+  visibility: hidden;
+}
+.experiment-stream:has(.experiment-settings[open]) .live-preview-traveller {
   visibility: hidden;
 }
 @media (prefers-reduced-motion: no-preference) {

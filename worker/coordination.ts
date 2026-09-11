@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 const MAX_CONNECTIONS = 12;
 const SESSION_MS = 120000;
+const DAILY_JOIN_LIMIT = 200;
 interface Session {
   expires: number;
   last: number;
@@ -15,12 +16,27 @@ export class CoordinationRoom extends DurableObject<Env> {
       "CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK(id=1), sequence INTEGER NOT NULL)",
     );
     ctx.storage.sql.exec("INSERT OR IGNORE INTO state VALUES (1,0)");
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS join_budget (id INTEGER PRIMARY KEY CHECK(id=1), day TEXT NOT NULL, used INTEGER NOT NULL)",
+    );
   }
   async fetch(request: Request) {
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket")
       return new Response(null, { status: 426 });
     if (this.ctx.getWebSockets().length >= MAX_CONNECTIONS)
       return new Response(null, { status: 429 });
+    // One fixed room per environment. A persisted, atomic allowance prevents
+    // reconnecting from resetting the total accepted work across locations.
+    const allowed = this.ctx.storage.sql
+      .exec<{ used: number }>(
+        `INSERT INTO join_budget (id,day,used) VALUES (1,?,1)
+       ON CONFLICT(id) DO UPDATE SET day=excluded.day, used=CASE WHEN join_budget.day=excluded.day THEN join_budget.used+1 ELSE 1 END
+       WHERE join_budget.day<>excluded.day OR join_budget.used<? RETURNING used`,
+        new Date().toISOString().slice(0, 10),
+        DAILY_JOIN_LIMIT,
+      )
+      .toArray();
+    if (!allowed.length) return new Response(null, { status: 429 });
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1]);
     const session: Session = {

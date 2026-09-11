@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "lint:workflows": "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 .github/workflows/ci.yml",
     "test:environment": "node --test tests/environment.test.mjs tests/deployment.test.mjs tests/ci-workflow.test.mjs tests/local-development.test.mjs",
-    "test:runtime": "node --test tests/runtime.test.mjs tests/services.test.mjs",
+    "test:runtime": "node --test tests/runtime.test.mjs tests/services.test.mjs tests/triage.test.mjs",
     "quality": "node scripts/quality.mjs",
     "preview": "astro preview",
     "check": "astro check && npm run check:worker",

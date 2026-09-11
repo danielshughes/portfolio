@@ -393,7 +393,7 @@ import { portfolioContent } from "../content/portfolio";
         !document.hidden &&
         visible.has(card) &&
         (card.dataset.live === "edge" ||
-          !card.querySelector<HTMLDetailsElement>(".experiment-settings")!.open)
+          !card.querySelector<HTMLDetailsElement>(".experiment-settings")?.open)
           ? "running"
           : "paused";
   }
@@ -411,7 +411,8 @@ import { portfolioContent } from "../content/portfolio";
     observer.observe(card.querySelector(".experiment-stage")!);
     const settings = card.querySelector<HTMLDetailsElement>(
       ".experiment-settings",
-    )!;
+    );
+    if (!settings) continue;
     let loaded = false;
     const loadExperiment = async () => {
       syncPreviews();
