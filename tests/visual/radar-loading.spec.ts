@@ -39,6 +39,41 @@ const summary = (country: string, view: string) => ({
   ],
 });
 
+for (const status of [429, 502, 503])
+  test(`Radar ${status} stops document speculation but leaves explicit retry usable`, async ({
+    page,
+  }) => {
+    const calls: string[] = [];
+    let recovered = false;
+    await page.route("**/api/radar?*", (route) => {
+      const url = new URL(route.request().url());
+      calls.push(url.search);
+      return route.fulfill(
+        recovered
+          ? { json: radar(url.searchParams.get("country")!) }
+          : {
+              status,
+              headers: { "retry-after": "60" },
+              json: { error: "radar_unavailable" },
+            },
+      );
+    });
+    await page.goto("/experiments/#internet");
+    const retry = page.getByRole("button", { name: "Retry Radar" });
+    await expect(retry).toBeVisible();
+    await page.locator(".internet-atlas").scrollIntoViewIfNeeded();
+    await page.getByRole("tab", { name: "Bots", exact: true }).focus();
+    // Observe a bounded quiet period after genuine focus intent. A positive
+    // assertion alone can pass before the asynchronous queue starts.
+    await page.waitForTimeout(250);
+    expect(calls).toEqual(["?country=GB"]);
+    recovered = true;
+    await retry.click();
+    await expect(page.locator(".internet-value")).toHaveText("50");
+    await expect(retry).toBeHidden();
+    expect(calls).toEqual(["?country=GB", "?country=GB"]);
+  });
+
 test("keyboard focus alone warms the intended Radar tab", async ({ page }) => {
   const calls: string[] = [];
   await page.route("**/api/radar?*", (route) => {

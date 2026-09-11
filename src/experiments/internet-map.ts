@@ -46,7 +46,7 @@ export function mountInternetMap(root: HTMLElement) {
         `/api/radar?country=${encodeURIComponent(country)}${requestedView === "traffic" ? "" : `&view=${requestedView}`}`,
         { signal, credentials: "same-origin" },
       );
-      if (response.status === 429 || response.status === 503)
+      if ([429, 502, 503].includes(response.status))
         throw new RadarBackoffError("Radar backing off");
       if (!response.ok) throw new Error("Radar unavailable");
       const body: unknown = await response.json();
