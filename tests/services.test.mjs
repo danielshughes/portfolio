@@ -586,6 +586,66 @@ test("scheduled results distinguish complete, partial, disabled and missing cred
     });
 });
 
+test("scheduled snapshot bounds preserve readable whole views without extra upstream work", async (t) => {
+  for (const oversized of [false, true])
+    await t.test(
+      oversized ? "partial oversized traffic" : "complete ordinary bundle",
+      async (t) => {
+        let calls = 0;
+        const mf = await runtime({
+          outbound(request) {
+            calls++;
+            return radarUpstream(
+              request.url,
+              undefined,
+              oversized ? Array(100).fill("x".repeat(1400)) : [],
+            );
+          },
+        });
+        t.after(() => mf.dispose());
+        const time = Date.now();
+        const result = await (
+          await mf.getWorker()
+        ).scheduled({
+          scheduledTime: time,
+          cron: "*/5 * * * *",
+        });
+        assert.equal(result.outcome, oversized ? "exception" : "ok");
+        assert.equal(calls, 5);
+        const country =
+          countries[Math.floor(time / 300000) % countries.length].code;
+        const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+        const raw = await kv.get(`country:${country}`);
+        assert.ok(Buffer.byteLength(raw) <= 100000);
+        const bundle = JSON.parse(raw);
+        const views = oversized
+          ? ["bots", "devices", "protocols"]
+          : ["traffic", "bots", "devices", "protocols"];
+        assert.deepEqual(Object.keys(bundle), views);
+        for (const view of views) {
+          const response = await mf.dispatchFetch(
+            `${origin}/api/radar?country=${country}&view=${view}`,
+          );
+          assert.equal(response.status, 200);
+          assert.equal(response.headers.get("x-radar-storage"), "snapshot");
+          assert.deepEqual(await response.json(), bundle[view]);
+        }
+        assert.equal(calls, 5);
+        const db = await mf.getD1Database("HISTORY");
+        assert.equal(
+          (
+            await db
+              .prepare(
+                "SELECT COUNT(*) AS count FROM health_samples WHERE ok=1",
+              )
+              .first()
+          ).count,
+          1,
+        );
+      },
+    );
+});
+
 test("valid recent KV snapshots serve without upstream access and expire honestly", async (t) => {
   let calls = 0;
   const mf = await runtime({

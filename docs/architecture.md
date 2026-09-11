@@ -91,6 +91,8 @@ Development uses D1 because Cloudflare states: "For Workers fronted by Cloudflar
 
 Cron rotates through the country list deterministically. Each tick requests that country's views, validates the results, and writes at most one bundle to KV. Its invocation-local response cache coordinates backoff but cannot recycle an old edge response into a newly dated snapshot. A bundle can contain only the successful views. KV expiry and the stricter application freshness window are separate: stored data is not automatically eligible for display. Eventually consistent KV propagation can mean a fresh foreground request is still needed. Source update times remain unchanged.
 
+Snapshot collection and reading share the UTF-8 encoded bundle limit `MAX_BUNDLE_BYTES` in `worker/snapshots.ts`. The collector preserves each accepted view intact; if a whole view cannot fit, it skips that view and continues with later views. It counts each serialised entry once, including its key and JSON separators, then joins accepted entries for one KV write. Skipped views yield the existing partial/empty outcomes, never truncated annotations or a successful unreadable bundle.
+
 The atlas displays relative, country-normalised traffic, not absolute volumes, packet routes, uptime or inferred outages. The pulse marks selection. Reported disruptions retain their supplied scope. No reported events does not prove no outages. Cloudflare Radar attribution, CC BY-NC 4.0 and transformation notices remain visible; the owner's decision to use the data is not a vendor endorsement.
 
 ## Live experiments and trust boundaries
