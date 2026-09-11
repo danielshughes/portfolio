@@ -145,13 +145,26 @@ test("maximum interference does not clip the trace at the canvas edge", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   await openSignal(page);
   await page.getByRole("slider", { name: "Signal noise" }).fill("100");
-  const touchesEdge = await page
-    .locator(".signal-field canvas")
-    .evaluate((canvas: HTMLCanvasElement) => {
-      const data = canvas
-        .getContext("2d")!
-        .getImageData(0, canvas.height - 1, canvas.width, 1).data;
-      return data.some((value, index) => index % 4 === 3 && value !== 0);
-    });
-  expect(touchesEdge).toBe(false);
+  await expect(page.locator(".noise-level")).toHaveText("High interference");
+  await expect
+    .poll(() =>
+      page
+        .locator(".signal-field canvas")
+        .evaluate((canvas: HTMLCanvasElement) => {
+          if (!canvas.width || !canvas.height)
+            return { painted: false, touchesEdge: false };
+          const pixels = canvas
+            .getContext("2d")!
+            .getImageData(0, 0, canvas.width, canvas.height).data;
+          const hasInk = (data: Uint8ClampedArray) =>
+            data.some((value, index) => index % 4 === 3 && value !== 0);
+          return {
+            painted: hasInk(pixels),
+            touchesEdge: hasInk(
+              pixels.subarray((canvas.height - 1) * canvas.width * 4),
+            ),
+          };
+        }),
+    )
+    .toEqual({ painted: true, touchesEdge: false });
 });
