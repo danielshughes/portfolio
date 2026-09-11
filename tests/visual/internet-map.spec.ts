@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { radar } from "./radar-fixture";
+// This suite intercepts Radar with authored fixtures. Preserve event/DOM evidence
+// for intermittent browser failures without recording authenticated live traffic.
+test.use({ trace: "retain-on-failure" });
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/radar?*", (route) => {
     const data = radar(

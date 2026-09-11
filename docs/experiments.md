@@ -48,6 +48,7 @@ Use the [local setup](operations.md#local-development-and-tests) before testing 
 
 - Check each control at its initial, minimum, maximum and meaningful failure state. Compare visible results with the model, not just a snapshot of the page.
 - Open and close at the same pointer position. Frames must not resize or move the Explore target. Check keyboard operation and meaningful values as well as pointer input.
+- Follow a direct experiment fragment link with motion enabled and check that the destination has settled when loading finishes. Native scrolling stays immediate so WebKit does not move controls during a click; artwork motion has its own visibility and preference gates.
 - Exercise Reset, Replay, Pause, disclosure closure, hidden tabs, viewport changes and reduced motion where applicable. Stop finite animations at their final state; do not confuse deliberate completion with a broken animation.
 - Inspect desktop and mobile in both palettes, including long labels, enlarged text, extreme 3D rotations and open controls. Retain a readable alternative to canvas or SVG-only information.
 - Verify that browser-local simulations make no external service calls. For live experiments, check loading, empty, unavailable and real-success paths independently.

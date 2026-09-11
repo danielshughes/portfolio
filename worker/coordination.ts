@@ -73,7 +73,8 @@ export class CoordinationRoom extends DurableObject<Env> {
     }
   }
   webSocketClose(socket: WebSocket, code: number) {
-    socket.close(code === 1005 ? 1000 : code);
+    // These describe local closure conditions and cannot be sent in a close frame.
+    socket.close([1005, 1006, 1015].includes(code) ? 1000 : code);
   }
   webSocketError(socket: WebSocket) {
     socket.close(1011, "Connection closed");
