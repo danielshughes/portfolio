@@ -93,7 +93,12 @@ test("all experiments have visible previews in a staggered gallery", async ({
   await expect(page.locator("[data-experiment]")).toHaveCount(6);
   await expect(page.locator(".live-grid [data-live]")).toHaveCount(4);
   await expect(page.locator("[data-live]")).toHaveCount(5);
-  await expect(page.locator(".experiment > .experiment-stage")).toHaveCount(11);
+  for (const card of await page
+    .locator("[data-experiment], [data-live]")
+    .all()) {
+    await expect(card.locator(".experiment-stage")).toHaveCount(1);
+    await expect(card.locator(".experiment-preview")).toBeVisible();
+  }
   const a = (await page.locator("#kubernetes").boundingBox())!,
     b = (await page.locator("#mcp").boundingBox())!;
   expect(b.x).toBeGreaterThan(a.x + a.width);

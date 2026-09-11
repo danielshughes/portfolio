@@ -108,7 +108,7 @@ test("changing a pending AI scenario keeps the new scenario ready", async ({
   await page.locator("#triage-scenario").selectOption("telemetry");
   await expect(run).toBeEnabled();
   await expect(page.locator("[data-triage-status]")).toHaveText(
-    "Ready. No model request until you press Run.",
+    "Ready. No model request until you press Run triage.",
   );
 });
 
