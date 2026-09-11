@@ -6,6 +6,8 @@ An experiment's heading, explanation, graphic, controls and readout must describ
 
 Compact simulations and Worker-backed cards use `ExperimentCard.astro` for headings, frame, caption and native Explore disclosure. `playground.css` owns the shared tone, spacing and action-button rules. Every simulation, including the waveform, uses `experiment-controls` for responsive ranges and actions; do not duplicate that styling in global or experiment-specific rules.
 
+Each experiment names its actual technology in the existing visible label, outside Explore and available without JavaScript. Browser-local labels identify the SVG or Canvas 2D renderer and the synthetic/scripted subject, not a connected Kubernetes cluster or MCP service. Worker-backed labels name the relevant service or runtime API; supporting copy identifies protections such as Turnstile and the D1 request budget. Radar names its API, Worker and KV snapshot path. These are implementation facts, not evidence of production scale or career ownership. Keep them aligned with the implementation and check wrapping on narrow screens in `tests/visual/technology-labels.spec.ts`.
+
 AI and Radar intentionally stay open at full width. They reuse the typography, tones and motion conventions without an Explore gate. The health inspector uses a full-width timeline slider, while Radar keeps named country buttons and native tabs. These layouts serve different interactions, not separate design systems. Continuous previews, finite simulations and received-event animations share the visibility/reduced-motion rules but retain their own truthful lifecycles.
 
 Use the shared peach, sage and lilac tones, mixing neutral surfaces with selected tinted panels. Avoid repeated tinted backgrounds in adjacent cards or down a desktop column; carry accents through artwork. Graphics and Explore controls keep their dimensions and position across disclosure changes. All live previews respect viewport visibility and reduced motion.
@@ -60,6 +62,8 @@ The room clears its displayed sequence on disconnect. Closing the card, hiding t
 A received room pulse travels across the complete window A / shared sequence / window B path, with a brief centre dwell and receiver highlight. It does not animate the initial state snapshot or claim a measured network route or latency. The illustrative room preview stops on opening.
 
 Streaming validates frame order, size and the final marker. Start begins from a compact, meaningful empty state; only received frames change the markers. Stop, disclosure closure, leaving view and hiding the page cancel consumption. The illustrative traveller stops while opened so it cannot be mistaken for observed arrivals.
+
+`worker/stream.ts` uses the Workers [Streams API](https://developers.cloudflare.com/workers/runtime-apis/streams/): a pull-based `ReadableStream` sends authored NDJSON frames with back-pressure and cancellation. This is response streaming, not the Cloudflare Stream video product, a Queue or streamed AI inference.
 
 Connect checks the current card bounds instead of waiting for a potentially delayed intersection notification. Changing a pending AI scenario aborts the old request and leaves the new scenario ready; its cancellation must not overwrite that state.
 

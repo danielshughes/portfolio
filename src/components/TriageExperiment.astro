@@ -16,7 +16,9 @@ import TriageGraphic from "./TriageGraphic.astro";
       <header class="experiment-card-heading">
         <span class="experiment-number">11</span>
         <div>
-          <span class="stage-label">Workers AI / synthetic incidents</span>
+          <span class="stage-label">
+            Workers AI + Turnstile / synthetic incidents
+          </span>
           <h3 id="triage-title">A second opinion.</h3>
           <p>Choose a fictional incident. See what the model makes of it.</p>
         </div>
@@ -68,8 +70,8 @@ import TriageGraphic from "./TriageGraphic.astro";
         </div>
         <p class="live-footnote triage-footnote">
           Llama 3.3 70B on Cloudflare Workers AI. Fictional incidents, real
-          inference. No tools or access to live systems. Human verification and
-          a daily request limit apply.
+          inference. No tools or access to live systems. Turnstile verifies
+          requests; D1 enforces a daily request limit.
         </p>
       </div>
     </div>

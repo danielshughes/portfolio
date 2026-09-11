@@ -10,7 +10,7 @@ import ExperimentCard from "./ExperimentCard.astro";
   number="09"
   title="Bit by bit."
   subtitle="One response. A few separate arrivals."
-  label="Worker / response streaming"
+  label="Workers / Streams API"
   caption="Illustrative preview; run to receive real chunks"
 >
   <svg
@@ -58,9 +58,9 @@ import ExperimentCard from "./ExperimentCard.astro";
       No request until you press Start.
     </p>
     <p class="live-footnote">
-      Authored text, delivered by a real Worker. Each marker responds to a
-      received chunk. Buffering can group arrivals together; this is not a
-      network-speed test. No AI call or stored data.
+      Authored text, streamed from a Cloudflare Worker using ReadableStream.
+      Each marker responds to a received chunk. Buffering can group arrivals
+      together; this is not a network-speed test. No AI call or stored data.
     </p>
   </div>
 </ExperimentCard>
