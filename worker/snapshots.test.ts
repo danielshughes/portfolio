@@ -16,7 +16,23 @@ function harness(failDimension?: string, descriptions: string[] = []) {
   const writes: { key: string; body: string; ttl: number | undefined }[] = [];
   let calls = 0,
     admissions = 0;
+  let claimedSlot = -1;
   const env = {
+    HISTORY: {
+      prepare() {
+        return {
+          bind(slot: number) {
+            return {
+              async first() {
+                if (slot <= claimedSlot) return null;
+                claimedSlot = slot;
+                return { slot };
+              },
+            };
+          },
+        };
+      },
+    },
     RADAR_SNAPSHOTS: {
       async get() {
         return writes.at(-1)?.body ?? null;

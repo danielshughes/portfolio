@@ -89,10 +89,26 @@ for (const status of [429, 502, 503])
     expect(calls).toEqual(["?country=GB", "?country=GB"]);
   });
 
-test("keyboard focus alone warms the intended Radar tab", async ({
+test("keyboard focus warms Radar before its visibility notification arrives", async ({
   page,
 }, testInfo) => {
   await allowSpeculation(page);
+  await page.addInitScript(() => {
+    const Observer = IntersectionObserver;
+    window.IntersectionObserver = class extends Observer {
+      constructor(
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit,
+      ) {
+        super((entries, observer) => {
+          const delivered = entries.filter(
+            (entry) => !entry.target.matches(".internet-atlas"),
+          );
+          if (delivered.length) callback(delivered, observer);
+        }, options);
+      }
+    };
+  });
   const calls: string[] = [];
   await page.route("**/api/radar?*", (route) => {
     const url = new URL(route.request().url());

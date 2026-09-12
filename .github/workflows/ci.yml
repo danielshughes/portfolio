@@ -15,6 +15,9 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
     env:
@@ -28,6 +31,12 @@ jobs:
       - name: Check changed files
         id: filter
         run: node scripts/ci-changes.mjs
+      - name: Find a verified full check for this tree
+        id: reuse
+        if: steps.filter.outputs.code == 'true'
+        run: node scripts/ci-reuse.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         if: steps.filter.outputs.code == 'true'
         with:
@@ -37,13 +46,14 @@ jobs:
         if: steps.filter.outputs.code == 'true'
         run: npm install --global "$(node -p "require('./package.json').packageManager")"
       - run: npm ci
-        if: steps.filter.outputs.code == 'true'
+        if: steps.filter.outputs.code == 'true' && steps.reuse.outputs.reused != 'true'
       - run: npm run lint:workflows
-        if: steps.filter.outputs.code == 'true'
+        if: steps.filter.outputs.code == 'true' && steps.reuse.outputs.reused != 'true'
       - run: npx playwright install --with-deps chromium firefox webkit
-        if: steps.filter.outputs.code == 'true'
-      - run: npm run quality
-        if: steps.filter.outputs.code == 'true'
+        if: steps.filter.outputs.code == 'true' && steps.reuse.outputs.reused != 'true'
+      - name: Full quality (${{ github.sha }})
+        run: npm run quality
+        if: steps.filter.outputs.code == 'true' && steps.reuse.outputs.reused != 'true'
         env:
           PLAYWRIGHT_OUTPUT_DIR: ${{ runner.temp }}/portfolio-test-results
       - name: Preserve failed browser evidence
@@ -55,7 +65,8 @@ jobs:
           retention-days: 3
           include-hidden-files: false
           if-no-files-found: ignore
-      - run: npm audit --audit-level=low
+      - name: Dependency audit
+        run: npm audit --package-lock-only --audit-level=low
         if: steps.filter.outputs.code == 'true'
       - name: Redacted secret scan of history and deliverables
         shell: bash
