@@ -1,6 +1,6 @@
 # Experiment Copy Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical implementation plan, not an open task list.** The copy work is incorporated in the implementation. The [experiment contract](../../experiments.md) owns current wording principles and behaviour; source and tests own exact text. This record retains the original copy decisions and proposed verification sequence. Unchecked steps below preserve that proposal, not outstanding work or evidence that each step ran exactly as written.
 
 **Goal:** Make the supporting copy for every experiment concrete and easy to understand while keeping the existing playful titles, visual language, interaction behaviour and evidence limits.
 
