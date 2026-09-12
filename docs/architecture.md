@@ -54,7 +54,7 @@ The generated `worker/worker-configuration.d.ts` describes the actual Wrangler b
 
 Preserve Astro's optional-import module-preload hook and page-reload recovery. Generated `_headers` hash actual inline script/style bytes; only style attributes allow inline CSS. Worker APIs share the security policy. Browser tests serve generated assets through the fixture workerd harness, not a policy-free static server.
 
-Encoding and viewport declarations precede preloads and the early theme script. Production's fingerprinted `/_astro/*` assets carry a one-year immutable browser policy. HTML, unversioned files and development assets retain their existing revalidation behaviour. Changed asset content receives a new URL; deployment/rollback selects its matching HTML and asset set. This browser policy is separate from native Workers Cache and does not route assets through application code.
+Encoding and viewport declarations precede preloads and the early theme script. Production builds give fingerprinted `/_astro/*` assets a one-year immutable browser policy. HTML, unversioned files and development assets retain their existing revalidation behaviour. Changed asset content receives a new URL; deployment/rollback selects its matching HTML and asset set. This browser policy is separate from native Workers Cache and does not route assets through application code. A build policy is not evidence that its release is deployed.
 
 ## Services
 

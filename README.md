@@ -40,7 +40,7 @@ npm run quality
 
 The gate covers formatting, lint, types, tests, accessibility and the build across all configured browsers. After editing GitHub Actions workflows, also run `npm run lint:workflows` (requires Go).
 
-Documentation-only changes run file classification and redacted secret scanning. They skip dependency installation, the full quality gate and deployment. Source, site content, assets, tests and configuration still run the full checks.
+Documentation-only changes run file classification and redacted secret scanning, skipping the full suite and deployment. Other changes require full quality or a trusted successful check of the identical Git tree; reused checks retain fresh audit and secret scanning. See [CI verification](docs/operations.md#normal-deployment).
 
 ## Deployment
 

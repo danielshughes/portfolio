@@ -2,9 +2,9 @@
 
 ## Status
 
-Approved direction: keep the existing experiment titles and make the supporting
-copy more direct. This is a copy and documentation change. It does not change
-the interaction model, visual language, data sources or safety boundaries.
+Historical design, implemented. Retained for the rationale behind concrete
+supporting copy and unchanged titles. The [experiment contract](../../experiments.md)
+owns current guidance; the proposed wording below is not a second source of truth.
 
 ## Goals
 
