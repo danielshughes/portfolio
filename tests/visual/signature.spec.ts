@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 
 for (const route of ["/", "/notes/", "/experiments/"]) {
-  test(`touch navigation from ${route} keeps the signature complete`, async ({
+  test(`touch navigation from ${route} draws on arrival without delaying the link`, async ({
     browser,
     browserName,
     baseURL,
@@ -75,11 +75,133 @@ for (const route of ["/", "/notes/", "/experiments/"]) {
       "outgoing",
     );
     await expect(page).toHaveURL(new URL("/", baseURL).href);
+    const mark = page.locator(".site-mark");
+    await pauseDuringStroke(mark);
+    await expectPartialStroke(mark);
+    await finishStroke(mark);
     await expect(page.locator(".site-mark path")).toHaveCSS(
       "stroke-dashoffset",
       "0px",
     );
     await expect(page.locator(".site-mark circle")).toHaveCSS("opacity", "1");
+    await page.reload();
+    expect(
+      await mark.evaluate(
+        (root) => root.getAnimations({ subtree: true }).length,
+      ),
+    ).toBe(0);
+    await context.close();
+  });
+}
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`arrival reveals only the drawing stroke in ${colorScheme}`, async ({
+    browser,
+    browserName,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({
+      baseURL,
+      colorScheme,
+      hasTouch: true,
+      viewport: { width: 402, height: 874 },
+      isMobile: browserName !== "firefox",
+    });
+    await context.addInitScript(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (...args) {
+        if (
+          this.matches(".signature-trace path") &&
+          !document.documentElement.hasAttribute("data-signature-before-draw")
+        ) {
+          document.documentElement.dataset.signatureBeforeDraw =
+            getComputedStyle(this.closest("svg")!).visibility;
+          document.documentElement.dataset.signatureDrawReady =
+            document.readyState;
+        }
+        const run = animate.apply(this, args);
+        if (this.closest(".signature-trace")) run.pause();
+        return run;
+      };
+    });
+    const page = await context.newPage();
+    await page.goto("/notes/");
+    const mark = page.locator(".site-mark");
+    await mark.tap();
+    await pauseDuringStroke(mark);
+    expect(
+      await page.evaluate(
+        () =>
+          CSS.supports("selector(:active-view-transition)") &&
+          document.documentElement.matches(":active-view-transition"),
+      ),
+    ).toBe(false);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-signature-draw-ready",
+      "complete",
+    );
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-signature-before-draw",
+      "hidden",
+    );
+    await expect(mark.locator("svg")).toBeVisible();
+    await expectPartialStroke(mark);
+    await page.screenshot({
+      path: test.info().outputPath("arrival-drawing.png"),
+    });
+    await finishStroke(mark);
+    await page.screenshot({
+      path: test.info().outputPath("arrival-complete.png"),
+    });
+    await context.close();
+  });
+}
+
+for (const fallback of ["reduced motion", "blocked storage", "failed module"]) {
+  test(`touch navigation stays usable with ${fallback}`, async ({
+    browser,
+    browserName,
+    baseURL,
+  }) => {
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width: 402, height: 874 },
+      hasTouch: true,
+      isMobile: browserName !== "firefox",
+      reducedMotion: fallback === "reduced motion" ? "reduce" : "no-preference",
+    });
+    if (fallback === "blocked storage") {
+      await context.addInitScript(() => {
+        Storage.prototype.setItem = () => {
+          throw new DOMException("Storage blocked", "SecurityError");
+        };
+      });
+    }
+    const page = await context.newPage();
+    await page.goto("/notes/");
+    if (fallback === "failed module") {
+      // Astro can inline small modules, so block the actual enhancement scripts.
+      await page.route(new URL("/", baseURL).href, async (route) => {
+        const response = await route.fetch();
+        const html = await response.text();
+        expect(html).toContain('<script type="module">');
+        await route.fulfill({
+          response,
+          body: html.replace(/<script type="module">[\s\S]*?<\/script>/g, ""),
+        });
+      });
+    }
+    await page.locator(".site-mark").tap();
+    await expect(page).toHaveURL(new URL("/", baseURL).href);
+    const mark = page.locator(".site-mark");
+    await expect(mark.locator("svg")).toBeVisible();
+    await expect(mark.locator("path")).toHaveCSS("stroke-dashoffset", "0px");
+    await expect(mark.locator("circle")).toHaveCSS("opacity", "1");
+    expect(
+      await mark.evaluate(
+        (root) => root.getAnimations({ subtree: true }).length,
+      ),
+    ).toBe(0);
     await context.close();
   });
 }

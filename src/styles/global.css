@@ -160,6 +160,9 @@ main,
 .signature-trace circle {
   fill: currentColor;
 }
+[data-signature-arrival] .signature-trace {
+  visibility: hidden;
+}
 .site-header nav {
   display: flex;
   gap: 2rem;
