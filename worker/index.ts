@@ -114,6 +114,8 @@ export default {
         collectSnapshots(env, event.scheduledTime, radarOptions(env)),
       ]);
       const radar = results[1];
+      if (radar.status === "fulfilled")
+        span.setAttribute("radar.collection.status", radar.value.status);
       const incompleteRadar =
         radar.status === "fulfilled" &&
         (radar.value.status === "empty" || radar.value.status === "partial");

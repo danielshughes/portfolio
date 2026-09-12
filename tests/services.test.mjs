@@ -492,6 +492,11 @@ test("scheduled collection measures this environment's assets without depending 
   await kv.put(key, prior, { expirationTtl: 1200 });
   const previousKeys = (await kv.list()).keys;
   await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  assert.equal(
+    radarCalls,
+    1,
+    "a failed attempt must not repeat in the same slot",
+  );
   assert.equal(await kv.get(key), prior);
   assert.deepEqual((await kv.list()).keys, previousKeys);
   assert.equal(
@@ -499,6 +504,29 @@ test("scheduled collection measures this environment's assets without depending 
       .count,
     1,
   );
+});
+
+test("repeated scheduled slots make one Radar collection, including concurrent delivery", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    outbound(request) {
+      calls++;
+      return radarUpstream(request.url);
+    },
+  });
+  t.after(() => mf.dispose());
+  const worker = await mf.getWorker();
+  const time = Math.floor(Date.now() / 300000) * 300000;
+  const run = (scheduledTime) =>
+    worker.scheduled({ scheduledTime, cron: "*/5 * * * *" });
+  const results = await Promise.all([run(time), run(time + 48000)]);
+  assert.ok(results.every(({ outcome }) => outcome === "ok"));
+  assert.equal(calls, 5);
+  await run(time);
+  await run(time - 300000);
+  assert.equal(calls, 5);
+  assert.equal((await run(time + 300000)).outcome, "ok");
+  assert.equal(calls, 10);
 });
 
 test("a health storage failure does not prevent scheduled Radar collection", async (t) => {
@@ -531,6 +559,41 @@ test("a health storage failure does not prevent scheduled Radar collection", asy
     "devices",
     "protocols",
   ]);
+});
+
+test("a failed Radar claim makes no provider or KV calls and preserves health sampling", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    outbound() {
+      calls++;
+      assert.fail("an unclaimed run must not reach the provider");
+    },
+  });
+  t.after(() => mf.dispose());
+  const db = await mf.getD1Database("HISTORY");
+  await db.exec(
+    "CREATE TRIGGER reject_claim BEFORE INSERT ON radar_collection BEGIN SELECT RAISE(ABORT, 'fixture claim failure'); END;",
+  );
+  const result = await (
+    await mf.getWorker()
+  ).scheduled({
+    scheduledTime: Date.now(),
+    cron: "*/5 * * * *",
+  });
+  assert.equal(result.outcome, "exception");
+  assert.equal(calls, 0);
+  assert.equal(
+    (await (await mf.getKVNamespace("RADAR_SNAPSHOTS")).list()).keys.length,
+    0,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS count FROM health_samples WHERE ok=1")
+        .first()
+    ).count,
+    1,
+  );
 });
 
 test("scheduled results distinguish complete, partial, disabled and missing credentials", async (t) => {

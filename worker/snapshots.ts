@@ -12,7 +12,7 @@ export type SnapshotCollection = {
   country: string;
   views: RadarView[];
 } & (
-  | { status: "disabled" | "complete" | "partial" }
+  | { status: "disabled" | "skipped" | "complete" | "partial" }
   | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
 );
 const MAX_AGE = 3600000;
@@ -87,7 +87,8 @@ export async function collectSnapshots(
   time: number,
   options: RadarOptions,
 ): Promise<SnapshotCollection> {
-  const country = countries[Math.floor(time / 300000) % countries.length].code;
+  const slot = Math.floor(time / 300000);
+  const country = countries[slot % countries.length].code;
   if (!options.enabled) return { status: "disabled", country, views: [] };
   if (!options.token)
     return {
@@ -96,6 +97,14 @@ export async function collectSnapshots(
       country,
       views: [],
     };
+  // Claim before upstream work: different locations can deliver the same slot.
+  // A failed attempt keeps its claim; the next slot can try independently.
+  const claimed = await env.HISTORY.prepare(
+    "INSERT INTO radar_collection (id,slot) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET slot=excluded.slot WHERE radar_collection.slot < excluded.slot RETURNING slot",
+  )
+    .bind(slot)
+    .first<{ slot: number }>();
+  if (!claimed) return { status: "skipped", country, views: [] };
   const entries: string[] = [];
   let bundleBytes = 2; // The enclosing JSON braces.
   const views: RadarView[] = [];
