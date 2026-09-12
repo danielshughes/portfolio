@@ -30,24 +30,26 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 
 ## Code and configuration map
 
-| Responsibility                                                     | Source of truth                                                                                |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                            |
-| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                               |
-| API routing and scheduled orchestration                            | `worker/index.ts`                                                                              |
-| Radar validation and failure policy                                | `worker/radar.ts`                                                                              |
-| Supported Radar view IDs and upstream dimensions                   | `src/experiments/radar-views.ts`                                                               |
-| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                             |
-| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                                          |
-| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`             |
-| Human verification and bounded streaming                           | `worker/turnstile.ts`, `worker/stream.ts`                                                      |
-| Additive SQL schema                                                | `worker/migrations/`                                                                           |
-| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                                   |
-| Health inspection, verification and streaming clients              | `src/experiments/health-chart.ts`, `src/experiments/turnstile.ts`, `src/experiments/stream.ts` |
-| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`            |
-| Trusted deployment and docs-only filtering                         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`                     |
+| Responsibility                                                     | Source of truth                                                                                    |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                                |
+| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                                   |
+| API routing and scheduled orchestration                            | `worker/index.ts`                                                                                  |
+| Radar validation and failure policy                                | `worker/radar.ts`                                                                                  |
+| Supported Radar view IDs and upstream dimensions                   | `src/experiments/radar-views.ts`                                                                   |
+| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                                 |
+| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                                              |
+| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`                 |
+| Human verification and bounded streaming                           | `worker/turnstile.ts`, `worker/stream.ts`                                                          |
+| Additive SQL schema                                                | `worker/migrations/`                                                                               |
+| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                                       |
+| Health inspection, verification and streaming clients              | `src/experiments/health-chart.ts`, `src/experiments/turnstile.ts`, `src/experiments/stream.ts`     |
+| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`                |
+| Trusted deployment, change filtering and tested-tree proof         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`, `scripts/ci-reuse.mjs` |
 
 The generated `worker/worker-configuration.d.ts` describes the actual Wrangler bindings. Regenerate it rather than maintaining a second handwritten environment interface. Resource identifiers in Wrangler are not credentials; secret values never belong there.
+
+Preserve Astro's optional-import module-preload hook and page-reload recovery. Generated `_headers` hash actual inline script/style bytes; only style attributes allow inline CSS. Worker APIs share the security policy. Browser tests serve generated assets through the fixture workerd harness, not a policy-free static server.
 
 ## Services
 
@@ -67,9 +69,11 @@ The original Kubernetes, MCP and visual models remain browser-local simulations.
 
 All service requests pass a coarse, constant-key ingress limit. AI starts, stream starts and room upgrades also have separate per-path admission via `EXPERIMENT_STARTS`. These native limits are per Cloudflare location and eventually consistent, not global quotas or per-person authentication. AI reservations and room admissions have separate persisted global limits per environment. Invalid input and limiter failures do not fall through to a backend.
 
+Keep request-owned pending I/O inside its request context, not shared across Worker invocations. Non-429 upstream failures retain bounded origin backoff; accepted cached successes remain usable, while protection or cache failures fail closed.
+
 ## Background work
 
-One scheduled invocation collects a homepage asset HEAD measurement and one country's Radar views. Both jobs settle independently: a health storage failure does not prevent a valid Radar bundle being stored, and a Radar failure does not discard a successful health sample. The collector returns the selected country and accepted view IDs with a `complete`, `partial`, `empty` or `disabled` outcome. Partial collection stores only validated available views; empty collection writes nothing. Either attempted incomplete result makes the scheduled invocation fail after both jobs finish. Intentionally disabled Radar makes no admission, provider or storage calls and does not fail otherwise healthy work; an enabled collector without credentials reports `empty` with `missing_credentials`.
+One scheduled invocation collects a homepage asset HEAD measurement and attempts one country's Radar views. Both jobs settle independently: a health storage failure does not prevent a valid Radar bundle being stored, and a Radar failure does not discard a successful health sample. The collector returns the selected country and accepted view IDs with a `complete`, `partial`, `empty`, `disabled` or `skipped` outcome. Partial collection stores only validated available views; empty collection writes nothing. Either attempted incomplete result makes the scheduled invocation fail after both jobs finish. Intentionally disabled Radar makes no admission, provider or storage calls and does not fail otherwise healthy work; an enabled collector without credentials reports `empty` with `missing_credentials`. A previously claimed or older slot is `skipped` before provider or KV work, not reported as a fresh collection.
 
 Unexpected binding/storage exceptions remain rejected jobs. Structured failure events contain fixed service/status/reason labels, the bounded country and accepted-view count, plus deployment version, never provider bodies or visitor identity. Upstream failures retain the foreground API's bounded backoff and cannot manufacture or renew missing observations.
 
@@ -89,7 +93,9 @@ Development uses D1 because Cloudflare states: "For Workers fronted by Cloudflar
 
 `worker/radar.ts` owns the successful-response TTL and `MAX_BACKOFF_SECONDS`. Only the shared backoff key accepts the longer maximum, so a valid upstream Retry-After is honoured without extending the eligibility of cached observations.
 
-Cron rotates through the country list deterministically. Each tick requests that country's views, validates the results, and writes at most one bundle to KV. Its invocation-local response cache coordinates backoff but cannot recycle an old edge response into a newly dated snapshot. A bundle can contain only the successful views. KV expiry and the stricter application freshness window are separate: stored data is not automatically eligible for display. Eventually consistent KV propagation can mean a fresh foreground request is still needed. Source update times remain unchanged.
+Cron rotates through the country list deterministically. Before Radar work, an atomic D1 upsert claims the five-minute slot in the single-row `radar_collection` table. Concurrent, repeated or older slots are skipped before provider calls or KV writes, even when delivered in different locations with slightly different timestamps. A claim failure stops Radar work. The claim remains after partial or failed collection: this bounded demonstration waits for the next slot instead of repeating a possibly completed write. Health sampling settles independently.
+
+Each admitted slot requests that country's views, validates the results, and writes at most one bundle to KV. Its invocation-local response cache coordinates backoff but cannot recycle an old edge response into a newly dated snapshot. A bundle can contain only the successful views. KV expiry and the stricter application freshness window are separate: stored data is not automatically eligible for display. Eventually consistent KV propagation can mean a fresh foreground request is still needed. Source update times remain unchanged.
 
 Snapshot collection and reading share the UTF-8 encoded bundle limit `MAX_BUNDLE_BYTES` in `worker/snapshots.ts`. The collector preserves each accepted view intact; if a whole view cannot fit, it skips that view and continues with later views. It counts each serialised entry once, including its key and JSON separators, then joins accepted entries for one KV write. Skipped views yield the existing partial/empty outcomes, never truncated annotations or a successful unreadable bundle.
 
@@ -144,6 +150,7 @@ The close handler maps reserved local statuses to a valid normal-close frame rat
 | D1 `radar_cache`      | Public Radar payloads and error backoff              | Fixed keys; bounded TTL, overwrite             | Request hostnames, identities, secrets       |
 | D1 `health_samples`   | Slot, status, elapsed milliseconds, success flag     | Retained time window; indexed primary key      | Request/response bodies or caller data       |
 | D1 `ai_budget`        | UTC day and reserved count                           | Single row                                     | Prompts, generated answers, visitor identity |
+| D1 `radar_collection` | Latest admitted scheduled Radar slot                 | Single row, monotonically advancing            | Visitor data, provider payloads, secrets     |
 | Durable Object SQLite | Bounded room sequence and daily join allowance       | One row per purpose                            | Chat, identity, visitor IP                   |
 | WebSocket attachments | Expiry, last send, message count                     | Session lifetime                               | Credentials or personal data                 |
 

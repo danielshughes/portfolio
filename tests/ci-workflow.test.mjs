@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 import { checkChanges, requiresQuality } from "../scripts/ci-changes.mjs";
+import { findVerifiedRun } from "../scripts/ci-reuse.mjs";
 
 const workflow = readFileSync(
   new URL("../.github/workflows/ci.yml", import.meta.url),
@@ -123,6 +124,147 @@ test("documentation can skip checks but mixed and unknown files require them", (
     "README.md\nsrc/app.ts",
   ])
     assert.equal(requiresQuality([...docs, path]), true, path);
+});
+
+test("quality reuse requires a recent complete trusted check of the exact tested tree", async () => {
+  const repository = "example/portfolio";
+  const testedSha = "b".repeat(40);
+  const config = {
+    repository,
+    runId: "2",
+    tree: "c".repeat(40),
+    workflow: "d".repeat(40),
+    now: Date.parse("2026-09-12T12:00:00Z"),
+  };
+  const complete = {
+    run: {
+      id: 1,
+      workflow_id: 9,
+      run_attempt: 2,
+      conclusion: "success",
+      event: "pull_request",
+      path: ".github/workflows/ci.yml",
+      head_sha: "a".repeat(40),
+      repository: { full_name: repository },
+      head_repository: { full_name: repository },
+      created_at: "2026-09-12T10:00:00Z",
+    },
+    jobs: {
+      total_count: 1,
+      jobs: [
+        {
+          name: "quality",
+          conclusion: "success",
+          steps: [
+            { name: `Full quality (${testedSha})`, conclusion: "success" },
+            { name: "Dependency audit", conclusion: "success" },
+            {
+              name: "Redacted secret scan of history and deliverables",
+              conclusion: "success",
+            },
+          ],
+        },
+      ],
+    },
+    commit: { tree: { sha: config.tree } },
+    definition: { sha: config.workflow },
+  };
+  async function verify(fixture) {
+    return findVerifiedRun({
+      ...config,
+      api: async (path) => {
+        if (path.endsWith("/runs/2")) return { workflow_id: 9 };
+        if (path.includes("/workflows/9/runs?"))
+          return { workflow_runs: [fixture.run] };
+        if (path.endsWith("/runs/1/attempts/2/jobs?per_page=100"))
+          return fixture.jobs;
+        if (path.endsWith(`/git/commits/${testedSha}`)) return fixture.commit;
+        if (
+          path.endsWith(
+            `/contents/.github/workflows/ci.yml?ref=${fixture.run.head_sha}`,
+          )
+        )
+          return fixture.definition;
+        assert.fail(`Unexpected API route: ${path}`);
+      },
+    });
+  }
+  assert.deepEqual(await verify(complete), {
+    id: 1,
+    attempt: 2,
+    commit: testedSha,
+  });
+  for (const mutate of [
+    (f) => {
+      f.commit.tree.sha = "e".repeat(40);
+    },
+    (f) => {
+      f.definition.sha = "e".repeat(40);
+    },
+    (f) => {
+      f.run.head_repository.full_name = "someone/fork";
+    },
+    (f) => {
+      f.run.event = "workflow_dispatch";
+    },
+    (f) => {
+      f.run.created_at = "2026-09-01T00:00:00Z";
+    },
+    (f) => {
+      f.run.created_at = "invalid";
+    },
+    (f) => {
+      f.run.conclusion = "failure";
+    },
+    (f) => {
+      f.run.workflow_id = 10;
+    },
+    (f) => {
+      f.jobs.jobs[0].steps[0].conclusion = "skipped";
+    },
+    (f) => {
+      f.jobs.jobs[0].steps[1].conclusion = "failure";
+    },
+    (f) => {
+      f.jobs.jobs[0].steps[2].conclusion = "skipped";
+    },
+    (f) => {
+      f.jobs.jobs[0].steps = [];
+    },
+    (f) => {
+      f.jobs.total_count = 2;
+    },
+  ]) {
+    const fixture = structuredClone(complete);
+    mutate(fixture);
+    assert.equal(await verify(fixture), undefined);
+  }
+  await assert.rejects(
+    findVerifiedRun({
+      ...config,
+      api: async () => {
+        throw new Error("fixture API unavailable");
+      },
+    }),
+    /fixture API unavailable/,
+  );
+});
+
+test("reuse skips only expensive quality work while audit and deployment retain their gates", () => {
+  assert.match(workflow, /name: Full quality \(\$\{\{ github.sha \}\}\)/);
+  assert.match(
+    workflow,
+    /run: npm run quality\n\s+if: steps.filter.outputs.code == 'true' && steps.reuse.outputs.reused != 'true'/,
+  );
+  assert.match(
+    workflow,
+    /run: npm audit --package-lock-only --audit-level=low\n\s+if: steps.filter.outputs.code == 'true'\n/,
+  );
+  const deploy = workflow.split("  deploy:\n")[1];
+  assert.doesNotMatch(deploy, /steps.reuse/);
+  assert.match(deploy, /run: npm ci/);
+  assert.match(deploy, /run: npm run build/);
+  assert.match(deploy, /run: node scripts\/deploy.mjs/);
 });
 
 test("missing comparisons fail and new branches require full checks", () => {
