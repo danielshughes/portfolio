@@ -35,6 +35,8 @@ Traffic, Bots, Devices and Protocols retain the same selected country, map and s
 
 Clicking or tapping near a country marker selects the nearest rendered dot within a bounded radius. Blank map areas do nothing and scrolling remains native. The labelled country buttons provide the equivalent keyboard and screen-reader interaction, without overlapping invisible targets on the map. Summary bars use the shared spacing token between rows, beginning just below the country heading and ending close to their date/source text.
 
+Keyboard/pointer intent checks current atlas bounds before enabling bounded speculation. A delayed visibility notification must not discard that intent or leave the pulse paused on a visible map. Hidden-tab, connection-hint and document-budget gates still apply; focus warms a tab without selecting it. The focused regression deliberately withholds atlas observer delivery to exercise this ordering.
+
 Loading, unavailable and a genuinely absent reading are distinct. Never fill missing observations with synthetic data. Reported disruptions come from the supplied events and scope, not from dips in the chart; no returned events does not prove no outages. Replay scrubs an observed week and must not imply live traffic.
 
 Keep the attribution, licence and transformation notice visible. `radar-tabs.ts` owns the UI wording and exhaustively types its metadata against the dependency-free `radar-views.ts` contract. [Radar data flow](architecture.md#radar-end-to-end) owns cache/storage and upstream backoff behaviour; the browser must not treat reuse as refreshed source data.

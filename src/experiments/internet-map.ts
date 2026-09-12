@@ -31,6 +31,7 @@ export function mountInternetMap(root: HTMLElement) {
     startHour = 0;
   const announcement = query<HTMLElement>(".internet-announcement");
   const liveButton = query<HTMLButtonElement>("[data-internet-live]");
+  const atlas = query<HTMLElement>(".internet-atlas");
   let mapVisible = false;
   let pointerExploring = false,
     focusExploring = false;
@@ -60,6 +61,16 @@ export function mountInternetMap(root: HTMLElement) {
     },
   );
   function syncPrefetch() {
+    // Observer delivery can lag focus or scrolling. Intent uses current bounds.
+    const bounds = atlas.getBoundingClientRect();
+    mapVisible =
+      bounds.width > 0 &&
+      bounds.height > 0 &&
+      bounds.bottom > 0 &&
+      bounds.top < innerHeight &&
+      bounds.right > 0 &&
+      bounds.left < innerWidth;
+    syncPulse();
     cache.setExploring(
       mapVisible &&
         !document.hidden &&
@@ -107,12 +118,10 @@ export function mountInternetMap(root: HTMLElement) {
   }
   reduced.addEventListener("change", syncPulse);
   document.addEventListener("visibilitychange", syncPulse);
-  new IntersectionObserver((entries) => {
-    mapVisible = entries[0].isIntersecting;
-    syncPulse();
+  new IntersectionObserver(() => {
     syncPrefetch();
     if (mapVisible) neighbours();
-  }).observe(query(".internet-atlas"));
+  }).observe(atlas);
   let loading = false;
   let data: RadarData | null = null;
   let selectedEvent: RadarData["outages"][number] | null = null;
@@ -372,7 +381,7 @@ export function mountInternetMap(root: HTMLElement) {
   // Use the nearest rendered marker: fixed overlay buttons overlap in Europe
   // on small screens. The labelled country buttons remain the keyboard route.
   const pins = [...root.querySelectorAll<SVGElement>("[data-country-pin]")];
-  query<HTMLElement>(".internet-atlas").addEventListener("click", (event) => {
+  atlas.addEventListener("click", (event) => {
     if (event.button !== 0) return;
     let closest: string | undefined;
     let distance = 22;

@@ -30,24 +30,26 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 
 ## Code and configuration map
 
-| Responsibility                                                     | Source of truth                                                                                |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                            |
-| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                               |
-| API routing and scheduled orchestration                            | `worker/index.ts`                                                                              |
-| Radar validation and failure policy                                | `worker/radar.ts`                                                                              |
-| Supported Radar view IDs and upstream dimensions                   | `src/experiments/radar-views.ts`                                                               |
-| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                             |
-| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                                          |
-| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`             |
-| Human verification and bounded streaming                           | `worker/turnstile.ts`, `worker/stream.ts`                                                      |
-| Additive SQL schema                                                | `worker/migrations/`                                                                           |
-| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                                   |
-| Health inspection, verification and streaming clients              | `src/experiments/health-chart.ts`, `src/experiments/turnstile.ts`, `src/experiments/stream.ts` |
-| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`            |
-| Trusted deployment and docs-only filtering                         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`                     |
+| Responsibility                                                     | Source of truth                                                                                    |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                                |
+| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                                   |
+| API routing and scheduled orchestration                            | `worker/index.ts`                                                                                  |
+| Radar validation and failure policy                                | `worker/radar.ts`                                                                                  |
+| Supported Radar view IDs and upstream dimensions                   | `src/experiments/radar-views.ts`                                                                   |
+| Environment cache selection and bounded D1 cache                   | `worker/radar-options.ts`, `worker/radar-cache.ts`                                                 |
+| Scheduled Radar bundles                                            | `worker/snapshots.ts`                                                                              |
+| Edge, health, AI and shared room                                   | `worker/edge.ts`, `worker/health.ts`, `worker/triage.ts`, `worker/coordination.ts`                 |
+| Human verification and bounded streaming                           | `worker/turnstile.ts`, `worker/stream.ts`                                                          |
+| Additive SQL schema                                                | `worker/migrations/`                                                                               |
+| Browser service lifecycle and rendering                            | `src/experiments/live.ts`, `src/experiments/internet-map.ts`                                       |
+| Health inspection, verification and streaming clients              | `src/experiments/health-chart.ts`, `src/experiments/turnstile.ts`, `src/experiments/stream.ts`     |
+| Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`                |
+| Trusted deployment, change filtering and tested-tree proof         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`, `scripts/ci-reuse.mjs` |
 
 The generated `worker/worker-configuration.d.ts` describes the actual Wrangler bindings. Regenerate it rather than maintaining a second handwritten environment interface. Resource identifiers in Wrangler are not credentials; secret values never belong there.
+
+Preserve Astro's optional-import module-preload hook and page-reload recovery. Generated `_headers` hash actual inline script/style bytes; only style attributes allow inline CSS. Worker APIs share the security policy. Browser tests serve generated assets through the fixture workerd harness, not a policy-free static server.
 
 ## Services
 
@@ -66,6 +68,8 @@ The [experiment behaviour contract](experiments.md) connects each interface to i
 The original Kubernetes, MCP and visual models remain browser-local simulations. They do not call these services or become evidence of production-system experience.
 
 All service requests pass a coarse, constant-key ingress limit. AI starts, stream starts and room upgrades also have separate per-path admission via `EXPERIMENT_STARTS`. These native limits are per Cloudflare location and eventually consistent, not global quotas or per-person authentication. AI reservations and room admissions have separate persisted global limits per environment. Invalid input and limiter failures do not fall through to a backend.
+
+Keep request-owned pending I/O inside its request context, not shared across Worker invocations. Non-429 upstream failures retain bounded origin backoff; accepted cached successes remain usable, while protection or cache failures fail closed.
 
 ## Background work
 
