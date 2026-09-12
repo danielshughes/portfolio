@@ -46,6 +46,20 @@ export async function runtime(options = {}) {
           },
           kvNamespaces: ["RADAR_SNAPSHOTS"],
           d1Databases: ["HISTORY"],
+          ...(options.queue
+            ? { queueProducers: { RADAR_COLLECTION_QUEUE: "radar-test" } }
+            : {}),
+          ...(options.queue === "consume"
+            ? {
+                queueConsumers: {
+                  "radar-test": {
+                    maxBatchSize: 1,
+                    maxBatchTimeout: 0,
+                    maxRetries: 0,
+                  },
+                },
+              }
+            : {}),
           durableObjects: {
             COORDINATION: { className: "CoordinationRoom", useSQLite: true },
           },

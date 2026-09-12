@@ -184,6 +184,28 @@ test("Radar attribution survives dynamic loading in a separate static element", 
   assert.match(markup, /Custom visualisation/);
 });
 
+test("queue trial stays development-only with bounded consumption and no paid CPU override", () => {
+  const { config, error } = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  );
+  assert.equal(error, undefined);
+  assert.equal(config.queues, undefined);
+  assert.equal(config.env.production.queues, undefined);
+  for (const environment of [config, ...Object.values(config.env)])
+    assert.equal(environment.limits?.cpu_ms, undefined);
+  const { producers, consumers } = config.env.development.queues;
+  assert.equal(producers.length, 1);
+  assert.equal(consumers.length, 1);
+  assert.equal(producers[0].binding, "RADAR_COLLECTION_QUEUE");
+  assert.equal(producers[0].queue, consumers[0].queue);
+  assert.notEqual(producers[0].remote, true);
+  assert.equal(consumers[0].max_batch_size, 1);
+  assert.equal(consumers[0].max_concurrency, 1);
+  assert.equal(consumers[0].max_retries, 0);
+  assert.equal(consumers[0].dead_letter_queue, undefined);
+});
+
 test("observability keeps explicit sampled logs and traces with query redaction", () => {
   const { config, error } = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
