@@ -42,6 +42,12 @@ For UI changes, inspect affected sections on desktop/mobile in both palettes, in
 
 Keep failed-test evidence redacted, fixture-only and in the dedicated scratch/output location. Investigate failures rather than adding retries to obtain green. Report the completed command's result and unverified limits accurately.
 
+## Documentation completion
+
+Before closing any change, inspect README.md, this file, documentation indexes and the affected contracts above. Search tracked docs for the changed names, values and behaviour, including summaries outside the edited files. Update every affected reference, verify relative links and heading anchors, and state what was checked in the PR or hand-off. If no update is needed, record why; do not make cosmetic edits to satisfy the check.
+
+Current guides describe the implemented contract; release claims need version-specific evidence. Keep each changing fact in one authoritative place and link summaries to it. Retain historical plans only for useful rationale, provenance or recovery, with a clear status and a link to the current contract. Mark completed or superseded plans explicitly; preserve original unchecked steps as historical proposals, not open tasks or fabricated passes. Documentation-only corrections use the existing lightweight CI path.
+
 ## Delivery
 
 Feature PRs target `develop`; production promotion is a reviewed `develop` to `main` PR with the explicit production switch enabled. GitHub Actions is the sole deployer. No direct uploads, protected-branch pushes, force pushes or required-check bypasses.
