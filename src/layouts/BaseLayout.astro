@@ -55,6 +55,27 @@ const structuredData = JSON.stringify({
           : matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
             : "light";
+        try {
+          const arrival = sessionStorage.getItem("portfolio-signature-arrival");
+          sessionStorage.removeItem("portfolio-signature-arrival");
+          if (
+            arrival === "touch" &&
+            location.pathname === "/" &&
+            !matchMedia("(prefers-reduced-motion: reduce)").matches
+          ) {
+            document.documentElement.dataset.signatureArrival = "";
+            // Restore the static fallback even if the enhancement fails to load.
+            addEventListener(
+              "load",
+              () => {
+                requestAnimationFrame(() => {
+                  delete document.documentElement.dataset.signatureArrival;
+                });
+              },
+              { once: true },
+            );
+          }
+        } catch {}
       })();
     </script>
     <meta charset="UTF-8" />
