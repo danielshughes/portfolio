@@ -12,7 +12,7 @@ export type SnapshotCollection = {
   country: string;
   views: RadarView[];
 } & (
-  | { status: "disabled" | "skipped" | "complete" | "partial" }
+  | { status: "disabled" | "skipped" | "queued" | "complete" | "partial" }
   | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
 );
 const MAX_AGE = 3600000;
@@ -86,6 +86,7 @@ export async function collectSnapshots(
   env: Env,
   time: number,
   options: RadarOptions,
+  delivery: "direct" | "dispatch" | "consume" = "direct",
 ): Promise<SnapshotCollection> {
   const slot = Math.floor(time / 300000);
   const country = countries[slot % countries.length].code;
@@ -99,12 +100,29 @@ export async function collectSnapshots(
     };
   // Claim before upstream work: different locations can deliver the same slot.
   // A failed attempt keeps its claim; the next slot can try independently.
+  // Dispatch and consumption need separate claims: claiming a send must not
+  // make its consumer look like a duplicate. Both tables are single-row bounds.
+  const table = delivery === "dispatch" ? "radar_dispatch" : "radar_collection";
+  // Checking the current dispatch belongs in the same atomic write, not an
+  // earlier read that a newer Cron tick could invalidate before this claim.
+  const admission =
+    delivery === "consume"
+      ? "SELECT 1,slot FROM radar_dispatch WHERE id=1 AND slot=?"
+      : "VALUES (1,?)";
   const claimed = await env.HISTORY.prepare(
-    "INSERT INTO radar_collection (id,slot) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET slot=excluded.slot WHERE radar_collection.slot < excluded.slot RETURNING slot",
+    `INSERT INTO ${table} (id,slot) ${admission} ON CONFLICT(id) DO UPDATE SET slot=excluded.slot WHERE ${table}.slot < excluded.slot RETURNING slot`,
   )
     .bind(slot)
     .first<{ slot: number }>();
   if (!claimed) return { status: "skipped", country, views: [] };
+  if (delivery === "dispatch") {
+    if (!env.RADAR_COLLECTION_QUEUE) throw new Error("Radar queue unavailable");
+    await env.RADAR_COLLECTION_QUEUE.send(
+      { scheduledTime: slot * 300000 },
+      { contentType: "json" },
+    );
+    return { status: "queued", country, views: [] };
+  }
   const entries: string[] = [];
   let bundleBytes = 2; // The enclosing JSON braces.
   const views: RadarView[] = [];

@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS radar_dispatch (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  slot INTEGER NOT NULL
+);

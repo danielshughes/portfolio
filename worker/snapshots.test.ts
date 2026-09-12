@@ -96,6 +96,31 @@ test("complete collection uses the injected clock and persists each validated vi
     assert.equal(value.fetchedAt, new Date(radarFixtureTime).toISOString());
 });
 
+test("queue dispatch is bounded once per slot even when a send fails", async () => {
+  for (const fail of [false, true]) {
+    const h = harness();
+    const messages: unknown[] = [];
+    const queue = {
+      async send(body: unknown, options: unknown) {
+        messages.push(body);
+        assert.deepEqual(options, { contentType: "json" });
+        if (fail) throw new Error("fixture send failed");
+      },
+    } as Queue<{ scheduledTime: number }>;
+    h.env.RADAR_COLLECTION_QUEUE = queue;
+    const invoke = () =>
+      collectSnapshots(h.env, radarFixtureTime, h.options, "dispatch");
+    if (fail) await assert.rejects(invoke, /fixture send failed/);
+    else assert.equal((await invoke()).status, "queued");
+    assert.equal((await invoke()).status, "skipped");
+    assert.deepEqual(messages, [
+      { scheduledTime: Math.floor(radarFixtureTime / 300000) * 300000 },
+    ]);
+    assert.equal(h.calls(), 0);
+    assert.equal(h.writes.length, 0);
+  }
+});
+
 async function bundleAtBytes(bytes: number) {
   const h = harness(undefined, Array(100).fill("é"));
   await collectSnapshots(h.env, radarFixtureTime, h.options);
