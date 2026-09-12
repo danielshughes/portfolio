@@ -60,7 +60,10 @@ export function mountSignature(mark: HTMLElement) {
     // A crossfade snapshot would cover the live stroke on the incoming page.
     addEventListener(
       "pageswap",
-      (event) => event.viewTransition?.skipTransition(),
+      (event) => {
+        if (event.activation?.entry.url === new URL("/", location.href).href)
+          event.viewTransition?.skipTransition();
+      },
       { once: true },
     );
     try {
