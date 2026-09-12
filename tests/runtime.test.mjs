@@ -2,6 +2,36 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runtime } from "./runtime-harness.mjs";
 import { radarUpstream } from "./fixtures/radar-upstream.mjs";
+import { developmentCache } from "../worker/radar-cache.ts";
+
+test("a D1 response expiring during its read is a miss, not a zero-TTL success", async (t) => {
+  let now = 10000;
+  t.mock.method(Date, "now", () => now);
+  const cache = developmentCache({
+    prepare() {
+      return {
+        bind() {
+          return {
+            async first() {
+              now = 12000;
+              return {
+                body: "{}",
+                headers: JSON.stringify([
+                  ["cache-control", "public, max-age=3600"],
+                ]),
+                expires: 11000,
+              };
+            },
+          };
+        },
+      };
+    },
+  });
+  assert.equal(
+    await cache.match("https://radar.internal/api/.radar/v2/GB/bots"),
+    undefined,
+  );
+});
 
 const summary = {
   success: true,
@@ -17,6 +47,71 @@ const summary = {
     },
   },
 };
+
+test("native Radar loopback keeps ingress checks and does not duplicate successful D1 caching", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    bindings: { RADAR_NATIVE_CACHE: true },
+    limits: { RADAR_INGRESS: 2 },
+    outbound(request) {
+      calls++;
+      assert.equal(request.headers.get("cookie"), null);
+      return Response.json(summary);
+    },
+  });
+  t.after(() => mf.dispose());
+  const response = await mf.dispatchFetch(
+    "https://portfolio.example/api/radar?country=GB&view=bots",
+    { headers: { cookie: "fixture=1" } },
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("cache-control"), /must-revalidate/);
+  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+  assert.equal((await response.json()).country, "GB");
+  assert.equal(
+    (await mf.dispatchFetch("https://portfolio.example/api/radar?country=XX"))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(
+        "https://portfolio.example/api/radar?country=GB&view=bots",
+      )
+    ).status,
+    429,
+  );
+  assert.equal(calls, 1);
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS count FROM radar_cache").first())
+      .count,
+    0,
+  );
+});
+
+test("native Radar misses preserve shared provider backoff and never cache errors as successes", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    bindings: { RADAR_NATIVE_CACHE: true },
+    outbound() {
+      calls++;
+      return new Response(null, {
+        status: 429,
+        headers: { "retry-after": "60" },
+      });
+    },
+  });
+  t.after(() => mf.dispose());
+  for (const country of ["GB", "JP"]) {
+    const response = await mf.dispatchFetch(
+      `https://portfolio.example/api/radar?country=${country}&view=bots`,
+    );
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+  assert.equal(calls, 1);
+});
 test("workerd serves generated static policies and protected API errors", async (t) => {
   const mf = await runtime();
   t.after(() => mf.dispose());
@@ -151,6 +246,18 @@ test("development caches in D1 behind Access, ignores request host and expires e
   assert.equal(row.key, "/api/.radar/v2/GB/devices");
   assert.equal((await request("other.example")).status, 200);
   assert.equal(calls, 1);
+  await db
+    .prepare("UPDATE radar_cache SET expires=?")
+    .bind(Date.now() + 15000)
+    .run();
+  const ageing = await request("portfolio.example");
+  const seconds = Number(
+    ageing.headers.get("cache-control").match(/max-age=(\d+)/)?.[1],
+  );
+  assert.ok(
+    seconds > 0 && seconds <= 15,
+    "cache reads must not restart a full browser TTL",
+  );
   await db.prepare("UPDATE radar_cache SET expires=0").run();
   assert.equal((await request("portfolio.example")).status, 200);
   assert.equal(calls, 2);

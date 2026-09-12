@@ -26,6 +26,8 @@ The compact connection graphic belongs beside the introduction on desktop and be
 
 While visible, pulses move continuously from different nodes with no adjacent automatic origin repeat and one animation-frame chain. Suspend offscreen, in hidden tabs, on page suspension and for reduced motion; resume only when active. Preserve the fixed frame and no-script fallback.
 
+Measure the fixed connection paths only when animation is first needed, before changing SVG attributes, then reuse their lengths. Static/reduced-motion visits do not need geometry measurement during page startup.
+
 The terminal subtitle shuffles through distinct, source-reviewed phrases with hold/delete/type cycles and a blinking caret. Use the complete phrase set before reuse and avoid adjacent repeats across shuffle boundaries. Reserve phrase geometry to prevent movement. Check visibility and preference gates before queued callbacks change text. Typing and blinking suspend offscreen, hidden and for reduced motion.
 
 Note previews have compact artwork and static captions, with a consistent deliberate hover/keyboard-focus response. There is no entrance reveal for homepage note links. Artwork must not create sticky touch hover or delay first-tap navigation; non-interactive Notes diagrams do not mimic links.
