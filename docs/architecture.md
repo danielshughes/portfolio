@@ -69,7 +69,7 @@ All service requests pass a coarse, constant-key ingress limit. AI starts, strea
 
 ## Background work
 
-One scheduled invocation collects a homepage asset HEAD measurement and one country's Radar views. Both jobs settle independently: a health storage failure does not prevent a valid Radar bundle being stored, and a Radar failure does not discard a successful health sample. The collector returns the selected country and accepted view IDs with a `complete`, `partial`, `empty` or `disabled` outcome. Partial collection stores only validated available views; empty collection writes nothing. Either attempted incomplete result makes the scheduled invocation fail after both jobs finish. Intentionally disabled Radar makes no admission, provider or storage calls and does not fail otherwise healthy work; an enabled collector without credentials reports `empty` with `missing_credentials`.
+One scheduled invocation collects a homepage asset HEAD measurement and attempts one country's Radar views. Both jobs settle independently: a health storage failure does not prevent a valid Radar bundle being stored, and a Radar failure does not discard a successful health sample. The collector returns the selected country and accepted view IDs with a `complete`, `partial`, `empty`, `disabled` or `skipped` outcome. Partial collection stores only validated available views; empty collection writes nothing. Either attempted incomplete result makes the scheduled invocation fail after both jobs finish. Intentionally disabled Radar makes no admission, provider or storage calls and does not fail otherwise healthy work; an enabled collector without credentials reports `empty` with `missing_credentials`. A previously claimed or older slot is `skipped` before provider or KV work, not reported as a fresh collection.
 
 Unexpected binding/storage exceptions remain rejected jobs. Structured failure events contain fixed service/status/reason labels, the bounded country and accepted-view count, plus deployment version, never provider bodies or visitor identity. Upstream failures retain the foreground API's bounded backoff and cannot manufacture or renew missing observations.
 
@@ -146,6 +146,7 @@ The close handler maps reserved local statuses to a valid normal-close frame rat
 | D1 `radar_cache`      | Public Radar payloads and error backoff              | Fixed keys; bounded TTL, overwrite             | Request hostnames, identities, secrets       |
 | D1 `health_samples`   | Slot, status, elapsed milliseconds, success flag     | Retained time window; indexed primary key      | Request/response bodies or caller data       |
 | D1 `ai_budget`        | UTC day and reserved count                           | Single row                                     | Prompts, generated answers, visitor identity |
+| D1 `radar_collection` | Latest admitted scheduled Radar slot                 | Single row, monotonically advancing            | Visitor data, provider payloads, secrets     |
 | Durable Object SQLite | Bounded room sequence and daily join allowance       | One row per purpose                            | Chat, identity, visitor IP                   |
 | WebSocket attachments | Expiry, last send, message count                     | Session lifetime                               | Credentials or personal data                 |
 

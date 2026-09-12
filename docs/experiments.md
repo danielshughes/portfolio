@@ -39,6 +39,12 @@ Loading, unavailable and a genuinely absent reading are distinct. Never fill mis
 
 Keep the attribution, licence and transformation notice visible. `radar-tabs.ts` owns the UI wording and exhaustively types its metadata against the dependency-free `radar-views.ts` contract. [Radar data flow](architecture.md#radar-end-to-end) owns cache/storage and upstream backoff behaviour; the browser must not treat reuse as refreshed source data.
 
+The atlas sits directly on the page, without a large coloured map panel. Keep accent colour on selected markers and the traffic line. The selected-country pulse loops while visible and suspends offscreen, hidden and for reduced motion; there is no separate page-level motion button.
+
+Load observations automatically on opening, reload and country/view changes. Normal operation shows source update metadata without a manual refresh control, completion message or client fetch timestamp. Retry Radar appears only after failure and disappears after success. Omit absent confidence from visible copy while retaining null in the contract and displaying supplied quality warnings. Initial and no-script charts remain empty, never a flashing sample.
+
+Reserve the interactive geometry before module initialisation. Reading alternatives retain intrinsic responsive space while hidden and inert. Radar has one footer: description and tab-specific context on the left, reading guidance and persistent attribution on the right, stacked in reading order at the map/chart breakpoint. Associate the guide accessibly with the chart. Preserve event-disclosure state during repaint and keep long data readable, without duplicate source links or bordered footer rows.
+
 ## Worker-backed experiments
 
 | Experiment        | Real interaction                                                                                            | Illustration and limits                                                                                                                                                                                                                            |
