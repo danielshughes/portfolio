@@ -13,7 +13,8 @@ Feature PR -> read-only quality checks -> merge to develop
 Browser -> HTTPS dev hostname -> Cloudflare Access
   -> static page/font/CSS/JS -> Workers Static Assets
   -> /api/* -> application Worker
-       /radar        -> D1 cache -> KV snapshot -> Radar API
+       /radar        -> admission + validation -> cached RadarData entrypoint
+                         -> KV snapshot -> shared D1 backoff -> Radar API
        /edge         -> allowlisted request.cf fields
        /health       -> D1 measurement history
        /triage-config -> public verification configuration
@@ -28,7 +29,7 @@ Cron (independent of visitors and Access)
        -> fixed country Radar views -> validated KV bundle
 ```
 
-Access applies to the whole development hostname, not merely HTML. Both Workers have no public `workers.dev` or version-preview URL. Production uses its own Worker and storage, with Cache API instead of development's D1 cache. There is no origin server, Pages project, R2 asset bucket or separate API domain.
+Access applies to the whole development hostname, not merely HTML. Both Workers have no public `workers.dev` or version-preview URL. Development trials native Workers Cache for Radar only. Production retains Cache API, and local preview retains D1 caching. There is no origin server, Pages project, R2 asset bucket or separate API domain.
 
 ## Code and configuration map
 
@@ -52,6 +53,8 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 The generated `worker/worker-configuration.d.ts` describes the actual Wrangler bindings. Regenerate it rather than maintaining a second handwritten environment interface. Resource identifiers in Wrangler are not credentials; secret values never belong there.
 
 Preserve Astro's optional-import module-preload hook and page-reload recovery. Generated `_headers` hash actual inline script/style bytes; only style attributes allow inline CSS. Worker APIs share the security policy. Browser tests serve generated assets through the fixture workerd harness, not a policy-free static server.
+
+Encoding and viewport declarations precede preloads and the early theme script. Production's fingerprinted `/_astro/*` assets carry a one-year immutable browser policy. HTML, unversioned files and development assets retain their existing revalidation behaviour. Changed asset content receives a new URL; deployment/rollback selects its matching HTML and asset set. This browser policy is separate from native Workers Cache and does not route assets through application code.
 
 ## Services
 
@@ -81,7 +84,7 @@ The collector returns the selected country and accepted view IDs with a `complet
 
 Unexpected binding/storage exceptions remain rejected jobs. Structured failure events contain fixed service/status/reason labels, the bounded country and accepted-view count, plus deployment version, never provider bodies or visitor identity. Upstream failures retain the foreground API's bounded backoff and cannot manufacture or renew missing observations.
 
-KV stores bounded, validated Radar bundles; snapshots expire from eligibility without inventing new source timestamps. D1 stores the measurement history, a single daily AI-budget row and development's bounded response cache. Retention, request deadlines and application limits live in the modules listed above.
+KV stores bounded, validated Radar bundles; snapshots expire from eligibility without inventing new source timestamps. D1 stores the measurement history, a single daily AI-budget row and development's bounded backoff/response-cache fallback. Retention, request deadlines and application limits live in the modules listed above.
 
 Production and development schedules are staggered in `wrangler.jsonc`; the configuration budget includes both environments. Configuration does not establish measured invocation or storage usage. Free allowances are account-wide and may be shared with other projects. AI has an atomic application cap in addition to Cloudflare's own quota; failures count against the cap. No paid fallback, R2, Queues or Workflows are required. See [operations](operations.md#free-tier-budget) for budget calculations and quota failure handling.
 
@@ -91,9 +94,17 @@ The browser loads Traffic automatically, keeps country selection when changing v
 
 The Worker accepts GET with exactly the allowed country/view query. `src/experiments/radar-views.ts` owns the supported view IDs and summary dimensions, shared by API validation, cache keyspace, snapshot selection and exhaustively typed UI metadata. Unknown and inherited property names are rejected. Validation happens before outbound calls. Ingress admission is coarse and per Cloudflare location, using constant keys rather than visitor identifiers. The fixed cold-request limiter separately bounds upstream attempts.
 
-The response path checks a successful cache entry, then a recent validated KV snapshot, then shared error backoff, before making upstream requests. Traffic uses a time series and reported disruptions; category views use their respective summaries. Only expected fields are returned. Requests have deadlines, reject redirects and enforce response-size/event-count limits. The Radar token goes only in the server-to-Cloudflare authorisation header. Browser cookies, Access credentials and caller-provided URLs are never forwarded upstream.
+The response path checks a successful cache entry, then a recent validated KV snapshot, then shared error backoff, before making upstream requests. A validated snapshot also warms the existing response cache using only its remaining lifetime, never a new freshness window. Traffic uses a time series and reported disruptions; category views use their respective summaries. Only expected fields are returned. Requests have deadlines, reject redirects and enforce response-size/event-count limits. The Radar token goes only in the server-to-Cloudflare authorisation header. Browser cookies, Access credentials and caller-provided URLs are never forwarded upstream.
 
-Development uses D1 because Cloudflare states: "For Workers fronted by Cloudflare Access, the Cache API is not currently available." [Cache API documentation](https://developers.cloudflare.com/workers/runtime-apis/cache/). Its keyspace is restricted to the configured country/view combinations and one backoff key. Request hostnames cannot create additional rows. Entries overwrite by primary key, expire logically, and never retain visitor data. Production uses location-local Cache API. Cache failures fail closed rather than silently flooding the upstream API.
+The D1 fallback exists because Cloudflare states: "For Workers fronted by Cloudflare Access, the Cache API is not currently available." [Cache API documentation](https://developers.cloudflare.com/workers/runtime-apis/cache/). This limitation is about Cache API, not the separate native Workers Cache trial. D1's keyspace is restricted to the configured country/view combinations and one backoff key. Request hostnames cannot create additional rows. Entries overwrite by primary key, expire logically, and never retain visitor data. Reads reduce the browser TTL to the row's remaining lifetime. Production uses location-local Cache API. Cache failures fail closed rather than silently flooding the upstream API.
+
+### Native Radar cache trial
+
+Only development enables caching for the named `RadarData` export and selects it with `RADAR_NATIVE_CACHE`. The default export explicitly disables native caching, so the public router always performs ingress admission, method/query validation, feature/credential checks and response security policy. It sends a new internal request containing only the canonical country/view URL, without caller headers, identity, host, body, range or `request.cf`. No public route exposes the data export directly. The data entrypoint repeats input validation on a miss, then reads a validated snapshot or uses the existing cold admission and provider handling.
+
+Successful responses use native version-isolated caching instead of an additional D1 success cache. D1 retains shared provider backoff. Snapshot TTLs count down from the original fetch time; `must-revalidate` prevents native stale-on-error fallback. Errors are `no-store`, with no uncached retry around a failing cache call. Cron/Queues keep their existing invocation-local cache and are not affected. Local preview does not simulate a native cache hit: it retains D1; runtime fixtures can test loopback dispatch, but real HIT/MISS, Access and metering need deployed evidence.
+
+The router exposes an allowlisted `X-Radar-Cache` diagnostic when Cloudflare supplies the inner `Cf-Cache-Status`, and records it in sampled `radar.cache.status` traces. It does not manufacture a hit when the platform supplies none. The [operations guide](operations.md#native-radar-cache-trial) owns metering, promotion and rollback checks. See [native configuration](https://developers.cloudflare.com/workers/cache/configuration/).
 
 `worker/radar.ts` owns the successful-response TTL and `MAX_BACKOFF_SECONDS`. Only the shared backoff key accepts the longer maximum, so a valid upstream Retry-After is honoured without extending the eligibility of cached observations.
 

@@ -36,6 +36,9 @@ export async function runtime(options = {}) {
           bindings: {
             ...environment.vars,
             RADAR_ENABLED: true,
+            // Native tiered cache is a deployed-only feature. Default fixtures
+            // retain the local D1 cache; focused tests opt into the loopback.
+            RADAR_NATIVE_CACHE: false,
             RADAR_API_TOKEN: "explicitly-fake-runtime-fixture",
             CF_VERSION_METADATA: {
               id: "test-version",

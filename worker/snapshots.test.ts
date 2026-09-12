@@ -157,10 +157,38 @@ test("a complete ordinary bundle reads back every accepted view intact", async (
       h.env.RADAR_SNAPSHOTS,
       h.country,
       view,
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     assert.equal(response?.headers.get("x-radar-storage"), "snapshot");
     assert.deepEqual(await response?.json(), bundle[view]);
+  }
+});
+
+test("snapshot freshness and TTL use the clock after a delayed KV read", async () => {
+  const h = harness();
+  await collectSnapshots(h.env, radarFixtureTime, h.options);
+  const raw = h.writes[0].body;
+  for (const [remaining, delay, expected] of [
+    [30000, 5000, 25],
+    [1000, 2000, null],
+  ]) {
+    let clock = radarFixtureTime + 3600000 - remaining!;
+    h.env.RADAR_SNAPSHOTS.get = async () => {
+      clock += delay!;
+      return raw;
+    };
+    const response = await readSnapshot(
+      h.env.RADAR_SNAPSHOTS,
+      h.country,
+      "bots",
+      () => clock,
+    );
+    if (expected === null) assert.equal(response, undefined);
+    else
+      assert.equal(
+        response?.headers.get("cache-control"),
+        `public, max-age=${expected}, must-revalidate`,
+      );
   }
 });
 
@@ -184,7 +212,7 @@ test("oversized valid annotations skip the whole traffic view and retain later s
       h.env.RADAR_SNAPSHOTS,
       h.country,
       view,
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     assert.deepEqual(await response?.json(), expected[view]);
   }
@@ -211,7 +239,7 @@ test("the writer counts UTF-8 bytes and JSON framing at the exact bundle limit",
         h.env.RADAR_SNAPSHOTS,
         h.country,
         view,
-        radarFixtureTime,
+        () => radarFixtureTime,
       );
       assert.deepEqual(await response?.json(), fixture.bundle[view]);
     }
@@ -227,7 +255,7 @@ test("the reader rejects a multibyte bundle one UTF-8 byte above the shared boun
       kv,
       fixture.country,
       "traffic",
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     if (bytes > 100000) assert.equal(response, undefined);
     else assert.deepEqual(await response?.json(), fixture.bundle.traffic);

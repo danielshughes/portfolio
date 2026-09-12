@@ -13,11 +13,21 @@ Development is Access-protected at `dev.danhughes.uk`; approved production promo
 | Access                                  | Owner-only hostname application                              | Public site                                   |
 | Search indexing                         | Meta/header noindex; robots disallow; no production metadata | Canonical, sitemap and public metadata        |
 | Worker, KV, D1, DO and Radar credential | Development-specific                                         | Separate production resources                 |
-| Radar response cache                    | D1                                                           | Cache API                                     |
+| Radar response cache                    | Native RadarData trial; D1 backoff and local fallback        | Cache API                                     |
 | Scheduled asset probe                   | Development ASSETS binding                                   | Production ASSETS binding                     |
 | Deploy enablement                       | Trusted checked development push                             | Approved promotion and explicit enable switch |
 
 No-index directives are not security. Access is the actual development boundary. The two environments do not share room state, budgets, data or runtime credentials. Account-wide quotas are still shared.
+
+### Native Radar cache trial
+
+Wrangler explicitly leaves the default HTTP entrypoint uncached and enables only development's `RadarData` export. `RADAR_NATIVE_CACHE` selects that internal path; production and local preview retain their existing cache mechanisms. Keep cache version isolation and `must-revalidate`. Do not add stale-on-error or stale-while-revalidate to observations, and do not cache the public router or visitor-specific APIs.
+
+Verify an authenticated Radar request followed by repeat requests: inspect `X-Radar-Cache`, unchanged source/fetch timestamps, decreasing remaining lifetime, actual storage reads and correlated request CPU. Check all country/view combinations, anonymous Access rejection, denied/invalid requests, and no change to static routing, AI, streaming or WebSockets. A local loopback test or Wrangler dry run is not proof of Cloudflare's native cache behaviour. Keep failures visible and do not populate remote stores with test data.
+
+Cloudflare's [Workers Cache pricing](https://developers.cloudflare.com/workers/cache/#pricing) meters cache-enabled requests, including normally free asset and Worker-to-Worker requests. The inner call can add a metered request even on a HIT. Top-level caching remains disabled, but do not infer the billing treatment of static assets from that configuration alone: compare available request/asset metrics and confirm the scoped-entrypoint accounting before production adoption. Static routing and CPU bypass do not by themselves prove free request metering. This is a bounded dev trial on the existing Free plan, not approval for a paid upgrade or a global cache switch.
+
+To stop the trial, set development's `RADAR_NATIVE_CACHE` and `exports.RadarData.cache.enabled` to false in the same reviewed deployment. Requests resume D1 response caching; retain D1/KV observations and provider-backoff rows. No schema migration or data deletion is needed. Native caches are version-isolated, and disabling caching does not itself purge entries. An older compatible Worker version remains a recovery option; verify its deployment and Access afterwards.
 
 ### Logs and traces
 
@@ -121,6 +131,8 @@ Cloudflare states: "There is no current local simulation for Workers AI." [Local
 `npm run quality` checks formatting, ESLint, Astro and Worker types, content/model/API/static/environment tests, real workerd storage and WebSockets, build output and browser suites. Runtime tests apply every ordered SQL migration to disposable databases, use an explicitly fake token and intercept outbound requests. They cannot prove the real provider or Access policy works. Browser tests cover native keyboard operation, reduced motion, no-script output, light/dark modes, enlarged text, stable geometry and iPhone-sized WebKit views. An emulated viewport is not a physical iPhone Safari test or a VoiceOver test.
 
 CI runs every configured browser. An explicit local browser subset must be reported as such. After workflow changes run `npm run lint:workflows`; after binding changes run `npm run types:worker`. Audit dependencies, run the redacted secret scan and inspect generated assets for private content. Dry-run output and test artefacts belong outside the checkout.
+
+On macOS, `playwright.config.ts` gives Firefox isolated startup app data beside the test-results directory using `MOZ_APP_DATA`. This avoids [macOS app-data protection blocking direct Firefox launches](https://bugzilla.mozilla.org/show_bug.cgi?id=2060476), which can report `Could not find profile folder` despite Playwright creating a temporary profile. It does not read personal browser profiles, weaken sandboxing or require Full Disk Access. Linux CI uses the standard launch environment.
 
 ## Normal deployment
 

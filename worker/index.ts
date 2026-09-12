@@ -1,4 +1,5 @@
-import { handleRadar } from "./radar.ts";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { handleRadar, readRadar } from "./radar.ts";
 import { securityHeaders } from "../src/security/policy.ts";
 import { edgeDetails } from "./edge.ts";
 import { apiJson, isLocalPreview, sameOrigin } from "./http.ts";
@@ -8,6 +9,12 @@ import { radarOptions } from "./radar-options.ts";
 import { collectSnapshots, type SnapshotCollection } from "./snapshots.ts";
 import { streamDemo } from "./stream.ts";
 export { CoordinationRoom } from "./coordination.ts";
+
+export class RadarData extends WorkerEntrypoint<Env> {
+  fetch(request: Request): Promise<Response> {
+    return readRadar(request, radarOptions(this.env, true));
+  }
+}
 
 function incompleteCollection(result: SnapshotCollection, env: Env) {
   if (result.status !== "empty" && result.status !== "partial") return false;
@@ -42,13 +49,38 @@ export default {
     if (path === "/api/radar") {
       return ctx.tracing.enterSpan("radar", async (span) => {
         span.setAttribute("deployment.version", env.CF_VERSION_METADATA.id);
-        const response = await handleRadar(request, radarOptions(env));
+        const response = await handleRadar(
+          request,
+          radarOptions(env),
+          String(env.RADAR_NATIVE_CACHE) === "true" &&
+            !isLocalPreview(request, env)
+            ? (canonical) => ctx.exports.RadarData.fetch(canonical)
+            : undefined,
+        );
         span.setAttribute("http.response.status_code", response.status);
         span.setAttribute(
           "radar.snapshot",
           response.headers.get("x-radar-storage") === "snapshot",
         );
-        return protect(response);
+        const secured = protect(response);
+        const cacheStatus = response.headers.get("cf-cache-status");
+        if (
+          cacheStatus &&
+          [
+            "HIT",
+            "MISS",
+            "BYPASS",
+            "EXPIRED",
+            "REVALIDATED",
+            "UPDATING",
+            "STALE",
+            "DYNAMIC",
+          ].includes(cacheStatus)
+        ) {
+          span.setAttribute("radar.cache.status", cacheStatus);
+          secured.headers.set("x-radar-cache", cacheStatus);
+        }
+        return secured;
       });
     }
     if (

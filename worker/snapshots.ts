@@ -47,7 +47,7 @@ export async function readSnapshot(
   kv: KVNamespace,
   country: string,
   view: string,
-  now: number,
+  clock: () => number,
 ) {
   if (!isRadarView(view) || !countries.some(({ code }) => code === country))
     return;
@@ -68,15 +68,15 @@ export async function readSnapshot(
     return;
   }
   if (!record(bundle) || !Object.hasOwn(bundle, view)) return;
-  const value = snapshotPayload(bundle[view], country, view, now);
+  const value = snapshotPayload(bundle[view], country, view, clock());
   if (!value) return;
-  const seconds = Math.max(
-    1,
-    Math.floor((MAX_AGE - (now - Date.parse(String(value.fetchedAt)))) / 1000),
+  const seconds = Math.floor(
+    (MAX_AGE - (clock() - Date.parse(String(value.fetchedAt)))) / 1000,
   );
+  if (seconds < 1) return;
   return Response.json(value, {
     headers: {
-      "cache-control": `public, max-age=${seconds}`,
+      "cache-control": `public, max-age=${seconds}, must-revalidate`,
       "x-radar-storage": "snapshot",
     },
   });

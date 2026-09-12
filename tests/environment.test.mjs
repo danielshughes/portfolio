@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import test from "node:test";
@@ -46,6 +46,7 @@ test("default development output is non-indexable and hashes executable inline s
   assert.match(readFileSync("dist/robots.txt", "utf8"), /Disallow: \/\s*$/);
   const headers = readFileSync("dist/_headers", "utf8");
   assert.match(headers, /X-Robots-Tag: noindex, nofollow/);
+  assert.doesNotMatch(headers, /immutable|\/_astro\/\*/);
   assert.doesNotMatch(headers, /script-src[^;]*(?:unsafe-inline|unsafe-eval)/);
   for (const page of ["index", "notes/index", "experiments/index"]) {
     const content = readFileSync(`dist/${page}.html`, "utf8");
@@ -114,7 +115,23 @@ test("production output uses the supplied origin and public metadata", () => {
       readFileSync("dist/sitemap.xml", "utf8"),
       /https:\/\/portfolio.example.test\/experiments\//,
     );
-    assert.doesNotMatch(readFileSync("dist/_headers", "utf8"), /noindex/);
+    const headers = readFileSync("dist/_headers", "utf8");
+    assert.doesNotMatch(headers, /noindex/);
+    assert.match(
+      headers,
+      /\n\/_astro\/\*\n  Cache-Control: public, max-age=31536000, immutable\n/,
+    );
+    assert.doesNotMatch(
+      headers.split("\n/_astro/*")[0],
+      /max-age=31536000|immutable/,
+    );
+    for (const asset of readdirSync("dist/_astro", { recursive: true })) {
+      assert.match(
+        asset,
+        /\.[\w-]{8}\.(?:css|js|woff2)$/,
+        "immutable assets must be fingerprinted",
+      );
+    }
   });
 });
 

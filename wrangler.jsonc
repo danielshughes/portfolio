@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
+  "cache": { "enabled": false },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -13,6 +14,7 @@
     "not_found_handling": "404-page",
   },
   "vars": {
+    "RADAR_NATIVE_CACHE": false,
     "RADAR_ENABLED": false,
     "SITE_ENV": "development",
     "LOCAL_PREVIEW": "false",
@@ -62,9 +64,14 @@
   },
   "env": {
     "development": {
+      "exports": {
+        "default": { "type": "worker", "cache": { "enabled": false } },
+        "RadarData": { "type": "worker", "cache": { "enabled": true } },
+      },
       "name": "dan-hughes-portfolio-development",
       "routes": [{ "pattern": "dev.danhughes.uk", "custom_domain": true }],
       "vars": {
+        "RADAR_NATIVE_CACHE": true,
         "RADAR_ENABLED": true,
         "SITE_ENV": "development",
         "LOCAL_PREVIEW": "false",
@@ -129,11 +136,16 @@
       "secrets": { "required": ["RADAR_API_TOKEN", "TURNSTILE_SECRET_KEY"] },
     },
     "production": {
+      "exports": {
+        "default": { "type": "worker", "cache": { "enabled": false } },
+        "RadarData": { "type": "worker", "cache": { "enabled": false } },
+      },
       "name": "dan-hughes-portfolio-production",
       "routes": [{ "pattern": "danhughes.uk", "custom_domain": true }],
       "vars": {
         "RADAR_ENABLED": true,
         "SITE_ENV": "production",
+        "RADAR_NATIVE_CACHE": false,
         "LOCAL_PREVIEW": "false",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAEwLS8fdnPVShcn4",
       },

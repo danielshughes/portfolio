@@ -163,6 +163,15 @@ test("environments route only to their authorised domains", () => {
   assert.equal(error, undefined);
   assert.equal(config.workers_dev, false);
   assert.equal(config.preview_urls, false);
+  assert.deepEqual(config.cache, { enabled: false });
+  assert.deepEqual(config.env.development.exports, {
+    default: { type: "worker", cache: { enabled: false } },
+    RadarData: { type: "worker", cache: { enabled: true } },
+  });
+  assert.equal(config.env.development.vars.RADAR_NATIVE_CACHE, true);
+  assert.equal(config.env.production.vars.RADAR_NATIVE_CACHE, false);
+  assert.equal(config.env.production.exports.RadarData.cache.enabled, false);
+  assert.equal(config.env.production.exports.default.cache.enabled, false);
   assert.equal(config.vars.RADAR_ENABLED, false);
   assert.equal(config.env.development.vars.RADAR_ENABLED, true);
   assert.deepEqual(config.env.development.routes, [

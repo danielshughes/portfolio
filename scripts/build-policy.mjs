@@ -42,7 +42,10 @@ export async function writeBuildPolicy(directory) {
     "/*\n" +
       Object.entries(headers)
         .map(([key, value]) => `  ${key}: ${value}\n`)
-        .join(""),
+        .join("") +
+      (environment.name === "production"
+        ? "\n/_astro/*\n  Cache-Control: public, max-age=31536000, immutable\n"
+        : ""),
   );
   await writeFile(
     join(directory, "robots.txt"),
