@@ -230,7 +230,7 @@ For size-limited snapshots, compare the encoded UTF-8 byte length with `MAX_BUND
 
 ## Rollback and data recovery
 
-Before release, record the previous deployed Worker version and custom-domain IDs. If the new version fails, use the previous compatible version through Wrangler's rollback command or the dashboard, then re-run live smoke checks. Inspect `npx wrangler rollback --help` for the installed CLI and explicitly select development; never assume the default environment is safe.
+Before release, record the previous deployed Worker version and custom-domain IDs. If the new version fails, use the previous compatible version through Wrangler's rollback command or the dashboard, then re-run live smoke checks. Inspect `npx wrangler rollback --help` for the installed CLI and explicitly select the affected environment; never assume the default environment is safe.
 
 Worker rollback does not rewind KV, D1, Access, DNS, Cron or credentials. Keep SQL migrations additive and old readers compatible. Retain the new tables during diagnosis. Use D1's recovery facilities only after reviewing the affected data and obtaining approval for destructive restoration. Durable Object migrations can restrict rollback to earlier versions: inspect the migration history before relying on a pre-DO version as the recovery path. A forward fix may be safer than deleting a namespace.
 
