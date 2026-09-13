@@ -160,6 +160,23 @@
       },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "triggers": { "crons": ["2-59/5 * * * *"] },
+      "queues": {
+        "producers": [
+          {
+            "binding": "RADAR_COLLECTION_QUEUE",
+            "queue": "portfolio-radar-production",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "portfolio-radar-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_concurrency": 1,
+            "max_retries": 0,
+          },
+        ],
+      },
       "durable_objects": {
         "bindings": [
           { "name": "COORDINATION", "class_name": "CoordinationRoom" },
