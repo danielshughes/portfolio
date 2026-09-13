@@ -169,8 +169,8 @@ test("environments route only to their authorised domains", () => {
     RadarData: { type: "worker", cache: { enabled: true } },
   });
   assert.equal(config.env.development.vars.RADAR_NATIVE_CACHE, true);
-  assert.equal(config.env.production.vars.RADAR_NATIVE_CACHE, false);
-  assert.equal(config.env.production.exports.RadarData.cache.enabled, false);
+  assert.equal(config.env.production.vars.RADAR_NATIVE_CACHE, true);
+  assert.equal(config.env.production.exports.RadarData.cache.enabled, true);
   assert.equal(config.env.production.exports.default.cache.enabled, false);
   assert.equal(config.vars.RADAR_ENABLED, false);
   assert.equal(config.env.development.vars.RADAR_ENABLED, true);
@@ -218,7 +218,7 @@ test("Radar queues are isolated by environment with bounded consumption and no p
   }
 });
 
-test("dev retains invocation logs while production stays sampled and queries redacted", () => {
+test("both environments retain invocation logs with sampled traces and redacted queries", () => {
   const { config, error } = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -229,7 +229,7 @@ test("dev retains invocation logs while production stays sampled and queries red
     assert.equal(observability.redact_query_string, true);
     assert.deepEqual(observability.logs, {
       enabled: true,
-      head_sampling_rate: environment === config.env.development ? 1 : 0.1,
+      head_sampling_rate: 1,
       invocation_logs: true,
     });
     assert.deepEqual(observability.traces, {
