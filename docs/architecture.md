@@ -24,8 +24,7 @@ Browser -> HTTPS dev hostname -> Cloudflare Access
 
 Cron (independent of visitors and Access)
   -> ASSETS HEAD -> D1 sample + retention
-  -> dev: D1 dispatch claim -> Queue -> D1 collection claim
-  -> prod: D1 collection claim
+  -> D1 dispatch claim -> environment Queue -> D1 collection claim
        -> fixed country Radar views -> validated KV bundle
 ```
 
@@ -78,7 +77,7 @@ Keep request-owned pending I/O inside its request context, not shared across Wor
 
 ## Background work
 
-Cron measures homepage asset response headers independently of Radar work. Production collects Radar within the scheduled invocation; the development Queue trial hands collection to a separate invocation. Both scheduled jobs settle independently, so a health storage failure cannot prevent a valid Radar dispatch or collection, and a Radar failure cannot discard a successful health sample.
+Cron measures homepage asset response headers independently of Radar work. Each environment hands Radar collection to its own Queue consumer invocation. Both scheduled jobs settle independently, so a health storage failure cannot prevent a valid Radar dispatch or collection, and a Radar failure cannot discard a successful health sample.
 
 The collector returns the selected country and accepted view IDs with a `complete`, `partial`, `empty`, `disabled`, `skipped` or `queued` outcome. `queued` means only that dispatch succeeded, not that observations were collected. Partial collection stores only validated available views; empty collection writes nothing. An attempted incomplete result fails its executing invocation. Intentionally disabled Radar makes no admission, provider or storage calls; an enabled collector without credentials reports `empty` with `missing_credentials`. A previously claimed or older slot is `skipped`, not reported as a fresh collection.
 
@@ -86,7 +85,7 @@ Unexpected binding/storage exceptions remain rejected jobs. Structured failure e
 
 KV stores bounded, validated Radar bundles; snapshots expire from eligibility without inventing new source timestamps. D1 stores the measurement history, a single daily AI-budget row and development's bounded backoff/response-cache fallback. Retention, request deadlines and application limits live in the modules listed above.
 
-Production and development schedules are staggered in `wrangler.jsonc`; the configuration budget includes both environments. Configuration does not establish measured invocation or storage usage. Free allowances are account-wide and may be shared with other projects. AI has an atomic application cap in addition to Cloudflare's own quota; failures count against the cap. No paid fallback, R2, Queues or Workflows are required. See [operations](operations.md#free-tier-budget) for budget calculations and quota failure handling.
+Production and development schedules are staggered in `wrangler.jsonc`; the configuration budget includes both environments. Configuration does not establish measured invocation or storage usage. Free allowances are account-wide and may be shared with other projects. AI has an atomic application cap in addition to Cloudflare's own quota; failures count against the cap. No paid fallback, R2 or Workflows are required. See [operations](operations.md#free-tier-budget) for budget calculations and quota failure handling.
 
 ## Radar, end to end
 
@@ -110,9 +109,9 @@ The router exposes an allowlisted `X-Radar-Cache` diagnostic when Cloudflare sup
 
 Cron rotates through the country list deterministically. Before Radar work, an atomic D1 upsert claims the five-minute slot in the single-row `radar_collection` table. Concurrent, repeated or older slots are skipped before provider calls or KV writes, even when delivered in different locations with slightly different timestamps. A claim failure stops Radar work. The claim remains after partial or failed collection: this bounded demonstration waits for the next slot instead of repeating a possibly completed write. Health sampling settles independently.
 
-With `RADAR_COLLECTION_QUEUE` bound, a separate single-row `radar_dispatch` claim precedes enqueueing. The only message field is the normalised scheduled timestamp, never a URL, credential, country override or provider payload. There is no public enqueue endpoint. The consumer accepts one message per invocation, validates the exact shape and aligned timestamp, discards future or ten-minute-old work, and requires the latest matching dispatch claim. It then uses the same collection claim and validation as production. A newer dispatch supersedes an older queued job; duplicate consumption cannot repeat provider work or the KV write.
+With `RADAR_COLLECTION_QUEUE` bound, a separate single-row `radar_dispatch` claim precedes enqueueing. The only message field is the normalised scheduled timestamp, never a URL, credential, country override or provider payload. There is no public enqueue endpoint. The consumer accepts one message per invocation, validates the exact shape and aligned timestamp, discards future or ten-minute-old work, and requires the latest matching dispatch claim. It then uses the shared collection claim and validation. A newer dispatch supersedes an older queued job; duplicate consumption cannot repeat provider work or the KV write.
 
-The dev consumer has concurrency one and no configured retries or dead-letter queue. Claims survive uncertain sends and failed collections; recovery waits for the next genuine slot. This deliberately favours a bounded demonstration over guaranteed execution of every sample. Native at-least-once delivery can still duplicate messages, so both claims remain necessary. The trial changes execution isolation, not the amount of collection work or a guarantee about CPU usage. Production has no Queue binding or consumer. Rollback removes the dev binding/consumer configuration through a reviewed deploy, then explicitly detaches the remote consumer as described in [operations](operations.md). Omitting it from Wrangler alone does not detach it. Both D1 tables and stored observations remain intact.
+Each consumer has concurrency one and no configured retries or dead-letter queue. Claims survive uncertain sends and failed collections; recovery waits for the next genuine slot. This deliberately favours a bounded demonstration over guaranteed execution of every sample. Native at-least-once delivery can still duplicate messages, so both claims remain necessary. Queues isolate execution without increasing collection frequency or guaranteeing CPU usage. Rollback removes the affected environment's binding/consumer configuration through a reviewed deploy, then explicitly detaches its remote consumer as described in [operations](operations.md). Omitting it from Wrangler alone does not detach it. Both D1 tables and stored observations remain intact.
 
 Each admitted slot requests that country's views, validates the results, and writes at most one bundle to KV. Its invocation-local response cache coordinates backoff but cannot recycle an old edge response into a newly dated snapshot. A bundle can contain only the successful views. KV expiry and the stricter application freshness window are separate: stored data is not automatically eligible for display. Eventually consistent KV propagation can mean a fresh foreground request is still needed. Source update times remain unchanged.
 
@@ -170,7 +169,7 @@ The close handler maps reserved local statuses to a valid normal-close frame rat
 | D1 `health_samples`   | Slot, status, elapsed milliseconds, success flag     | Retained time window; indexed primary key      | Request/response bodies or caller data       |
 | D1 `ai_budget`        | UTC day and reserved count                           | Single row                                     | Prompts, generated answers, visitor identity |
 | D1 `radar_collection` | Latest admitted scheduled Radar slot                 | Single row, monotonically advancing            | Visitor data, provider payloads, secrets     |
-| D1 `radar_dispatch`   | Latest admitted dev Queue dispatch slot              | Single row, monotonically advancing            | Visitor data, provider payloads, secrets     |
+| D1 `radar_dispatch`   | Latest admitted Queue dispatch slot                  | Single row per environment, advancing          | Visitor data, provider payloads, secrets     |
 | Durable Object SQLite | Bounded room sequence and daily join allowance       | One row per purpose                            | Chat, identity, visitor IP                   |
 | WebSocket attachments | Expiry, last send, message count                     | Session lifetime                               | Credentials or personal data                 |
 
