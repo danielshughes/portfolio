@@ -29,8 +29,8 @@ export function radarOptions(env: Env, nativeCache = false): RadarOptions {
       ),
     snapshot: (country, view) =>
       readSnapshot(env.RADAR_SNAPSHOTS, country, view, Date.now),
-    // Workers Cache owns successful responses in the trial. Keep only the
-    // shared provider backoff in D1, not a second success cache with a new TTL.
+    // Workers Cache owns successful responses. Keep provider backoff in the
+    // environment cache, not a second success cache with a new TTL.
     cache: nativeCache
       ? {
           match: (key) =>
