@@ -64,6 +64,15 @@
   },
   "env": {
     "development": {
+      "observability": {
+        "redact_query_string": true,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1,
+          "invocation_logs": true,
+        },
+        "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+      },
       "exports": {
         "default": { "type": "worker", "cache": { "enabled": false } },
         "RadarData": { "type": "worker", "cache": { "enabled": true } },

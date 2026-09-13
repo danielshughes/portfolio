@@ -198,7 +198,10 @@ test("oversized valid annotations skip the whole traffic view and retain later s
   const expected = JSON.parse(normal.writes[0].body);
   delete expected.traffic;
   const h = harness(undefined, Array(100).fill("x".repeat(1400)));
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
   const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.deepEqual(failures, [["collection.traffic", "bundle_limit"]]);
   assert.deepEqual(result, {
     status: "partial",
     country: h.country,
@@ -276,7 +279,16 @@ test("an oversized traffic view with unavailable later views returns empty witho
 
 test("partial collection stores successful views and honours failure backoff", async () => {
   const h = harness("DEVICE_TYPE");
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
   const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.deepEqual(
+    failures.filter(([stage]) => stage.startsWith("collection.")),
+    [
+      ["collection.devices", "http_502"],
+      ["collection.protocols", "http_502"],
+    ],
+  );
   assert.deepEqual(result, {
     status: "partial",
     country: h.country,
@@ -319,6 +331,23 @@ test("disabled collection skips admission, providers and storage", async () => {
   assert.equal(h.admissions(), 0);
   assert.equal(h.calls(), 0);
   assert.equal(h.writes.length, 0);
+});
+
+test("collection reports expired snapshots without logging provider content", async () => {
+  const h = harness();
+  let clock = radarFixtureTime;
+  h.options.now = () => (clock += 3600000);
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
+  const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.equal(result.status, "empty");
+  assert.equal(h.writes.length, 0);
+  assert.deepEqual(failures, [
+    ["collection.traffic", "invalid_snapshot"],
+    ["collection.bots", "invalid_snapshot"],
+    ["collection.devices", "invalid_snapshot"],
+    ["collection.protocols", "invalid_snapshot"],
+  ]);
 });
 
 test("snapshot storage exceptions propagate", async () => {
