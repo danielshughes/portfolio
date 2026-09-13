@@ -48,70 +48,75 @@ const summary = {
   },
 };
 
-test("native Radar loopback keeps ingress checks and does not duplicate successful D1 caching", async (t) => {
-  let calls = 0;
-  const mf = await runtime({
-    bindings: { RADAR_NATIVE_CACHE: true },
-    limits: { RADAR_INGRESS: 2 },
-    outbound(request) {
-      calls++;
-      assert.equal(request.headers.get("cookie"), null);
-      return Response.json(summary);
-    },
-  });
-  t.after(() => mf.dispose());
-  const response = await mf.dispatchFetch(
-    "https://portfolio.example/api/radar?country=GB&view=bots",
-    { headers: { cookie: "fixture=1" } },
-  );
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("cache-control"), /must-revalidate/);
-  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
-  assert.equal((await response.json()).country, "GB");
-  assert.equal(
-    (await mf.dispatchFetch("https://portfolio.example/api/radar?country=XX"))
-      .status,
-    400,
-  );
-  assert.equal(
-    (
-      await mf.dispatchFetch(
-        "https://portfolio.example/api/radar?country=GB&view=bots",
-      )
-    ).status,
-    429,
-  );
-  assert.equal(calls, 1);
-  const db = await mf.getD1Database("HISTORY");
-  assert.equal(
-    (await db.prepare("SELECT COUNT(*) AS count FROM radar_cache").first())
-      .count,
-    0,
-  );
-});
-
-test("native Radar misses preserve shared provider backoff and never cache errors as successes", async (t) => {
-  let calls = 0;
-  const mf = await runtime({
-    bindings: { RADAR_NATIVE_CACHE: true },
-    outbound() {
-      calls++;
-      return new Response(null, {
-        status: 429,
-        headers: { "retry-after": "60" },
-      });
-    },
-  });
-  t.after(() => mf.dispose());
-  for (const country of ["GB", "JP"]) {
+for (const siteEnv of ["development", "production"]) {
+  test(`${siteEnv} native Radar loopback keeps ingress checks and does not duplicate successful D1 caching`, async (t) => {
+    let calls = 0;
+    const mf = await runtime({
+      bindings: { RADAR_NATIVE_CACHE: true, SITE_ENV: siteEnv },
+      limits: { RADAR_INGRESS: 2 },
+      outbound(request) {
+        calls++;
+        assert.equal(request.headers.get("cookie"), null);
+        return Response.json(summary);
+      },
+    });
+    t.after(() => mf.dispose());
     const response = await mf.dispatchFetch(
-      `https://portfolio.example/api/radar?country=${country}&view=bots`,
+      "https://portfolio.example/api/radar?country=GB&view=bots",
+      { headers: { cookie: "fixture=1" } },
     );
-    assert.equal(response.status, 429);
-    assert.equal(response.headers.get("cache-control"), "no-store");
-  }
-  assert.equal(calls, 1);
-});
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("cache-control"), /must-revalidate/);
+    assert.equal(
+      response.headers.get("x-robots-tag"),
+      siteEnv === "development" ? "noindex, nofollow" : null,
+    );
+    assert.equal((await response.json()).country, "GB");
+    assert.equal(
+      (await mf.dispatchFetch("https://portfolio.example/api/radar?country=XX"))
+        .status,
+      400,
+    );
+    assert.equal(
+      (
+        await mf.dispatchFetch(
+          "https://portfolio.example/api/radar?country=GB&view=bots",
+        )
+      ).status,
+      429,
+    );
+    assert.equal(calls, 1);
+    const db = await mf.getD1Database("HISTORY");
+    assert.equal(
+      (await db.prepare("SELECT COUNT(*) AS count FROM radar_cache").first())
+        .count,
+      0,
+    );
+  });
+
+  test(`${siteEnv} native Radar misses preserve shared provider backoff and never cache errors as successes`, async (t) => {
+    let calls = 0;
+    const mf = await runtime({
+      bindings: { RADAR_NATIVE_CACHE: true, SITE_ENV: siteEnv },
+      outbound() {
+        calls++;
+        return new Response(null, {
+          status: 429,
+          headers: { "retry-after": "60" },
+        });
+      },
+    });
+    t.after(() => mf.dispose());
+    for (const country of ["GB", "JP"]) {
+      const response = await mf.dispatchFetch(
+        `https://portfolio.example/api/radar?country=${country}&view=bots`,
+      );
+      assert.equal(response.status, 429);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+    }
+    assert.equal(calls, 1);
+  });
+}
 test("workerd serves generated static policies and protected API errors", async (t) => {
   const mf = await runtime();
   t.after(() => mf.dispose());

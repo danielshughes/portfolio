@@ -57,22 +57,13 @@
     "redact_query_string": true,
     "logs": {
       "enabled": true,
-      "head_sampling_rate": 0.1,
+      "head_sampling_rate": 1,
       "invocation_logs": true,
     },
     "traces": { "enabled": true, "head_sampling_rate": 0.01 },
   },
   "env": {
     "development": {
-      "observability": {
-        "redact_query_string": true,
-        "logs": {
-          "enabled": true,
-          "head_sampling_rate": 1,
-          "invocation_logs": true,
-        },
-        "traces": { "enabled": true, "head_sampling_rate": 0.01 },
-      },
       "exports": {
         "default": { "type": "worker", "cache": { "enabled": false } },
         "RadarData": { "type": "worker", "cache": { "enabled": true } },
@@ -147,14 +138,14 @@
     "production": {
       "exports": {
         "default": { "type": "worker", "cache": { "enabled": false } },
-        "RadarData": { "type": "worker", "cache": { "enabled": false } },
+        "RadarData": { "type": "worker", "cache": { "enabled": true } },
       },
       "name": "dan-hughes-portfolio-production",
       "routes": [{ "pattern": "danhughes.uk", "custom_domain": true }],
       "vars": {
         "RADAR_ENABLED": true,
         "SITE_ENV": "production",
-        "RADAR_NATIVE_CACHE": false,
+        "RADAR_NATIVE_CACHE": true,
         "LOCAL_PREVIEW": "false",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAEwLS8fdnPVShcn4",
       },
