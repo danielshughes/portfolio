@@ -36,6 +36,9 @@ export async function runtime(options = {}) {
           bindings: {
             ...environment.vars,
             RADAR_ENABLED: true,
+            // Native tiered cache is a deployed-only feature. Default fixtures
+            // retain the local D1 cache; focused tests opt into the loopback.
+            RADAR_NATIVE_CACHE: false,
             RADAR_API_TOKEN: "explicitly-fake-runtime-fixture",
             CF_VERSION_METADATA: {
               id: "test-version",
@@ -46,6 +49,20 @@ export async function runtime(options = {}) {
           },
           kvNamespaces: ["RADAR_SNAPSHOTS"],
           d1Databases: ["HISTORY"],
+          ...(options.queue
+            ? { queueProducers: { RADAR_COLLECTION_QUEUE: "radar-test" } }
+            : {}),
+          ...(options.queue === "consume"
+            ? {
+                queueConsumers: {
+                  "radar-test": {
+                    maxBatchSize: 1,
+                    maxBatchTimeout: 0,
+                    maxRetries: 0,
+                  },
+                },
+              }
+            : {}),
           durableObjects: {
             COORDINATION: { className: "CoordinationRoom", useSQLite: true },
           },

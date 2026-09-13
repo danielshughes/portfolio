@@ -28,6 +28,8 @@ const structuredData = JSON.stringify({
 <!doctype html>
 <html lang="en-GB">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
     <link
       rel="preload"
       href={displayFont}
@@ -78,8 +80,6 @@ const structuredData = JSON.stringify({
         } catch {}
       })();
     </script>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="description" content={description} />
     {environment.name === "development" ? (

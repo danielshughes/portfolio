@@ -12,7 +12,7 @@ export type SnapshotCollection = {
   country: string;
   views: RadarView[];
 } & (
-  | { status: "disabled" | "skipped" | "complete" | "partial" }
+  | { status: "disabled" | "skipped" | "queued" | "complete" | "partial" }
   | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
 );
 const MAX_AGE = 3600000;
@@ -47,7 +47,7 @@ export async function readSnapshot(
   kv: KVNamespace,
   country: string,
   view: string,
-  now: number,
+  clock: () => number,
 ) {
   if (!isRadarView(view) || !countries.some(({ code }) => code === country))
     return;
@@ -68,15 +68,15 @@ export async function readSnapshot(
     return;
   }
   if (!record(bundle) || !Object.hasOwn(bundle, view)) return;
-  const value = snapshotPayload(bundle[view], country, view, now);
+  const value = snapshotPayload(bundle[view], country, view, clock());
   if (!value) return;
-  const seconds = Math.max(
-    1,
-    Math.floor((MAX_AGE - (now - Date.parse(String(value.fetchedAt)))) / 1000),
+  const seconds = Math.floor(
+    (MAX_AGE - (clock() - Date.parse(String(value.fetchedAt)))) / 1000,
   );
+  if (seconds < 1) return;
   return Response.json(value, {
     headers: {
-      "cache-control": `public, max-age=${seconds}`,
+      "cache-control": `public, max-age=${seconds}, must-revalidate`,
       "x-radar-storage": "snapshot",
     },
   });
@@ -86,6 +86,7 @@ export async function collectSnapshots(
   env: Env,
   time: number,
   options: RadarOptions,
+  delivery: "direct" | "dispatch" | "consume" = "direct",
 ): Promise<SnapshotCollection> {
   const slot = Math.floor(time / 300000);
   const country = countries[slot % countries.length].code;
@@ -99,12 +100,29 @@ export async function collectSnapshots(
     };
   // Claim before upstream work: different locations can deliver the same slot.
   // A failed attempt keeps its claim; the next slot can try independently.
+  // Dispatch and consumption need separate claims: claiming a send must not
+  // make its consumer look like a duplicate. Both tables are single-row bounds.
+  const table = delivery === "dispatch" ? "radar_dispatch" : "radar_collection";
+  // Checking the current dispatch belongs in the same atomic write, not an
+  // earlier read that a newer Cron tick could invalidate before this claim.
+  const admission =
+    delivery === "consume"
+      ? "SELECT 1,slot FROM radar_dispatch WHERE id=1 AND slot=?"
+      : "VALUES (1,?)";
   const claimed = await env.HISTORY.prepare(
-    "INSERT INTO radar_collection (id,slot) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET slot=excluded.slot WHERE radar_collection.slot < excluded.slot RETURNING slot",
+    `INSERT INTO ${table} (id,slot) ${admission} ON CONFLICT(id) DO UPDATE SET slot=excluded.slot WHERE ${table}.slot < excluded.slot RETURNING slot`,
   )
     .bind(slot)
     .first<{ slot: number }>();
   if (!claimed) return { status: "skipped", country, views: [] };
+  if (delivery === "dispatch") {
+    if (!env.RADAR_COLLECTION_QUEUE) throw new Error("Radar queue unavailable");
+    await env.RADAR_COLLECTION_QUEUE.send(
+      { scheduledTime: slot * 300000 },
+      { contentType: "json" },
+    );
+    return { status: "queued", country, views: [] };
+  }
   const entries: string[] = [];
   let bundleBytes = 2; // The enclosing JSON braces.
   const views: RadarView[] = [];
@@ -130,6 +148,7 @@ export async function collectSnapshots(
       scheduledOptions,
     );
     if (!response.ok) {
+      options.reportFailure?.(`collection.${view}`, `http_${response.status}`);
       await response.body?.cancel();
       continue;
     }
@@ -139,11 +158,14 @@ export async function collectSnapshots(
       // without repeatedly serialising views already accepted into the bundle.
       const entry = `${JSON.stringify(view)}:${JSON.stringify(value)}`;
       const bytes = utf8.encode(entry).byteLength + (entries.length ? 1 : 0);
-      if (bundleBytes + bytes > MAX_BUNDLE_BYTES) continue;
+      if (bundleBytes + bytes > MAX_BUNDLE_BYTES) {
+        options.reportFailure?.(`collection.${view}`, "bundle_limit");
+        continue;
+      }
       entries.push(entry);
       bundleBytes += bytes;
       views.push(view);
-    }
+    } else options.reportFailure?.(`collection.${view}`, "invalid_snapshot");
   }
   if (entries.length)
     await env.RADAR_SNAPSHOTS.put(

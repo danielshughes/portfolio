@@ -17,6 +17,13 @@ test("static output includes the narrative and working anchor destinations", () 
     "dist/experiments/index.html",
   ]) {
     const page = readFileSync(path, "utf8");
+    assert.match(
+      page,
+      /<head>\s*<meta charset="UTF-8"\s*\/?>\s*<meta name="viewport"/,
+    );
+    const charsetEnd =
+      page.indexOf(">", page.indexOf('<meta charset="UTF-8"')) + 1;
+    assert.ok(Buffer.byteLength(page.slice(0, charsetEnd)) <= 1024);
     assert.ok(page.includes('lang="en-GB"'));
     assert.equal((page.match(/<h1\b/g) || []).length, 1);
     assert.ok(!page.includes("Engineering notes"));

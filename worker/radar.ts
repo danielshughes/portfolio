@@ -260,6 +260,7 @@ function json(
 export async function handleRadar(
   request: Request,
   options: RadarOptions,
+  cachedRead?: (request: Request) => Promise<Response>,
 ): Promise<Response> {
   // Constant keys cap optional anonymous data per location without recording
   // visitor identity. Missing or broken protection must never admit traffic.
@@ -272,6 +273,23 @@ export async function handleRadar(
   } catch {
     return json({ error: "radar_unavailable" }, 503);
   }
+  const query = radarQuery(request, options);
+  if (query instanceof Response) return query;
+  if (!cachedRead) return readRadar(request, options);
+  // Only the validated finite keyspace crosses the cache boundary. Never send
+  // visitor headers, Range, identity, request.cf or a caller-controlled host.
+  try {
+    return await cachedRead(
+      new Request(
+        `https://radar.internal/api/radar?country=${query.country}&view=${query.view}`,
+      ),
+    );
+  } catch {
+    return json({ error: "radar_unavailable" }, 502);
+  }
+}
+
+function radarQuery(request: Request, options: RadarOptions) {
   if (request.method !== "GET")
     return json({ error: "method_not_allowed" }, 405, { allow: "GET" });
   const url = new URL(request.url),
@@ -288,6 +306,18 @@ export async function handleRadar(
     return json({ error: "invalid_country" }, 400);
   if (!options.enabled || !options.token)
     return json({ error: "radar_disabled" }, 503);
+  return { country: country!, view, url };
+}
+
+// Internal data entrypoint. The public handler performs ingress admission even
+// on cache hits; this boundary still validates its own inputs on misses.
+export async function readRadar(
+  request: Request,
+  options: RadarOptions,
+): Promise<Response> {
+  const query = radarQuery(request, options);
+  if (query instanceof Response) return query;
+  const { country, view, url } = query;
   const key = new URL(`/api/.radar/v2/${country}/${view}`, url).href;
   const backoffKey = new URL("/api/.radar/v1/backoff", url).href;
   let stage = "cache_read";
@@ -295,7 +325,11 @@ export async function handleRadar(
     const cached = await options.cache.match(key);
     if (cached) return cached;
     const snapshot = await options.snapshot?.(country!, view);
-    if (snapshot) return snapshot;
+    if (snapshot) {
+      stage = "cache_write";
+      await options.cache.put(key, snapshot.clone());
+      return snapshot;
+    }
     const backoff = await options.cache.match(backoffKey);
     if (backoff) {
       const until = Number(backoff.headers.get("x-retry-at"));
@@ -404,7 +438,7 @@ export async function handleRadar(
         ...payload,
       },
       200,
-      { "cache-control": `public, max-age=${CACHE_SECONDS}` },
+      { "cache-control": `public, max-age=${CACHE_SECONDS}, must-revalidate` },
     );
     stage = "cache_write";
     await options.cache.put(key, response.clone());

@@ -162,7 +162,7 @@ const links = [
       path,
       from: Number(path.dataset.from),
       to: Number(path.dataset.to),
-      length: path.getTotalLength(),
+      length: 0,
       delay: (index * 73) % 190,
       duration: 460 + ((index * 97) % 230),
       dot: path.nextElementSibling as SVGCircleElement,
@@ -199,6 +199,10 @@ const links = [
     }
 
     function pulse(nextOrigin: number) {
+      // Measure after visibility is known, before changing any SVG attributes.
+      // The authored paths do not change, so reuse their lengths on later pulses.
+      if (canAnimate())
+        for (const edge of edges) edge.length ||= edge.path.getTotalLength();
       stop();
       origin = nextOrigin;
       nodes.forEach((node, index) =>

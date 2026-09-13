@@ -214,6 +214,103 @@ test("disabled and missing credentials do not call Radar", async () => {
   assert.equal(h.calls.length, 0);
 });
 
+test("cached entrypoint receives only canonical validated input after ingress admission", async () => {
+  const h = harness();
+  const calls: Request[] = [];
+  const resolve = async (request: Request) => {
+    calls.push(request);
+    return Response.json({ source: "entrypoint" });
+  };
+  const run = (query: string, method = "GET") =>
+    handleRadar(
+      new Request("https://untrusted.example/api/radar?" + query, {
+        method,
+        headers: {
+          cookie: "fixture=1",
+          authorization: "fixture",
+          range: "bytes=0-1",
+        },
+      }),
+      h.options,
+      resolve,
+    );
+  assert.deepEqual(await (await run("view=traffic&country=GB")).json(), {
+    source: "entrypoint",
+  });
+  assert.equal((await run("country=GB")).status, 200);
+  assert.equal(
+    calls[0].url,
+    "https://radar.internal/api/radar?country=GB&view=traffic",
+  );
+  assert.equal(calls[0].url, calls[1].url);
+  assert.deepEqual([...calls[0].headers], []);
+  for (const query of [
+    "country=GB&country=JP",
+    "country=GB&view=constructor",
+    "country=GB&extra=1",
+  ])
+    assert.equal((await run(query)).status, 400);
+  assert.equal((await run("country=GB", "HEAD")).status, 405);
+  h.options.enabled = false;
+  assert.equal((await run("country=GB")).status, 503);
+  h.options.enabled = true;
+  h.options.ingress.limit = async () => ({ success: false });
+  assert.equal((await run("country=GB")).status, 429);
+  assert.equal(calls.length, 2);
+  assert.equal(h.calls.length, 0);
+});
+
+test("entrypoint failure does not fall back to unbounded provider work", async () => {
+  const h = harness();
+  const response = await handleRadar(
+    new Request("https://portfolio.example/api/radar?country=GB"),
+    h.options,
+    async () => {
+      throw new Error("fixture cache failure");
+    },
+  );
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(h.calls.length, 0);
+});
+
+test("validated snapshots warm the response cache only for their remaining lifetime", async () => {
+  const h = harness();
+  let reads = 0;
+  const options = {
+    ...h.options,
+    snapshot: async () => {
+      reads++;
+      return Response.json(
+        { fetchedAt: iso(now - 3570000) },
+        {
+          headers: {
+            "cache-control": "public, max-age=30, must-revalidate",
+            "x-radar-storage": "snapshot",
+          },
+        },
+      );
+    },
+  };
+  const run = () =>
+    handleRadar(
+      new Request("https://portfolio.example/api/radar?country=GB"),
+      options,
+    );
+  const first = await run();
+  assert.equal(
+    first.headers.get("cache-control"),
+    "public, max-age=30, must-revalidate",
+  );
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual(await (await run()).json(), await first.clone().json());
+  assert.equal(reads, 1);
+  h.advance(30000);
+  await run();
+  assert.equal(reads, 2);
+  assert.equal(h.calls.length, 0);
+});
+
 test("cache read/write failures never return success or continue upstream", async () => {
   const read = harness();
   read.options.cache.match = async () => {

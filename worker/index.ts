@@ -1,13 +1,35 @@
-import { handleRadar } from "./radar.ts";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { handleRadar, readRadar } from "./radar.ts";
 import { securityHeaders } from "../src/security/policy.ts";
 import { edgeDetails } from "./edge.ts";
 import { apiJson, isLocalPreview, sameOrigin } from "./http.ts";
 import { healthHistory, collectHealth } from "./health.ts";
 import { triage, triageConfiguration } from "./triage.ts";
 import { radarOptions } from "./radar-options.ts";
-import { collectSnapshots } from "./snapshots.ts";
+import { collectSnapshots, type SnapshotCollection } from "./snapshots.ts";
 import { streamDemo } from "./stream.ts";
 export { CoordinationRoom } from "./coordination.ts";
+
+export class RadarData extends WorkerEntrypoint<Env> {
+  fetch(request: Request): Promise<Response> {
+    return readRadar(request, radarOptions(this.env, true));
+  }
+}
+
+function incompleteCollection(result: SnapshotCollection, env: Env) {
+  if (result.status !== "empty" && result.status !== "partial") return false;
+  console.warn(
+    JSON.stringify({
+      event: "radar_collection_incomplete",
+      status: result.status,
+      country: result.country,
+      acceptedViews: result.views.length,
+      ...(result.status === "empty" ? { reason: result.reason } : {}),
+      version: env.CF_VERSION_METADATA.id,
+    }),
+  );
+  return true;
+}
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
@@ -27,13 +49,38 @@ export default {
     if (path === "/api/radar") {
       return ctx.tracing.enterSpan("radar", async (span) => {
         span.setAttribute("deployment.version", env.CF_VERSION_METADATA.id);
-        const response = await handleRadar(request, radarOptions(env));
+        const response = await handleRadar(
+          request,
+          radarOptions(env),
+          String(env.RADAR_NATIVE_CACHE) === "true" &&
+            !isLocalPreview(request, env)
+            ? (canonical) => ctx.exports.RadarData.fetch(canonical)
+            : undefined,
+        );
         span.setAttribute("http.response.status_code", response.status);
         span.setAttribute(
           "radar.snapshot",
           response.headers.get("x-radar-storage") === "snapshot",
         );
-        return protect(response);
+        const secured = protect(response);
+        const cacheStatus = response.headers.get("cf-cache-status");
+        if (
+          cacheStatus &&
+          [
+            "HIT",
+            "MISS",
+            "BYPASS",
+            "EXPIRED",
+            "REVALIDATED",
+            "UPDATING",
+            "STALE",
+            "DYNAMIC",
+          ].includes(cacheStatus)
+        ) {
+          span.setAttribute("radar.cache.status", cacheStatus);
+          secured.headers.set("x-radar-cache", cacheStatus);
+        }
+        return secured;
       });
     }
     if (
@@ -111,28 +158,18 @@ export default {
       const jobs = ["health", "radar"];
       const results = await Promise.allSettled([
         collectHealth(env, event.scheduledTime),
-        collectSnapshots(env, event.scheduledTime, radarOptions(env)),
+        collectSnapshots(
+          env,
+          event.scheduledTime,
+          radarOptions(env),
+          env.RADAR_COLLECTION_QUEUE ? "dispatch" : "direct",
+        ),
       ]);
       const radar = results[1];
       if (radar.status === "fulfilled")
         span.setAttribute("radar.collection.status", radar.value.status);
       const incompleteRadar =
-        radar.status === "fulfilled" &&
-        (radar.value.status === "empty" || radar.value.status === "partial");
-      if (incompleteRadar && radar.status === "fulfilled")
-        console.warn(
-          JSON.stringify({
-            event: "scheduled_collection_incomplete",
-            service: "radar",
-            status: radar.value.status,
-            country: radar.value.country,
-            acceptedViews: radar.value.views.length,
-            ...(radar.value.status === "empty"
-              ? { reason: radar.value.reason }
-              : {}),
-            version: env.CF_VERSION_METADATA.id,
-          }),
-        );
+        radar.status === "fulfilled" && incompleteCollection(radar.value, env);
       results.forEach((result, index) => {
         if (result.status === "rejected")
           console.warn(
@@ -148,6 +185,51 @@ export default {
         results.some((result) => result.status === "rejected")
       )
         throw new Error("Scheduled collection incomplete");
+    });
+  },
+  async queue(batch, env, ctx) {
+    await ctx.tracing.enterSpan("queued-radar-collection", async (span) => {
+      span.setAttribute("deployment.version", env.CF_VERSION_METADATA.id);
+      // No public enqueue endpoint. Reject unexpected bindings, batches and
+      // payloads before storage or provider work, including delayed stale jobs.
+      const body: unknown = batch.messages[0]?.body;
+      const time =
+        body &&
+        typeof body === "object" &&
+        !Array.isArray(body) &&
+        Object.keys(body).length === 1 &&
+        Object.hasOwn(body, "scheduledTime") &&
+        "scheduledTime" in body
+          ? body.scheduledTime
+          : undefined;
+      const age = typeof time === "number" ? Date.now() - time : NaN;
+      if (
+        !env.RADAR_COLLECTION_QUEUE ||
+        batch.messages.length !== 1 ||
+        typeof time !== "number" ||
+        !Number.isSafeInteger(time) ||
+        time < 0 ||
+        time % 300000 !== 0 ||
+        !Number.isFinite(age) ||
+        age < 0 ||
+        age >= 600000
+      ) {
+        span.setAttribute("radar.collection.status", "discarded");
+        batch.ackAll();
+        return;
+      }
+      const result = await collectSnapshots(
+        env,
+        time,
+        radarOptions(env),
+        "consume",
+      );
+      span.setAttribute("radar.collection.status", result.status);
+      // Native max_retries=0: keep the claim after a failure and wait for the
+      // next scheduled slot rather than replaying a possibly completed write.
+      if (incompleteCollection(result, env))
+        throw new Error("Radar collection incomplete");
+      batch.ackAll();
     });
   },
 } satisfies ExportedHandler<Env>;

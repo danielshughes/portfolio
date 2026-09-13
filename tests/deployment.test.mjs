@@ -163,6 +163,15 @@ test("environments route only to their authorised domains", () => {
   assert.equal(error, undefined);
   assert.equal(config.workers_dev, false);
   assert.equal(config.preview_urls, false);
+  assert.deepEqual(config.cache, { enabled: false });
+  assert.deepEqual(config.env.development.exports, {
+    default: { type: "worker", cache: { enabled: false } },
+    RadarData: { type: "worker", cache: { enabled: true } },
+  });
+  assert.equal(config.env.development.vars.RADAR_NATIVE_CACHE, true);
+  assert.equal(config.env.production.vars.RADAR_NATIVE_CACHE, false);
+  assert.equal(config.env.production.exports.RadarData.cache.enabled, false);
+  assert.equal(config.env.production.exports.default.cache.enabled, false);
   assert.equal(config.vars.RADAR_ENABLED, false);
   assert.equal(config.env.development.vars.RADAR_ENABLED, true);
   assert.deepEqual(config.env.development.routes, [
@@ -184,7 +193,32 @@ test("Radar attribution survives dynamic loading in a separate static element", 
   assert.match(markup, /Custom visualisation/);
 });
 
-test("observability keeps explicit sampled logs and traces with query redaction", () => {
+test("Radar queues are isolated by environment with bounded consumption and no paid CPU override", () => {
+  const { config, error } = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  );
+  assert.equal(error, undefined);
+  assert.equal(config.queues, undefined);
+  for (const environment of [config, ...Object.values(config.env)])
+    assert.equal(environment.limits?.cpu_ms, undefined);
+  for (const name of ["development", "production"]) {
+    const { producers, consumers } = config.env[name].queues;
+    assert.equal(producers.length, 1);
+    assert.equal(consumers.length, 1);
+    assert.equal(producers[0].binding, "RADAR_COLLECTION_QUEUE");
+    assert.equal(producers[0].queue, consumers[0].queue);
+    assert.equal(producers[0].queue, `portfolio-radar-${name}`);
+    assert.notEqual(producers[0].remote, true);
+    assert.equal(consumers[0].max_batch_size, 1);
+    assert.equal(consumers[0].max_batch_timeout, 0);
+    assert.equal(consumers[0].max_concurrency, 1);
+    assert.equal(consumers[0].max_retries, 0);
+    assert.equal(consumers[0].dead_letter_queue, undefined);
+  }
+});
+
+test("dev retains invocation logs while production stays sampled and queries redacted", () => {
   const { config, error } = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -195,7 +229,7 @@ test("observability keeps explicit sampled logs and traces with query redaction"
     assert.equal(observability.redact_query_string, true);
     assert.deepEqual(observability.logs, {
       enabled: true,
-      head_sampling_rate: 0.1,
+      head_sampling_rate: environment === config.env.development ? 1 : 0.1,
       invocation_logs: true,
     });
     assert.deepEqual(observability.traces, {

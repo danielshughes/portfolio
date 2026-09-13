@@ -1,6 +1,41 @@
 import { expect, test } from "@playwright/test";
 import { setTheme } from "./helpers";
 
+test("connection paths are measured once and only when motion is needed", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const measure = SVGPathElement.prototype.getTotalLength;
+    Object.assign(window, { connectionMeasurements: 0 });
+    SVGPathElement.prototype.getTotalLength = function () {
+      if (this.classList.contains("connection-wire")) {
+        (window as unknown as { connectionMeasurements: number })
+          .connectionMeasurements++;
+      }
+      return measure.call(this);
+    };
+  });
+  await page.goto("/");
+  const field = page.locator(".connection-field");
+  const measurements = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { connectionMeasurements: number })
+          .connectionMeasurements,
+    );
+  await expect(field).toHaveAttribute("data-motion", "idle");
+  expect(await measurements()).toBe(0);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await field.scrollIntoViewIfNeeded();
+  await expect(field).toHaveAttribute("data-motion", "running");
+  const count = await field.locator(".connection-wire").count();
+  expect(await measurements()).toBe(count);
+  await field.getByRole("button").click();
+  await expect(field).toHaveAttribute("data-motion", "running");
+  expect(await measurements()).toBe(count);
+});
+
 for (const reducedMotion of ["reduce", "no-preference"] as const)
   test(`connection nodes and complete curves stay within the viewBox with ${reducedMotion} motion`, async ({
     page,

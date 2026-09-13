@@ -96,6 +96,31 @@ test("complete collection uses the injected clock and persists each validated vi
     assert.equal(value.fetchedAt, new Date(radarFixtureTime).toISOString());
 });
 
+test("queue dispatch is bounded once per slot even when a send fails", async () => {
+  for (const fail of [false, true]) {
+    const h = harness();
+    const messages: unknown[] = [];
+    const queue = {
+      async send(body: unknown, options: unknown) {
+        messages.push(body);
+        assert.deepEqual(options, { contentType: "json" });
+        if (fail) throw new Error("fixture send failed");
+      },
+    } as Queue<{ scheduledTime: number }>;
+    h.env.RADAR_COLLECTION_QUEUE = queue;
+    const invoke = () =>
+      collectSnapshots(h.env, radarFixtureTime, h.options, "dispatch");
+    if (fail) await assert.rejects(invoke, /fixture send failed/);
+    else assert.equal((await invoke()).status, "queued");
+    assert.equal((await invoke()).status, "skipped");
+    assert.deepEqual(messages, [
+      { scheduledTime: Math.floor(radarFixtureTime / 300000) * 300000 },
+    ]);
+    assert.equal(h.calls(), 0);
+    assert.equal(h.writes.length, 0);
+  }
+});
+
 async function bundleAtBytes(bytes: number) {
   const h = harness(undefined, Array(100).fill("é"));
   await collectSnapshots(h.env, radarFixtureTime, h.options);
@@ -132,10 +157,38 @@ test("a complete ordinary bundle reads back every accepted view intact", async (
       h.env.RADAR_SNAPSHOTS,
       h.country,
       view,
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     assert.equal(response?.headers.get("x-radar-storage"), "snapshot");
     assert.deepEqual(await response?.json(), bundle[view]);
+  }
+});
+
+test("snapshot freshness and TTL use the clock after a delayed KV read", async () => {
+  const h = harness();
+  await collectSnapshots(h.env, radarFixtureTime, h.options);
+  const raw = h.writes[0].body;
+  for (const [remaining, delay, expected] of [
+    [30000, 5000, 25],
+    [1000, 2000, null],
+  ]) {
+    let clock = radarFixtureTime + 3600000 - remaining!;
+    h.env.RADAR_SNAPSHOTS.get = async () => {
+      clock += delay!;
+      return raw;
+    };
+    const response = await readSnapshot(
+      h.env.RADAR_SNAPSHOTS,
+      h.country,
+      "bots",
+      () => clock,
+    );
+    if (expected === null) assert.equal(response, undefined);
+    else
+      assert.equal(
+        response?.headers.get("cache-control"),
+        `public, max-age=${expected}, must-revalidate`,
+      );
   }
 });
 
@@ -145,7 +198,10 @@ test("oversized valid annotations skip the whole traffic view and retain later s
   const expected = JSON.parse(normal.writes[0].body);
   delete expected.traffic;
   const h = harness(undefined, Array(100).fill("x".repeat(1400)));
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
   const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.deepEqual(failures, [["collection.traffic", "bundle_limit"]]);
   assert.deepEqual(result, {
     status: "partial",
     country: h.country,
@@ -159,7 +215,7 @@ test("oversized valid annotations skip the whole traffic view and retain later s
       h.env.RADAR_SNAPSHOTS,
       h.country,
       view,
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     assert.deepEqual(await response?.json(), expected[view]);
   }
@@ -186,7 +242,7 @@ test("the writer counts UTF-8 bytes and JSON framing at the exact bundle limit",
         h.env.RADAR_SNAPSHOTS,
         h.country,
         view,
-        radarFixtureTime,
+        () => radarFixtureTime,
       );
       assert.deepEqual(await response?.json(), fixture.bundle[view]);
     }
@@ -202,7 +258,7 @@ test("the reader rejects a multibyte bundle one UTF-8 byte above the shared boun
       kv,
       fixture.country,
       "traffic",
-      radarFixtureTime,
+      () => radarFixtureTime,
     );
     if (bytes > 100000) assert.equal(response, undefined);
     else assert.deepEqual(await response?.json(), fixture.bundle.traffic);
@@ -223,7 +279,16 @@ test("an oversized traffic view with unavailable later views returns empty witho
 
 test("partial collection stores successful views and honours failure backoff", async () => {
   const h = harness("DEVICE_TYPE");
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
   const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.deepEqual(
+    failures.filter(([stage]) => stage.startsWith("collection.")),
+    [
+      ["collection.devices", "http_502"],
+      ["collection.protocols", "http_502"],
+    ],
+  );
   assert.deepEqual(result, {
     status: "partial",
     country: h.country,
@@ -266,6 +331,23 @@ test("disabled collection skips admission, providers and storage", async () => {
   assert.equal(h.admissions(), 0);
   assert.equal(h.calls(), 0);
   assert.equal(h.writes.length, 0);
+});
+
+test("collection reports expired snapshots without logging provider content", async () => {
+  const h = harness();
+  let clock = radarFixtureTime;
+  h.options.now = () => (clock += 3600000);
+  const failures: string[][] = [];
+  h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
+  const result = await collectSnapshots(h.env, radarFixtureTime, h.options);
+  assert.equal(result.status, "empty");
+  assert.equal(h.writes.length, 0);
+  assert.deepEqual(failures, [
+    ["collection.traffic", "invalid_snapshot"],
+    ["collection.bots", "invalid_snapshot"],
+    ["collection.devices", "invalid_snapshot"],
+    ["collection.protocols", "invalid_snapshot"],
+  ]);
 });
 
 test("snapshot storage exceptions propagate", async () => {

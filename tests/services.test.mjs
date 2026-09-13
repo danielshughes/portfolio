@@ -451,6 +451,209 @@ test("bounded-start protection is separate from general read ingress", async (t)
   );
 });
 
+test("queued scheduling claims a slot once without fetching Radar or losing health samples", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    queue: true,
+    outbound(request) {
+      calls++;
+      return radarUpstream(request.url);
+    },
+  });
+  t.after(() => mf.dispose());
+  const worker = await mf.getWorker();
+  const time = Math.floor(Date.now() / 300000) * 300000;
+  const results = await Promise.all(
+    [time, time + 1000, time - 300000].map((scheduledTime) =>
+      worker.scheduled({ scheduledTime, cron: "*/5 * * * *" }),
+    ),
+  );
+  assert.ok(results.every(({ outcome }) => outcome === "ok"));
+  assert.equal(calls, 0, "Cron must hand off collection instead of doing it");
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (await db.prepare("SELECT slot FROM radar_dispatch WHERE id=1").first())
+      .slot,
+    time / 300000,
+  );
+  assert.equal(
+    await db.prepare("SELECT slot FROM radar_collection").first(),
+    null,
+  );
+  assert.ok(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS count FROM health_samples WHERE ok=1")
+        .first()
+    ).count > 0,
+  );
+});
+
+test(
+  "native queue delivery completes the scheduled handoff and stores readable views",
+  { timeout: 10000 },
+  async (t) => {
+    let calls = 0;
+    const mf = await runtime({
+      queue: "consume",
+      outbound(request) {
+        calls++;
+        return radarUpstream(request.url);
+      },
+    });
+    t.after(() => mf.dispose());
+    const time = Math.floor(Date.now() / 300000) * 300000;
+    const result = await (
+      await mf.getWorker()
+    ).scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+    assert.equal(result.outcome, "ok");
+    const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+    const country = countries[(time / 300000) % countries.length].code;
+    let bundle;
+    for (let i = 0; i < 50; i++) {
+      bundle = await kv.get(`country:${country}`, "json");
+      if (bundle) break;
+      await delay(50);
+    }
+    assert.deepEqual(Object.keys(bundle ?? {}), [
+      "traffic",
+      "bots",
+      "devices",
+      "protocols",
+    ]);
+    assert.equal(calls, 5);
+    const response = await mf.dispatchFetch(
+      `${origin}/api/radar?country=${country}&view=traffic`,
+    );
+    assert.equal(response.headers.get("x-radar-storage"), "snapshot");
+    assert.deepEqual(await response.json(), bundle.traffic);
+  },
+);
+
+test("queue delivery collects an admitted slot once and rejects untrusted or stale messages", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    queue: true,
+    outbound(request) {
+      calls++;
+      return radarUpstream(request.url);
+    },
+  });
+  t.after(() => mf.dispose());
+  const worker = await mf.getWorker();
+  const time = Math.floor(Date.now() / 300000) * 300000;
+  const deliver = (body) =>
+    worker.queue("radar-test", [
+      {
+        id: randomBytes(8).toString("hex"),
+        timestamp: new Date(),
+        body,
+        attempts: 1,
+      },
+    ]);
+  for (const body of [
+    null,
+    [],
+    {},
+    { scheduledTime: "today" },
+    { scheduledTime: time + 1 },
+    { scheduledTime: time + 300000 },
+    { scheduledTime: time - 900000 },
+    { scheduledTime: time, url: "https://example.com" },
+  ])
+    assert.equal((await deliver(body)).outcome, "ok");
+  assert.equal(calls, 0);
+  // Valid-looking messages still need a matching durable producer admission.
+  assert.equal((await deliver({ scheduledTime: time })).outcome, "ok");
+  assert.equal(calls, 0);
+  await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  assert.equal((await deliver({ scheduledTime: time })).outcome, "ok");
+  assert.equal(calls, 5);
+  const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
+  const country = countries[(time / 300000) % countries.length].code;
+  const before = await kv.get(`country:${country}`);
+  assert.deepEqual(Object.keys(JSON.parse(before)), [
+    "traffic",
+    "bots",
+    "devices",
+    "protocols",
+  ]);
+  assert.equal((await deliver({ scheduledTime: time })).outcome, "ok");
+  assert.equal(calls, 5);
+  assert.equal(await kv.get(`country:${country}`), before);
+});
+
+test("a dispatch superseded immediately before its collection claim cannot fetch", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    queue: true,
+    entryPoint: "tests/fixtures/queue-superseded.mjs",
+    outbound(request) {
+      calls++;
+      return radarUpstream(request.url);
+    },
+  });
+  t.after(() => mf.dispose());
+  const worker = await mf.getWorker(),
+    time = Math.floor(Date.now() / 300000) * 300000;
+  await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  const result = await worker.queue("radar-test", [
+    {
+      id: "superseded-fixture",
+      timestamp: new Date(),
+      body: { scheduledTime: time },
+      attempts: 1,
+    },
+  ]);
+  assert.equal(result.outcome, "ok");
+  assert.equal(calls, 0);
+  assert.equal(
+    await (
+      await mf.getD1Database("HISTORY")
+    )
+      .prepare("SELECT slot FROM radar_collection")
+      .first(),
+    null,
+  );
+});
+
+test("queue collection failures retain the claim and cannot amplify retries", async (t) => {
+  let calls = 0;
+  const mf = await runtime({
+    queue: true,
+    outbound() {
+      calls++;
+      return new Response(null, { status: 503 });
+    },
+  });
+  t.after(() => mf.dispose());
+  const worker = await mf.getWorker();
+  const time = Math.floor(Date.now() / 300000) * 300000;
+  await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
+  const deliver = () =>
+    worker.queue("radar-test", [
+      {
+        id: "fixture-retry",
+        timestamp: new Date(),
+        body: { scheduledTime: time },
+        attempts: 1,
+      },
+    ]);
+  assert.equal((await deliver()).outcome, "exception");
+  assert.equal(calls, 1);
+  assert.equal((await deliver()).outcome, "ok");
+  assert.equal(calls, 1);
+  const db = await mf.getD1Database("HISTORY");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS count FROM health_samples WHERE ok=1")
+        .first()
+    ).count,
+    1,
+  );
+});
+
 test("scheduled collection measures this environment's assets without depending on production", async (t) => {
   let radarCalls = 0;
   const mf = await runtime({

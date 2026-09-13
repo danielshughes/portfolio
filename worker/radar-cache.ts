@@ -21,12 +21,24 @@ export function developmentCache(db: D1Database): RadarOptions["cache"] {
     async match(value) {
       const row = await db
         .prepare(
-          "SELECT body,headers FROM radar_cache WHERE key=? AND expires>?",
+          "SELECT body,headers,expires FROM radar_cache WHERE key=? AND expires>?",
         )
         .bind(cacheKey(value), Date.now())
-        .first<{ body: string; headers: string }>();
+        .first<{ body: string; headers: string; expires: number }>();
       if (!row) return undefined;
-      return new Response(row.body, { headers: JSON.parse(row.headers) });
+      const remaining = (row.expires - Date.now()) / 1000;
+      const seconds = cacheKey(value).endsWith("/backoff")
+        ? Math.ceil(remaining)
+        : Math.floor(remaining);
+      if (!Number.isFinite(seconds))
+        throw new Error("Invalid Radar cache expiry");
+      if (seconds < 1) return undefined;
+      const headers = new Headers(JSON.parse(row.headers));
+      headers.set(
+        "cache-control",
+        `public, max-age=${seconds}, must-revalidate`,
+      );
+      return new Response(row.body, { headers });
     },
     async put(value, response) {
       const key = cacheKey(value);
