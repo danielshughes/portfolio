@@ -134,6 +134,20 @@ test("workerd serves generated static policies and protected API errors", async 
       response.headers.get("content-security-policy"),
       /object-src 'none'/,
     );
+    const directives = response.headers
+      .get("content-security-policy")
+      .split("; ");
+    const scripts = directives.find((value) => value.startsWith("script-src "));
+    assert.deepEqual(
+      scripts
+        .split(" ")
+        .filter((value) => value.includes("cloudflareinsights")),
+      ["https://static.cloudflareinsights.com/beacon.min.js"],
+    );
+    assert.equal(
+      directives.find((value) => value.startsWith("connect-src ")),
+      "connect-src 'self'",
+    );
   }
 });
 test("workerd real bindings cache success and enforce cold admission before fetch", async (t) => {

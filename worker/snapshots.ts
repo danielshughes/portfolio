@@ -148,6 +148,7 @@ export async function collectSnapshots(
       scheduledOptions,
     );
     if (!response.ok) {
+      options.reportFailure?.(`collection.${view}`, `http_${response.status}`);
       await response.body?.cancel();
       continue;
     }
@@ -157,11 +158,14 @@ export async function collectSnapshots(
       // without repeatedly serialising views already accepted into the bundle.
       const entry = `${JSON.stringify(view)}:${JSON.stringify(value)}`;
       const bytes = utf8.encode(entry).byteLength + (entries.length ? 1 : 0);
-      if (bundleBytes + bytes > MAX_BUNDLE_BYTES) continue;
+      if (bundleBytes + bytes > MAX_BUNDLE_BYTES) {
+        options.reportFailure?.(`collection.${view}`, "bundle_limit");
+        continue;
+      }
       entries.push(entry);
       bundleBytes += bytes;
       views.push(view);
-    }
+    } else options.reportFailure?.(`collection.${view}`, "invalid_snapshot");
   }
   if (entries.length)
     await env.RADAR_SNAPSHOTS.put(

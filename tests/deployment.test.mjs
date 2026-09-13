@@ -215,7 +215,7 @@ test("queue trial stays development-only with bounded consumption and no paid CP
   assert.equal(consumers[0].dead_letter_queue, undefined);
 });
 
-test("observability keeps explicit sampled logs and traces with query redaction", () => {
+test("dev retains invocation logs while production stays sampled and queries redacted", () => {
   const { config, error } = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -226,7 +226,7 @@ test("observability keeps explicit sampled logs and traces with query redaction"
     assert.equal(observability.redact_query_string, true);
     assert.deepEqual(observability.logs, {
       enabled: true,
-      head_sampling_rate: 0.1,
+      head_sampling_rate: environment === config.env.development ? 1 : 0.1,
       invocation_logs: true,
     });
     assert.deepEqual(observability.traces, {
