@@ -48,10 +48,8 @@ Feature pull requests target `develop`, which deploys to Access-protected [devel
 
 Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for the service connections and [operations](docs/operations.md) for setup, verification, limits and recovery. No pull-request deployments or paid fallback.
 
-For your own deployment, provision separate resources and replace the hostnames, resource IDs and public Turnstile keys. Never use this site's identifiers as your deployment target. No account access is needed for the local tests.
+No account access is needed for the local tests. The checked-in deployment identifiers belong to this website and must not be used for an unauthorised deployment.
 
-## Contributing and data
-
-Read [AGENTS.md](AGENTS.md) for content, accessibility, security and contribution boundaries.
+## Data
 
 The Internet atlas uses Cloudflare Radar data under CC BY-NC 4.0, with attribution and transformation notices. See [Radar's licensing policies](https://radar.cloudflare.com/about#licensing-policies).

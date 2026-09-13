@@ -2,7 +2,7 @@
 
 ## Scope and boundaries
 
-This is the public website repository. Keep it self-contained: never link to or copy the private sourcebook, its paths, credentials, employer material or identifiable incidents. Private records may link here, never the reverse. Public setup must work with a contributor's own resources.
+This repository contains the website's public source. Keep it self-contained. Exclude non-public material, internal links, credentials and identifiable incidents from source, documentation and generated output.
 
 Use British English, no em dashes, concrete engineering language and supported claims. Keep SRE/infrastructure prominent alongside documented AI tooling and leadership. Portfolio positioning is not an employment title or evidence of model research. Employer names, employment titles/dates and chronology are excluded from all public output, including metadata and generated assets. New career claims and personal details require an explicit public-use decision; access or team activity does not establish personal ownership, adoption or impact.
 
@@ -24,13 +24,13 @@ Code/configuration owns changeable values: `package.json` and `.nvmrc` own the t
 
 ## Security and environment
 
-Credentials belong in 1Password and scoped delivery/runtime bindings, never output, arguments, source or test artefacts. Keep local secret/state files ignored. Public-prefixed client variables are public; PR jobs receive no deployment credentials. Rotate exposed credentials, including those removed from Git's latest revision.
+Use scoped CI/runtime secret bindings. Keep credential values out of output, arguments, source and test artefacts, and keep local secret/state files ignored. Public-prefixed client variables are public; PR jobs receive no deployment credentials. Rotate exposed credentials, including those removed from Git's latest revision.
 
-Development at `dev.danhughes.uk` remains hostname-Access-protected and non-indexable, with separate production resources at `danhughes.uk`. No-index is not authentication. Keep worker/preview alternate URLs disabled. Access administration is outside website CI; preserve reusable owner policies and check references before cleanup.
+Preserve environment isolation and the configured development authentication boundary. No-index is not authentication. Keep alternate Worker/preview URLs disabled. Account administration is outside the website deployment workflow.
 
 Preserve input validation, fail-closed admission, bounded work and independent environment budgets. Per-location rate limits are not global quotas. Real AI has fixed inputs, server-verified single-use Turnstile and atomic D1 reservations; model output is untrusted and never a confirmed diagnosis. Scheduled Radar claims each slot atomically before provider/storage work; health settles independently. Follow the architecture for failure/replay semantics and additive migrations.
 
-Free-tier budgets cover both environments and other account use. No paid fallback or plan upgrade. Privacy claims describe application behaviour, not an absence of hosting-platform request logs. Preserve Radar attribution and the owner's licence decision without implying vendor confirmation.
+Respect the shared Free-tier budget across environments, with no paid fallback or plan upgrade. Privacy claims describe application behaviour, not an absence of hosting-platform request logs. Preserve Radar attribution and licensing notices.
 
 ## Work and verification
 
