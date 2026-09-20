@@ -67,7 +67,7 @@ function harness(failDimension?: string, descriptions: string[] = []) {
     },
   };
   const country =
-    countries[Math.floor(radarFixtureTime / 300000) % countries.length].code;
+    countries[Math.floor(radarFixtureTime / 600000) % countries.length].code;
   return {
     env,
     options,
@@ -118,6 +118,75 @@ test("queue dispatch is bounded once per slot even when a send fails", async () 
     ]);
     assert.equal(h.calls(), 0);
     assert.equal(h.writes.length, 0);
+  }
+});
+
+test("ten-minute collection visits every country and halves daily work at either Cron offset", async () => {
+  for (const offset of [0, 120000]) {
+    const h = harness();
+    const visits = new Map<string, number>();
+    for (let tick = 0; tick < 288; tick++) {
+      const time = radarFixtureTime + tick * 300000 + offset;
+      h.options.now = () => time;
+      const result = await collectSnapshots(h.env, time, h.options);
+      assert.equal(result.status, tick % 2 ? "skipped" : "complete");
+      if (result.status === "complete")
+        visits.set(result.country, (visits.get(result.country) ?? 0) + 1);
+    }
+    assert.equal(h.writes.length, 144);
+    assert.equal(h.calls(), 720);
+    assert.deepEqual(
+      [...visits].sort(),
+      countries.map(({ code }) => [code, 18]).sort(),
+    );
+  }
+});
+
+test("off-cadence ticks cannot claim, enqueue, fetch or write", async () => {
+  for (const delivery of ["direct", "dispatch", "consume"] as const) {
+    const h = harness();
+    h.env.HISTORY.prepare = () => assert.fail("no off-cadence D1 claim");
+    h.env.RADAR_COLLECTION_QUEUE = {
+      send: () => assert.fail("no off-cadence message"),
+    } as unknown as Queue<{ scheduledTime: number }>;
+    const result = await collectSnapshots(
+      h.env,
+      radarFixtureTime + 300000,
+      h.options,
+      delivery,
+    );
+    assert.equal(result.status, "skipped");
+    assert.equal(h.calls(), 0);
+    assert.equal(h.writes.length, 0);
+  }
+});
+
+test("snapshots cover an eighty-minute rotation without renewing their two-hour lifetime", async () => {
+  const h = harness();
+  await collectSnapshots(h.env, radarFixtureTime, h.options);
+  for (const [age, seconds] of [
+    [0, 3600],
+    [80 * 60000, 40 * 60],
+    [7200000 - 1000, 1],
+    [7200000, 0],
+  ]) {
+    const response = await readSnapshot(
+      h.env.RADAR_SNAPSHOTS,
+      h.country,
+      "bots",
+      () => radarFixtureTime + age!,
+    );
+    if (!seconds) assert.equal(response, undefined);
+    else {
+      assert.equal(
+        response?.headers.get("cache-control"),
+        `public, max-age=${seconds}, must-revalidate`,
+      );
+      assert.deepEqual(
+        await response?.json(),
+        JSON.parse(h.writes[0].body).bots,
+      );
+    }
   }
 });
 
@@ -172,7 +241,7 @@ test("snapshot freshness and TTL use the clock after a delayed KV read", async (
     [30000, 5000, 25],
     [1000, 2000, null],
   ]) {
-    let clock = radarFixtureTime + 3600000 - remaining!;
+    let clock = radarFixtureTime + 7200000 - remaining!;
     h.env.RADAR_SNAPSHOTS.get = async () => {
       clock += delay!;
       return raw;
@@ -336,7 +405,7 @@ test("disabled collection skips admission, providers and storage", async () => {
 test("collection reports expired snapshots without logging provider content", async () => {
   const h = harness();
   let clock = radarFixtureTime;
-  h.options.now = () => (clock += 3600000);
+  h.options.now = () => (clock += 7200000);
   const failures: string[][] = [];
   h.options.reportFailure = (stage, kind) => failures.push([stage, kind]);
   const result = await collectSnapshots(h.env, radarFixtureTime, h.options);

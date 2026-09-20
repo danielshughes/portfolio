@@ -209,7 +209,7 @@ export default {
         typeof time !== "number" ||
         !Number.isSafeInteger(time) ||
         time < 0 ||
-        time % 300000 !== 0 ||
+        time % 600000 !== 0 ||
         !Number.isFinite(age) ||
         age < 0 ||
         age >= 600000
