@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handleRadar } from "./radar.ts";
+import { handleRadar, type RadarOptions } from "./radar.ts";
 
 const now = Date.parse("2026-09-10T14:00:00Z");
 const start = now - 7 * 86400000;
@@ -456,6 +456,37 @@ test("rate limiting backs off across countries without leaking upstream details"
   await h.run();
   assert.equal(h.calls.length, 2);
 });
+test("provider throttling and timeouts have distinct secret-safe diagnostics", async () => {
+  for (const [reply, status, kind] of [
+    [
+      () => new Response("private-upstream-body", { status: 429 }),
+      429,
+      "upstream_rate_limited",
+    ],
+    [
+      () => {
+        throw new DOMException("private-timeout-detail", "TimeoutError");
+      },
+      502,
+      "timeout",
+    ],
+  ] as const) {
+    const h = harness(reply);
+    const failures: string[][] = [];
+    const options: RadarOptions = {
+      ...h.options,
+      reportFailure: (stage, failure) => failures.push([stage, failure]),
+    };
+    const response = await handleRadar(
+      new Request("https://portfolio.example/api/radar?country=GB"),
+      options,
+    );
+    assert.equal(response.status, status);
+    assert.deepEqual(failures, [["fetch_http/timeseries", kind]]);
+    assert.doesNotMatch(await response.text(), /private-/);
+  }
+});
+
 test("upstream errors, oversized bodies and thrown exceptions fail closed", async () => {
   for (const reply of [
     () => new Response("private-upstream-body", { status: 403 }),

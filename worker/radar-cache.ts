@@ -1,6 +1,10 @@
 import { countries } from "../src/experiments/internet-model.ts";
 import { radarViewIds } from "../src/experiments/radar-views.ts";
-import { MAX_BACKOFF_SECONDS, type RadarOptions } from "./radar.ts";
+import {
+  CACHE_SECONDS,
+  MAX_BACKOFF_SECONDS,
+  type RadarOptions,
+} from "./radar.ts";
 
 // Access-fronted Workers cannot use Cache API. Reuse the development D1
 // binding with a finite keyspace rather than retaining request I/O in isolates.
@@ -52,7 +56,10 @@ export function developmentCache(db: D1Database): RadarOptions["cache"] {
         response.status !== 200 ||
         !Number.isInteger(ttl) ||
         ttl < 1 ||
-        ttl > (key === "/api/.radar/v1/backoff" ? MAX_BACKOFF_SECONDS : 3600) ||
+        ttl >
+          (key === "/api/.radar/v1/backoff"
+            ? MAX_BACKOFF_SECONDS
+            : CACHE_SECONDS) ||
         new TextEncoder().encode(body).length > 262144
       )
         throw new Error("Invalid Radar cache entry");
