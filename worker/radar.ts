@@ -7,7 +7,7 @@ import {
 const HOUR = 3_600_000;
 const MAX_BODY = 262_144;
 const MAX_EVENTS = 100;
-const CACHE_SECONDS = 3600;
+export const CACHE_SECONDS = 3600;
 export const MAX_BACKOFF_SECONDS = 86400;
 const TIMEOUT_MS = 10_000;
 
@@ -446,22 +446,26 @@ export async function readRadar(
   } catch (error) {
     options.reportFailure?.(
       stage,
-      error instanceof TypeError
-        ? [
-            "type_error",
-            ...[
-              "redirect",
-              "signal",
-              "header",
-              "invocation",
-              "network",
-              "request",
-              "fetch",
-            ].filter((term) => error.message.toLowerCase().includes(term)),
-          ].join("_")
-        : error instanceof Error && /certificate|tls/i.test(error.message)
-          ? "tls_error"
-          : "data_or_network_error",
+      error instanceof RateLimit
+        ? "upstream_rate_limited"
+        : error instanceof Error && error.name === "TimeoutError"
+          ? "timeout"
+          : error instanceof TypeError
+            ? [
+                "type_error",
+                ...[
+                  "redirect",
+                  "signal",
+                  "header",
+                  "invocation",
+                  "network",
+                  "request",
+                  "fetch",
+                ].filter((term) => error.message.toLowerCase().includes(term)),
+              ].join("_")
+            : error instanceof Error && /certificate|tls/i.test(error.message)
+              ? "tls_error"
+              : "data_or_network_error",
     );
     const limited = error instanceof RateLimit;
     const seconds = limited ? error.seconds : 30;

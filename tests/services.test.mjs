@@ -462,7 +462,7 @@ test("queued scheduling claims a slot once without fetching Radar or losing heal
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
-  const time = Math.floor(Date.now() / 300000) * 300000;
+  const time = Math.floor(Date.now() / 600000) * 600000;
   const results = await Promise.all(
     [time, time + 1000, time - 300000].map((scheduledTime) =>
       worker.scheduled({ scheduledTime, cron: "*/5 * * * *" }),
@@ -502,13 +502,13 @@ test(
       },
     });
     t.after(() => mf.dispose());
-    const time = Math.floor(Date.now() / 300000) * 300000;
+    const time = Math.floor(Date.now() / 600000) * 600000;
     const result = await (
       await mf.getWorker()
     ).scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
     assert.equal(result.outcome, "ok");
     const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
-    const country = countries[(time / 300000) % countries.length].code;
+    const country = countries[(time / 600000) % countries.length].code;
     let bundle;
     for (let i = 0; i < 50; i++) {
       bundle = await kv.get(`country:${country}`, "json");
@@ -541,7 +541,7 @@ test("queue delivery collects an admitted slot once and rejects untrusted or sta
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
-  const time = Math.floor(Date.now() / 300000) * 300000;
+  const time = Math.floor(Date.now() / 600000) * 600000;
   const deliver = (body) =>
     worker.queue("radar-test", [
       {
@@ -570,7 +570,7 @@ test("queue delivery collects an admitted slot once and rejects untrusted or sta
   assert.equal((await deliver({ scheduledTime: time })).outcome, "ok");
   assert.equal(calls, 5);
   const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
-  const country = countries[(time / 300000) % countries.length].code;
+  const country = countries[(time / 600000) % countries.length].code;
   const before = await kv.get(`country:${country}`);
   assert.deepEqual(Object.keys(JSON.parse(before)), [
     "traffic",
@@ -595,7 +595,7 @@ test("a dispatch superseded immediately before its collection claim cannot fetch
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker(),
-    time = Math.floor(Date.now() / 300000) * 300000;
+    time = Math.floor(Date.now() / 600000) * 600000;
   await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
   const result = await worker.queue("radar-test", [
     {
@@ -628,7 +628,7 @@ test("queue collection failures retain the claim and cannot amplify retries", as
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
-  const time = Math.floor(Date.now() / 300000) * 300000;
+  const time = Math.floor(Date.now() / 600000) * 600000;
   await worker.scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
   const deliver = () =>
     worker.queue("radar-test", [
@@ -665,7 +665,7 @@ test("scheduled collection measures this environment's assets without depending 
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
-  const time = Math.floor(Date.now() / 300000) * 300000;
+  const time = Math.floor(Date.now() / 600000) * 600000;
   const collection = await worker.scheduled({
     scheduledTime: time,
     cron: "*/5 * * * *",
@@ -687,7 +687,7 @@ test("scheduled collection measures this environment's assets without depending 
   // The disposable KV fixture must retain an older bundle and its expiry when
   // this attempt has nothing usable. It must not renew absent observations.
   const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
-  const country = countries[Math.floor(time / 300000) % countries.length].code;
+  const country = countries[Math.floor(time / 600000) % countries.length].code;
   const key = `country:${country}`;
   const prior = JSON.stringify({
     traffic: { fetchedAt: "2026-09-09T00:00:00Z" },
@@ -719,7 +719,13 @@ test("repeated scheduled slots make one Radar collection, including concurrent d
   });
   t.after(() => mf.dispose());
   const worker = await mf.getWorker();
-  const time = Math.floor(Date.now() / 300000) * 300000;
+  const time = Math.floor(Date.now() / 600000) * 600000;
+  const db = await mf.getD1Database("HISTORY");
+  // A pre-change claim retains five-minute units; no reset or migration needed.
+  await db
+    .prepare("INSERT INTO radar_collection (id,slot) VALUES (1,?)")
+    .bind(time / 300000 - 1)
+    .run();
   const run = (scheduledTime) =>
     worker.scheduled({ scheduledTime, cron: "*/5 * * * *" });
   const results = await Promise.all([run(time), run(time + 48000)]);
@@ -729,6 +735,16 @@ test("repeated scheduled slots make one Radar collection, including concurrent d
   await run(time - 300000);
   assert.equal(calls, 5);
   assert.equal((await run(time + 300000)).outcome, "ok");
+  assert.equal(calls, 5, "health-only tick must not collect Radar");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS count FROM health_samples WHERE ok=1")
+        .first()
+    ).count,
+    3,
+  );
+  assert.equal((await run(time + 600000)).outcome, "ok");
   assert.equal(calls, 10);
 });
 
@@ -745,14 +761,14 @@ test("a health storage failure does not prevent scheduled Radar collection", asy
   // Only the disposable fixture database is altered.
   await db.exec("DROP TABLE health_samples");
   const worker = await mf.getWorker();
-  const time = Date.now();
+  const time = Math.floor(Date.now() / 600000) * 600000;
   const collection = await worker.scheduled({
     scheduledTime: time,
     cron: "*/5 * * * *",
   });
   assert.equal(collection.outcome, "exception");
   assert.equal(calls, 5);
-  const country = countries[Math.floor(time / 300000) % countries.length].code;
+  const country = countries[Math.floor(time / 600000) % countries.length].code;
   const bundle = await (
     await mf.getKVNamespace("RADAR_SNAPSHOTS")
   ).get(`country:${country}`, "json");
@@ -780,7 +796,7 @@ test("a failed Radar claim makes no provider or KV calls and preserves health sa
   const result = await (
     await mf.getWorker()
   ).scheduled({
-    scheduledTime: Date.now(),
+    scheduledTime: Math.floor(Date.now() / 600000) * 600000,
     cron: "*/5 * * * *",
   });
   assert.equal(result.outcome, "exception");
@@ -822,7 +838,7 @@ test("scheduled results distinguish complete, partial, disabled and missing cred
         },
       });
       t.after(() => mf.dispose());
-      const time = Math.floor(Date.now() / 300000) * 300000;
+      const time = Math.floor(Date.now() / 600000) * 600000;
       const collection = await (
         await mf.getWorker()
       ).scheduled({ scheduledTime: time, cron: "*/5 * * * *" });
@@ -839,7 +855,7 @@ test("scheduled results distinguish complete, partial, disabled and missing cred
       );
       const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
       const country =
-        countries[Math.floor(time / 300000) % countries.length].code;
+        countries[Math.floor(time / 600000) % countries.length].code;
       const bundle = await kv.get(`country:${country}`, "json");
       assert.deepEqual(Object.keys(bundle ?? {}), views);
     });
@@ -862,7 +878,7 @@ test("scheduled snapshot bounds preserve readable whole views without extra upst
           },
         });
         t.after(() => mf.dispose());
-        const time = Date.now();
+        const time = Math.floor(Date.now() / 600000) * 600000;
         const result = await (
           await mf.getWorker()
         ).scheduled({
@@ -872,7 +888,7 @@ test("scheduled snapshot bounds preserve readable whole views without extra upst
         assert.equal(result.outcome, oversized ? "exception" : "ok");
         assert.equal(calls, 5);
         const country =
-          countries[Math.floor(time / 300000) % countries.length].code;
+          countries[Math.floor(time / 600000) % countries.length].code;
         const kv = await mf.getKVNamespace("RADAR_SNAPSHOTS");
         const raw = await kv.get(`country:${country}`);
         assert.ok(Buffer.byteLength(raw) <= 100000);
@@ -936,7 +952,7 @@ test("valid recent KV snapshots serve without upstream access and expire honestl
       bots: {
         ...payload,
         country: "JP",
-        fetchedAt: new Date(Date.now() - 3600001).toISOString(),
+        fetchedAt: new Date(Date.now() - 7200001).toISOString(),
       },
     }),
   );

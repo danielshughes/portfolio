@@ -1,7 +1,7 @@
 import { isRadarData } from "../src/experiments/radar-client.ts";
 import { isRadarSummary } from "../src/experiments/radar-summary.ts";
 import { countries } from "../src/experiments/internet-model.ts";
-import { handleRadar, type RadarOptions } from "./radar.ts";
+import { CACHE_SECONDS, handleRadar, type RadarOptions } from "./radar.ts";
 import {
   isRadarView,
   radarViewIds,
@@ -15,7 +15,7 @@ export type SnapshotCollection = {
   | { status: "disabled" | "skipped" | "queued" | "complete" | "partial" }
   | { status: "empty"; reason: "missing_credentials" | "no_usable_views" }
 );
-const MAX_AGE = 3600000;
+const MAX_AGE = 7200000;
 const MAX_BUNDLE_BYTES = 100000;
 const utf8 = new TextEncoder();
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -70,8 +70,11 @@ export async function readSnapshot(
   if (!record(bundle) || !Object.hasOwn(bundle, view)) return;
   const value = snapshotPayload(bundle[view], country, view, clock());
   if (!value) return;
-  const seconds = Math.floor(
-    (MAX_AGE - (clock() - Date.parse(String(value.fetchedAt)))) / 1000,
+  const seconds = Math.min(
+    CACHE_SECONDS,
+    Math.floor(
+      (MAX_AGE - (clock() - Date.parse(String(value.fetchedAt)))) / 1000,
+    ),
   );
   if (seconds < 1) return;
   return Response.json(value, {
@@ -89,8 +92,11 @@ export async function collectSnapshots(
   delivery: "direct" | "dispatch" | "consume" = "direct",
 ): Promise<SnapshotCollection> {
   const slot = Math.floor(time / 300000);
-  const country = countries[slot % countries.length].code;
+  const country = countries[Math.floor(slot / 2) % countries.length].code;
   if (!options.enabled) return { status: "disabled", country, views: [] };
+  // Keep persisted five-minute slot units compatible with existing claims.
+  // Only alternate ticks collect Radar; health still runs on every Cron tick.
+  if (slot % 2 !== 0) return { status: "skipped", country, views: [] };
   if (!options.token)
     return {
       status: "empty",
@@ -171,7 +177,7 @@ export async function collectSnapshots(
     await env.RADAR_SNAPSHOTS.put(
       `country:${country}`,
       `{${entries.join(",")}}`,
-      { expirationTtl: 7200 },
+      { expirationTtl: MAX_AGE / 1000 },
     );
   if (!views.length)
     return { status: "empty", reason: "no_usable_views", country, views };
