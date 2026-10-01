@@ -13,6 +13,7 @@ coverage/
 
 # Cloudflare local state
 .wrangler/
+.cloudflare/
 
 # Browser and audit output
 playwright-report/

@@ -2,17 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { sampleLocal } from "../scripts/local-sample.mjs";
+import { portfolioConfig } from "../scripts/cloudflare-config.mjs";
 
 test("only the local command enables local-preview binding semantics", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   assert.match(pkg.scripts["dev:worker"], /--local\s/);
   assert.match(pkg.scripts["dev:worker"], /--var LOCAL_PREVIEW:true/);
-  const config = JSON.parse(
-    readFileSync("wrangler.jsonc", "utf8").replace(/,\s*([}\]])/g, "$1"),
-  );
-  for (const value of [config, config.env.development, config.env.production]) {
-    assert.equal(value.vars.LOCAL_PREVIEW, "false");
-  }
+  assert.match(pkg.scripts["dev:worker"], /--experimental-new-config/);
+  assert.match(pkg.scripts["dev:worker"], /--persist-to \.cloudflare\/state/);
+  const migrate = readFileSync("scripts/migrate-local.mjs", "utf8");
+  assert.match(migrate, /"--local"/);
+  assert.match(migrate, /"--persist-to",\s*"\.cloudflare\/state"/);
+  for (const mode of ["development", "production"])
+    assert.equal(portfolioConfig(mode).worker.env.LOCAL_PREVIEW.value, "false");
 });
 
 test("local sampling uses only Wrangler's loopback endpoint and real current time", async () => {

@@ -7,11 +7,11 @@ updates:
       interval: weekly
     groups:
       cloudflare:
-        patterns: ["wrangler", "miniflare"]
+        patterns: ["cf", "@cloudflare/config", "wrangler", "miniflare"]
         update-types: ["minor", "patch"]
       npm:
         patterns: ["*"]
-        exclude-patterns: ["wrangler", "miniflare"]
+        exclude-patterns: ["cf", "@cloudflare/config", "wrangler", "miniflare"]
         update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /

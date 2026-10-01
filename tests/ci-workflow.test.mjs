@@ -52,7 +52,7 @@ test("version updates follow development and keep coupled runtimes together", ()
   }
   assert.match(
     policy,
-    /cloudflare:\s*\n\s+patterns: \["wrangler", "miniflare"\]/,
+    /cloudflare:\s*\n\s+patterns: \["cf", "@cloudflare\/config", "wrangler", "miniflare"\]/,
   );
 });
 
@@ -115,6 +115,8 @@ test("documentation can skip checks but mixed and unknown files require them", (
   assert.equal(requiresQuality(docs), false);
   for (const path of [
     "tsconfig.json",
+    "cloudflare.config.ts",
+    "wrangler.config.ts",
     ".github/workflows/ci.yml",
     ".github/dependabot.yml",
     "src/content/article.md",
@@ -264,6 +266,11 @@ test("reuse skips only expensive quality work while audit and deployment retain 
   assert.doesNotMatch(deploy, /steps.reuse/);
   assert.match(deploy, /run: npm ci/);
   assert.match(deploy, /run: npm run build/);
+  assert.ok(
+    deploy.indexOf("run: npm run build:worker") <
+      deploy.indexOf("run: node scripts/deploy.mjs"),
+  );
+  assert.match(deploy, /CF_SEND_TELEMETRY: false/);
   assert.match(deploy, /run: node scripts\/deploy.mjs/);
 });
 

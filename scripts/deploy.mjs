@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { portfolioConfig } from "./cloudflare-config.mjs";
 
 export function deploy(env = process.env, run = spawnSync) {
   const environment = env.DEPLOY_ENV;
@@ -30,17 +31,22 @@ export function deploy(env = process.env, run = spawnSync) {
     if (!env[name]) throw new Error(`Missing deployment setting: ${name}`);
 
   // A shell pipeline supplies a real OS pipe. Node's piped child stdin is a
-  // socket on Linux, which Wrangler cannot reopen through /dev/stdin.
+  // socket on Linux, which the deployment consumer cannot reopen via /dev/stdin.
+  const database = portfolioConfig(environment).worker.env.HISTORY.id;
   const result = run(
     "bash",
     [
       "-o",
       "pipefail",
       "-c",
-      `env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/wrangler/bin/wrangler.js d1 migrations apply HISTORY --env ${environment} --remote && node -e 'process.stdout.write(JSON.stringify({RADAR_API_TOKEN:process.env.RADAR_API_TOKEN,TURNSTILE_SECRET_KEY:process.env.TURNSTILE_SECRET_KEY}))' | env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/wrangler/bin/wrangler.js deploy --env ${environment} --secrets-file /dev/stdin`,
+      `env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/cf/bin/cf d1 migrations apply ${database} --dir worker/migrations --mode ${environment} && node -e 'process.stdout.write(JSON.stringify({RADAR_API_TOKEN:process.env.RADAR_API_TOKEN,TURNSTILE_SECRET_KEY:process.env.TURNSTILE_SECRET_KEY}))' | env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/cf/bin/cf deploy --prebuilt --mode ${environment} --secrets-file /dev/stdin`,
     ],
     {
-      env: { ...env, CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false" },
+      env: {
+        ...env,
+        CF_SEND_TELEMETRY: "false",
+        CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
+      },
       stdio: "inherit",
     },
   );
