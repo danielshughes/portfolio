@@ -6,6 +6,7 @@ export default [
     ignores: [
       "dist/**",
       ".astro/**",
+      ".cloudflare/**",
       "node_modules/**",
       "worker/worker-configuration.d.ts",
     ],

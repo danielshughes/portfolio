@@ -8,7 +8,7 @@ Astro renders the pages at build time. Cloudflare serves static assets without i
 Feature PR -> read-only quality checks -> merge to develop
   -> checked commit rebuilt with development settings
   -> development GitHub environment secrets
-  -> additive D1 migrations -> Wrangler asset + Worker upload
+  -> additive D1 migrations -> cf prebuilt asset + Worker upload
 
 Browser -> HTTPS dev hostname -> Cloudflare Access
   -> static page/font/CSS/JS -> Workers Static Assets
@@ -35,7 +35,7 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 | Responsibility                                                     | Source of truth                                                                                    |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | Page rendering, environment metadata, headers                      | `astro.config.mjs`, `src/layouts/BaseLayout.astro`, `src/security/`                                |
-| Bindings, names, routes, schedules, rate namespaces, observability | `wrangler.jsonc`                                                                                   |
+| Bindings, names, routes, schedules, rate namespaces, observability | `cloudflare.config.ts`                                                                             |
 | API routing and scheduled orchestration                            | `worker/index.ts`                                                                                  |
 | Radar validation and failure policy                                | `worker/radar.ts`                                                                                  |
 | Supported Radar view IDs and upstream dimensions                   | `src/experiments/radar-views.ts`                                                                   |
@@ -49,7 +49,7 @@ Access applies to the whole development hostname, not merely HTML. Both Workers 
 | Shared gallery and previews                                        | `src/components/ExperimentCard.astro`, `LiveExperiments.astro`, `LivePreview.astro`                |
 | Trusted deployment, change filtering and tested-tree proof         | `.github/workflows/ci.yml`, `scripts/deploy.mjs`, `scripts/ci-changes.mjs`, `scripts/ci-reuse.mjs` |
 
-The generated `worker/worker-configuration.d.ts` describes the actual Wrangler bindings. Regenerate it rather than maintaining a second handwritten environment interface. Resource identifiers in Wrangler are not credentials; secret values never belong there.
+The checked-in `worker/worker-configuration.d.ts` references ignored types generated from the native configuration by `npm run types:worker`. Regenerate them rather than maintaining a second handwritten environment interface. Resource identifiers are not credentials; secret values never belong in configuration or Build Output. [Operations](operations.md#cloudflare-administration-cli) describes the explicit bundler and native config-loader boundary.
 
 Preserve Astro's optional-import module-preload hook and page-reload recovery. Generated `_headers` hash actual inline script/style bytes; only style attributes allow inline CSS. Worker APIs share the security policy. Browser tests serve generated assets through the fixture workerd harness, not a policy-free static server.
 
@@ -85,7 +85,7 @@ Unexpected binding/storage exceptions remain rejected jobs. Structured failure e
 
 KV stores bounded, validated Radar bundles; snapshots expire from eligibility without inventing new source timestamps. D1 stores the measurement history, a single daily AI-budget row and development's bounded backoff/response-cache fallback. Retention, request deadlines and application limits live in the modules listed above.
 
-Production and development schedules are staggered in `wrangler.jsonc`; the configuration budget includes both environments. Configuration does not establish measured invocation or storage usage. Free allowances are account-wide and may be shared with other projects. AI has an atomic application cap in addition to Cloudflare's own quota; failures count against the cap. No paid fallback, R2 or Workflows are required. See [operations](operations.md#free-tier-budget) for budget calculations and quota failure handling.
+Production and development schedules are staggered in `cloudflare.config.ts`; the configuration budget includes both environments. Configuration does not establish measured invocation or storage usage. Free allowances are account-wide and may be shared with other projects. AI has an atomic application cap in addition to Cloudflare's own quota; failures count against the cap. No paid fallback, R2 or Workflows are required. See [operations](operations.md#free-tier-budget) for budget calculations and quota failure handling.
 
 ## Radar, end to end
 
@@ -183,7 +183,7 @@ Native traces are lightly sampled and correlated with deployment metadata. Appli
 
 The required quality job always reports. Recognised docs-only changes retain redacted secret scanning but skip expensive checks and deployment; site content is code for this purpose. Workflow runs queue per ref without automatic cancellation, preventing a docs-only push from replacing pending code delivery. Pull requests have no deployment credentials. See [queue behaviour and validation](operations.md#normal-deployment) for the bounded queue and linter compatibility exception.
 
-Trusted `develop` pushes deploy through the development GitHub environment after quality passes. Production's `main` path additionally requires `PRODUCTION_DEPLOY_ENABLED=true` in both the job condition and deployment script. Publication is approved through reviewed `develop` to `main` promotions; a later hold requires disabling the switch. The script checks event, repository, branch, environment and production origin, applies D1 migrations, then streams the Radar and Turnstile secrets into Wrangler. A failed migration prevents upload. Keep migrations additive so older Worker versions remain compatible during rollback.
+Trusted `develop` pushes deploy through the development GitHub environment after quality passes. Production's `main` path additionally requires `PRODUCTION_DEPLOY_ENABLED=true` in both the job condition and deployment script. Publication is approved through reviewed `develop` to `main` promotions; a later hold requires disabling the switch. The script checks event, repository, branch, environment and production origin, applies D1 migrations, then streams the Radar and Turnstile secrets into cf. A failed migration prevents upload. Keep migrations additive so older Worker versions remain compatible during rollback.
 
 Development uses `dev.danhughes.uk`, protected by hostname-based Access; production uses `danhughes.uk`. Worker and preview subdomains remain disabled. A successful upload is not proof of working Access, scheduled collection or AI: verify the actual URLs and service behaviour after release. [Operations](operations.md) describes the release and recovery checks.
 

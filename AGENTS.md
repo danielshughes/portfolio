@@ -20,11 +20,11 @@ Use the relevant contract, not the whole document set before every edit:
 | AI model, prompt, scenario or validation              | [AI review](docs/ai-review.md) for factual evaluation and abuse controls                  |
 | Local setup, dependencies, CI, deployment or recovery | [Operations](docs/operations.md) for commands, environment gates, budgets and live checks |
 
-Code/configuration owns changeable values: `package.json` and `.nvmrc` own the toolchain, `wrangler.jsonc` owns bindings/schedules, and service modules own application limits. Update affected contracts rather than repeating inventories or constants here. Keep README concise.
+Code/configuration owns changeable values: `package.json` and `.nvmrc` own the toolchain, `cloudflare.config.ts` owns bindings/schedules, and service modules own application limits. `wrangler.config.ts` owns bundler settings; `wrangler.jsonc` is a frozen migration baseline, not active configuration. Update affected contracts rather than repeating inventories or constants here. Keep README concise.
 
 ## Security and environment
 
-Prefer official `cf` for Cloudflare account/resource administration, using anonymous command discovery followed by the selected help/schema. Worker development/deployment still follows this repository's scripts and Wrangler configuration until a verified `cf` project migration.
+Prefer official `cf` for Cloudflare administration, using anonymous command discovery followed by the selected help/schema. Use repository scripts for project work: `cf` owns deployment/types/migrations; the explicit Wrangler bundler/local server reads the new configuration. Root `cf build`/`cf dev` detects Astro and does not build or start our separate API Worker. Never substitute a pages-only build for the complete Worker artifact.
 
 Use scoped CI/runtime secret bindings. Keep credential values out of output, arguments, source and test artefacts, and keep local secret/state files ignored. Public-prefixed client variables are public; PR jobs receive no deployment credentials. Rotate exposed credentials, including those removed from Git's latest revision.
 

@@ -1,13 +1,13 @@
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { readFile, readdir } from "node:fs/promises";
+import { convertToWranglerConfig } from "@cloudflare/config";
+import { portfolioConfig } from "../scripts/cloudflare-config.mjs";
 
 // Only parse the checked-in non-secret configuration, never .env or .dev.vars.
 export async function runtime(options = {}) {
-  const config = JSON.parse(
-    (await readFile("wrangler.jsonc", "utf8")).replace(/,\s*([}\]])/g, "$1"),
-  );
-  const environment = config.env.development;
+  const config = convertToWranglerConfig(portfolioConfig("development"));
+  const environment = config;
   const bundle = await build({
     entryPoints: [options.entryPoint ?? config.main],
     bundle: true,

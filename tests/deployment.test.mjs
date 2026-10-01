@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 import test from "node:test";
 import ts from "typescript";
+import { convertToWranglerConfig } from "@cloudflare/config";
+import { portfolioConfig } from "../scripts/cloudflare-config.mjs";
 import { deploy } from "../scripts/deploy.mjs";
 
 const allowed = {
@@ -15,6 +18,9 @@ const allowed = {
   TURNSTILE_SECRET_KEY: "fixture-turnstile-credential",
   DEPLOY_ENV: "development",
 };
+const configFor = (mode) => convertToWranglerConfig(portfolioConfig(mode));
+const migration = (mode) =>
+  `env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules/cf/bin/cf d1 migrations apply ${portfolioConfig(mode).worker.env.HISTORY.id} --dir worker/migrations --mode ${mode} && `;
 
 test("development deployment rejects untrusted events, branches and missing credentials", () => {
   for (const change of [
@@ -36,21 +42,18 @@ test("development deployment rejects untrusted events, branches and missing cred
         }),
       /Deployment requires a trusted environment branch push|Missing deployment setting:/,
     );
-    assert.equal(calls, 0, "must reject before invoking Wrangler");
+    assert.equal(calls, 0, "must reject before invoking cf");
   }
 });
 
 test("schema migration precedes deployment without exposing runtime credentials", () => {
   deploy(allowed, (_command, args) => {
-    assert.match(
-      args[3],
-      /^env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
-    );
+    assert.ok(args[3].startsWith(migration("development")));
     return { status: 0 };
   });
 });
 
-test("only environment-scoped runtime secrets are streamed to Wrangler, never passed in argv", () => {
+test("only environment-scoped runtime secrets are streamed to cf, never passed in argv", () => {
   let calls = 0;
   assert.equal(
     deploy(allowed, (command, args, options) => {
@@ -59,7 +62,7 @@ test("only environment-scoped runtime secrets are streamed to Wrangler, never pa
       assert.deepEqual(args.slice(0, 3), ["-o", "pipefail", "-c"]);
       assert.match(
         args[3],
-        /env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
+        /env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/cf\/bin\/cf deploy --prebuilt --mode development --secrets-file \/dev\/stdin$/,
       );
       assert.equal(
         JSON.stringify(args).includes(allowed.RADAR_API_TOKEN),
@@ -96,12 +99,9 @@ test("actual secret pipeline is readable by pathname on Linux and strips the con
       const probe = `node -e 'const assert=require("node:assert/strict"); const fs=require("node:fs"); assert.deepEqual(JSON.parse(fs.readFileSync("/dev/stdin", "utf8")), {RADAR_API_TOKEN:"fixture-radar-credential",TURNSTILE_SECRET_KEY:"fixture-turnstile-credential"}); assert.equal(process.env.RADAR_API_TOKEN, undefined); assert.equal(process.env.TURNSTILE_SECRET_KEY, undefined);'`;
       const actualArgs = [...args];
       actualArgs[3] = actualArgs[3]
+        .replace(migration("development"), "true && ")
         .replace(
-          /^env -u RADAR_API_TOKEN -u TURNSTILE_SECRET_KEY node node_modules\/wrangler\/bin\/wrangler.js d1 migrations apply HISTORY --env development --remote && /,
-          "true && ",
-        )
-        .replace(
-          /node node_modules\/wrangler\/bin\/wrangler.js deploy --env development --secrets-file \/dev\/stdin$/,
+          /node node_modules\/cf\/bin\/cf deploy --prebuilt --mode development --secrets-file \/dev\/stdin$/,
           probe,
         );
       assert.notEqual(
@@ -129,7 +129,7 @@ test("production requires its matching branch and validated publication origin",
   };
   assert.equal(
     deploy(production, (_command, args) => {
-      assert.match(args[3], /--env production /);
+      assert.match(args[3], /--mode production /);
       return { status: 0 };
     }),
     0,
@@ -151,34 +151,27 @@ test("production requires its matching branch and validated publication origin",
         return { status: 0 };
       }),
     );
-    assert.equal(calls, 0, "must reject before invoking Wrangler");
+    assert.equal(calls, 0, "must reject before invoking cf");
   }
 });
 
 test("environments route only to their authorised domains", () => {
-  const { config, error } = ts.parseConfigFileTextToJson(
-    "wrangler.jsonc",
-    readFileSync("wrangler.jsonc", "utf8"),
-  );
-  assert.equal(error, undefined);
-  assert.equal(config.workers_dev, false);
-  assert.equal(config.preview_urls, false);
-  assert.deepEqual(config.cache, { enabled: false });
-  assert.deepEqual(config.env.development.exports, {
-    default: { type: "worker", cache: { enabled: false } },
-    RadarData: { type: "worker", cache: { enabled: true } },
-  });
-  assert.equal(config.env.development.vars.RADAR_NATIVE_CACHE, true);
-  assert.equal(config.env.production.vars.RADAR_NATIVE_CACHE, true);
-  assert.equal(config.env.production.exports.RadarData.cache.enabled, true);
-  assert.equal(config.env.production.exports.default.cache.enabled, false);
-  assert.equal(config.vars.RADAR_ENABLED, false);
-  assert.equal(config.env.development.vars.RADAR_ENABLED, true);
-  assert.deepEqual(config.env.development.routes, [
+  const development = configFor("development");
+  const production = configFor("production");
+  for (const config of [development, production]) {
+    assert.equal(config.workers_dev, false);
+    assert.equal(config.preview_urls, false);
+    assert.deepEqual(config.cache, { enabled: false });
+    assert.equal(config.exports.default.cache.enabled, false);
+    assert.equal(config.exports.RadarData.cache.enabled, true);
+    assert.equal(config.exports.CoordinationRoom.storage, "sqlite");
+    assert.equal(config.vars.RADAR_NATIVE_CACHE, true);
+    assert.equal(config.vars.RADAR_ENABLED, true);
+  }
+  assert.deepEqual(development.routes, [
     { pattern: "dev.danhughes.uk", custom_domain: true },
   ]);
-  assert.equal(config.env.production.vars.RADAR_ENABLED, true);
-  assert.deepEqual(config.env.production.routes, [
+  assert.deepEqual(production.routes, [
     { pattern: "danhughes.uk", custom_domain: true },
   ]);
 });
@@ -194,16 +187,10 @@ test("Radar attribution survives dynamic loading in a separate static element", 
 });
 
 test("Radar queues are isolated by environment with bounded consumption and no paid CPU override", () => {
-  const { config, error } = ts.parseConfigFileTextToJson(
-    "wrangler.jsonc",
-    readFileSync("wrangler.jsonc", "utf8"),
-  );
-  assert.equal(error, undefined);
-  assert.equal(config.queues, undefined);
-  for (const environment of [config, ...Object.values(config.env)])
-    assert.equal(environment.limits?.cpu_ms, undefined);
   for (const name of ["development", "production"]) {
-    const { producers, consumers } = config.env[name].queues;
+    const config = configFor(name);
+    assert.equal(config.limits?.cpu_ms, undefined);
+    const { producers, consumers } = config.queues;
     assert.equal(producers.length, 1);
     assert.equal(consumers.length, 1);
     assert.equal(producers[0].binding, "RADAR_COLLECTION_QUEUE");
@@ -219,13 +206,8 @@ test("Radar queues are isolated by environment with bounded consumption and no p
 });
 
 test("both environments retain invocation logs with sampled traces and redacted queries", () => {
-  const { config, error } = ts.parseConfigFileTextToJson(
-    "wrangler.jsonc",
-    readFileSync("wrangler.jsonc", "utf8"),
-  );
-  assert.equal(error, undefined);
-  for (const environment of [config.env.development, config.env.production]) {
-    const observability = environment.observability ?? config.observability;
+  for (const mode of ["development", "production"]) {
+    const observability = configFor(mode).observability;
     assert.equal(observability.redact_query_string, true);
     assert.deepEqual(observability.logs, {
       enabled: true,
@@ -237,4 +219,62 @@ test("both environments retain invocation logs with sampled traces and redacted 
       head_sampling_rate: 0.01,
     });
   }
+});
+
+test("migration preserves deployed resource identities and controls", () => {
+  // Frozen rollback configuration is compared once, not used by active commands.
+  const { config: legacy, error } = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  );
+  assert.equal(error, undefined);
+  for (const mode of ["development", "production"]) {
+    const migrated = configFor(mode);
+    const previous = { ...legacy, ...legacy.env[mode] };
+    for (const field of [
+      "name",
+      "compatibility_date",
+      "compatibility_flags",
+      "workers_dev",
+      "preview_urls",
+      "cache",
+      "vars",
+      "observability",
+      "ratelimits",
+      "triggers",
+      "queues",
+      "routes",
+      "kv_namespaces",
+      "ai",
+      "version_metadata",
+    ])
+      assert.deepEqual(migrated[field], previous[field], `${mode}.${field}`);
+    assert.equal(resolve(migrated.main), resolve(previous.main));
+    assert.equal(
+      migrated.d1_databases[0].database_id,
+      previous.d1_databases[0].database_id,
+    );
+    assert.equal(
+      migrated.d1_databases[0].database_name,
+      previous.d1_databases[0].database_name,
+    );
+    assert.equal(
+      migrated.durable_objects.bindings[0].class_name,
+      previous.durable_objects.bindings[0].class_name,
+    );
+    assert.equal(
+      migrated.durable_objects.bindings[0].script_name,
+      previous.name,
+    );
+    assert.deepEqual(migrated.exports.CoordinationRoom, {
+      type: "durable-object",
+      storage: "sqlite",
+    });
+    assert.equal(
+      migrated.migrations,
+      undefined,
+      "must not replay legacy migration tags",
+    );
+  }
+  assert.throws(() => portfolioConfig("staging"), /mode must be/);
 });
