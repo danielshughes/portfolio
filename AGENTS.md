@@ -24,6 +24,8 @@ Code/configuration owns changeable values: `package.json` and `.nvmrc` own the t
 
 ## Security and environment
 
+Prefer official `cf` for Cloudflare account/resource administration, using anonymous command discovery followed by the selected help/schema. Worker development/deployment still follows this repository's scripts and Wrangler configuration until a verified `cf` project migration.
+
 Use scoped CI/runtime secret bindings. Keep credential values out of output, arguments, source and test artefacts, and keep local secret/state files ignored. Public-prefixed client variables are public; PR jobs receive no deployment credentials. Rotate exposed credentials, including those removed from Git's latest revision.
 
 Preserve environment isolation and the configured development authentication boundary. No-index is not authentication. Keep alternate Worker/preview URLs disabled. Account administration is outside the website deployment workflow.
