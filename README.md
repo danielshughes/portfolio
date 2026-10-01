@@ -23,7 +23,7 @@ The remaining examples use `npm` as shorthand for that declared version. The pag
 
 ```sh
 npm run build:dev
-npx wrangler d1 migrations apply HISTORY --env development --local
+npm run migrate:local
 npm run dev:worker
 ```
 
@@ -46,7 +46,7 @@ Documentation-only changes run file classification and redacted secret scanning,
 
 Feature pull requests target `develop`, which deploys to Access-protected [development](https://dev.danhughes.uk). Reviewed `develop` to `main` promotions deploy the public [portfolio](https://danhughes.uk) with the production enable switch set. Both paths require passing CI, separate GitHub environment secrets and database migrations before upload.
 
-Default builds are non-indexable. Configuration lives in [wrangler.jsonc](wrangler.jsonc). See [architecture](docs/architecture.md) for service connections and [operations](docs/operations.md) for setup, official `cf` administration, verification and recovery. Project development/deployment retains Wrangler pending configuration migration. No pull-request deployments or paid fallback.
+Default builds are non-indexable. Configuration lives in [cloudflare.config.ts](cloudflare.config.ts). `cf` handles deployment, types and D1 migrations; Wrangler remains the explicit API Worker bundler and local server alongside Astro. See [architecture](docs/architecture.md) and [operations](docs/operations.md) for the build protocol, verification and recovery. No pull-request deployments or paid fallback.
 
 No account access is needed for the local tests. The checked-in deployment identifiers belong to this website and must not be used for an unauthorised deployment.
 

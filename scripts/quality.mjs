@@ -21,6 +21,38 @@ for (const script of [
   const result = spawnSync("npm", ["run", script], { stdio: "inherit" });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
+// Root cf build detects Astro, which does not emit our custom API Worker.
+// Use cf's native Wrangler bundler protocol, then validate both deployment modes.
+for (const mode of ["development", "production"]) {
+  for (const args of [
+    [
+      "node_modules/wrangler/bin/wrangler.js",
+      "build",
+      "--experimental-new-config",
+      "--experimental-cf-build-output",
+      "--env",
+      mode,
+    ],
+    [
+      "node_modules/cf/bin/cf",
+      "deploy",
+      "--prebuilt",
+      "--mode",
+      mode,
+      "--dry-run",
+    ],
+  ]) {
+    const result = spawnSync(process.execPath, args, {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        CF_SEND_TELEMETRY: "false",
+        WRANGLER_SEND_METRICS: "false",
+      },
+    });
+    if (result.status !== 0) process.exit(result.status ?? 1);
+  }
+}
 const browser = spawnSync(
   process.execPath,
   [

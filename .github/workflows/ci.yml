@@ -22,6 +22,8 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     env:
       CI: true
+      CF_SEND_TELEMETRY: false
+      WRANGLER_SEND_METRICS: false
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,7 +79,7 @@ jobs:
           printf '%s  %s\n' '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb' "$scanner_dir/gitleaks.tar.gz" | sha256sum --check --status
           tar -xzf "$scanner_dir/gitleaks.tar.gz" -C "$scanner_dir" gitleaks
           "$scanner_dir/gitleaks" git --redact=100 --log-opts="--all" .
-          for path in src public worker tests scripts docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc README.md AGENTS.md; do
+          for path in src public worker tests scripts docs .github package.json package-lock.json astro.config.mjs playwright.config.ts eslint.config.mjs wrangler.jsonc cloudflare.config.ts wrangler.config.ts README.md AGENTS.md; do
             "$scanner_dir/gitleaks" dir --redact=100 "$path"
           done
           if [ -d dist ]; then
@@ -97,6 +99,7 @@ jobs:
     env:
       CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: false
       WRANGLER_SEND_METRICS: false
+      CF_SEND_TELEMETRY: false
       DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
       SITE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
       SITE_URL: https://danhughes.uk
@@ -114,6 +117,8 @@ jobs:
         run: npm install --global "$(node -p "require('./package.json').packageManager")"
       - run: npm ci
       - run: npm run build
+      - name: Build the complete Worker artifact without credentials
+        run: npm run build:worker
       - name: Deploy the checked environment commit
         run: node scripts/deploy.mjs
         env:
