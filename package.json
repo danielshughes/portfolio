@@ -40,14 +40,14 @@
     "test:static": "node --test tests/static-output.test.mjs"
   },
   "devDependencies": {
-    "@cloudflare/config": "0.22.0",
+    "@cloudflare/config": "0.23.0",
     "@astrojs/check": "0.9.10",
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.63.0",
     "@types/node": "26.6.3",
     "@typescript/native": "npm:typescript@7.0.2",
     "astro": "7.3.5",
-    "cf": "1.0.0-beta.10",
+    "cf": "1.0.0-beta.12",
     "esbuild": "0.28.2",
     "eslint": "10.11.0",
     "eslint-plugin-astro": "3.2.1",
@@ -56,13 +56,13 @@
     "prettier-plugin-astro": "1.1.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "8.71.0",
-    "wrangler": "4.146.0"
+    "wrangler": "4.147.0"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",
     "@fontsource-variable/space-grotesk": "5.3.0"
   },
   "overrides": {
-    "sharp": "0.35.4"
+    "sharp": "0.35.5"
   }
 }

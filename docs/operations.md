@@ -131,6 +131,8 @@ The manifest's exact TypeScript aliases provide native `tsc` for Worker checking
 
 npm blocks unapproved dependency lifecycle scripts. `allowScripts` in the manifest pins the reviewed esbuild/workerd binary setup scripts; fsevents uses its packaged native binary without its implicit build script. Review these entries alongside dependency updates, using `npm install-scripts ls` to find new scripts. Do not blanket-approve scripts or bypass dependency peer checks. Stable Wrangler's exact Miniflare dependency is also the direct test runtime, including its upstream prerelease suffix.
 
+The manifest's Sharp override selects a security-fixed patch while Miniflare pins an older patch. Retain it until every dependency path resolves a safe upstream version; verify Astro image builds and the Miniflare runtime when changing it. Lockfile refreshes must pass the low-severity audit gate without ignoring advisories or forcing breaking dependency changes.
+
 `npm run dev` serves Astro. Build assets and apply local migrations before starting the local Worker; Astro proxies `/api` including WebSocket upgrades to that Worker. Keep local `.dev.vars` ignored, and never use real credentials in automated tests.
 
 ```sh
