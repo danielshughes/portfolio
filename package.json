@@ -47,7 +47,7 @@
     "@types/node": "26.6.3",
     "@typescript/native": "npm:typescript@7.0.2",
     "astro": "7.3.5",
-    "cf": "1.0.0-beta.12",
+    "cf": "1.0.0-beta.14",
     "esbuild": "0.28.2",
     "eslint": "10.11.0",
     "eslint-plugin-astro": "3.2.1",
