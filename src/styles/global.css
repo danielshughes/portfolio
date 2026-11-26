@@ -45,6 +45,8 @@
 }
 body {
   margin: 0;
+  /* Short pages (the 404) keep the grid to the bottom of the viewport. */
+  min-height: 100dvh;
   --grid-line: color-mix(in srgb, var(--ink) 4%, transparent);
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),

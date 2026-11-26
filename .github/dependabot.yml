@@ -5,6 +5,12 @@ updates:
     target-branch: develop
     schedule:
       interval: weekly
+    ignore:
+      # 1.65.x Firefox crashes the page during axe scans (2026-11-26).
+      # Remove once a later release passes tests/visual/portfolio.spec.ts,
+      # and move the package.json playwright-core override with it.
+      - dependency-name: "@playwright/test"
+        versions: ["1.65.x"]
     groups:
       cloudflare:
         patterns: ["cf", "@cloudflare/config", "wrangler", "miniflare"]

@@ -10,8 +10,10 @@ import { siteEnvironment } from "../../scripts/site-environment.mjs";
 interface Props {
   title: string;
   description: string;
+  /** False for error pages: no canonical, social or structured metadata. */
+  indexable?: boolean;
 }
-const { title, description } = Astro.props;
+const { title, description, indexable = true } = Astro.props;
 const environment = siteEnvironment();
 const canonical = environment.origin
   ? new URL(Astro.url.pathname, environment.origin).href
@@ -84,6 +86,8 @@ const structuredData = JSON.stringify({
     <meta name="description" content={description} />
     {environment.name === "development" ? (
       <meta name="robots" content="noindex, nofollow" />
+    ) : !indexable ? (
+      <meta name="robots" content="noindex" />
     ) : (
       <>
         <link rel="canonical" href={canonical} />

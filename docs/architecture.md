@@ -71,7 +71,7 @@ The [experiment behaviour contract](experiments.md) connects each interface to i
 
 The original Kubernetes, MCP and visual models remain browser-local simulations. They do not call these services or become evidence of production-system experience.
 
-All service requests pass a coarse, constant-key ingress limit. AI starts, stream starts and room upgrades also have separate per-path admission via `EXPERIMENT_STARTS`. These native limits are per Cloudflare location and eventually consistent, not global quotas or per-person authentication. AI reservations and room admissions have separate persisted global limits per environment. Invalid input and limiter failures do not fall through to a backend.
+All service requests pass a coarse, constant-key ingress limit. AI starts, stream starts and room upgrades also have separate per-path admission via `EXPERIMENT_STARTS`, checked only after the method and same-origin checks pass so cross-site or malformed calls cannot drain it. These native limits are per Cloudflare location and eventually consistent, not global quotas or per-person authentication. AI reservations and room admissions have separate persisted global limits per environment. Invalid input and limiter failures do not fall through to a backend.
 
 Keep request-owned pending I/O inside its request context, not shared across Worker invocations. Non-429 upstream failures retain bounded origin backoff; accepted cached successes remain usable, while protection or cache failures fail closed.
 

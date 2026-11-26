@@ -26,3 +26,19 @@ test("Experiments is the only experiment route, with no legacy forwarding", asyn
   for (const route of ["/playground/", "/work/"])
     expect((await request.get(route)).status()).toBe(404);
 });
+
+test("unknown routes return a styled 404 page with a way back", async ({
+  page,
+}) => {
+  const response = await page.goto("/does-not-exist/");
+  expect(response?.status()).toBe(404);
+  await expect(page).toHaveTitle("Page not found | Dan Hughes");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Nothing here.",
+  );
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: "Experiments", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/experiments\/$/);
+});
