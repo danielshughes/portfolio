@@ -59,8 +59,11 @@ export async function writeBuildPolicy(directory) {
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll('"', "&quot;");
+    // Error pages are served by status, never listed as destinations.
     const paths = pages
-      .map((page) => relative(directory, page).replace(/index\.html$/, ""))
+      .map((page) => relative(directory, page))
+      .filter((path) => path !== "404.html")
+      .map((path) => path.replace(/index\.html$/, ""))
       .sort();
     await writeFile(
       join(directory, "sitemap.xml"),

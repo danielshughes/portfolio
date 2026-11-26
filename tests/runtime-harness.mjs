@@ -27,6 +27,9 @@ export async function runtime(options = {}) {
           compatibilityFlags: config.compatibility_flags,
           assets: {
             ...config.assets,
+            // Fixture entry points own non-API test routes (/seed, /join).
+            // With dist/404.html present, the asset router would answer them.
+            ...(options.entryPoint ? { run_worker_first: true } : {}),
             directory: "dist",
             routerConfig: { has_user_worker: true },
             assetConfig: {
