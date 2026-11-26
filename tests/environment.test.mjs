@@ -111,10 +111,16 @@ test("production output uses the supplied origin and public metadata", () => {
       "https://www.linkedin.com/in/dan-hughes-796098108/",
     ]);
     assert.doesNotMatch(html, /noindex|og:image/);
-    assert.match(
-      readFileSync("dist/sitemap.xml", "utf8"),
-      /https:\/\/portfolio.example.test\/experiments\//,
+    const sitemap = readFileSync("dist/sitemap.xml", "utf8");
+    assert.match(sitemap, /https:\/\/portfolio.example.test\/experiments\//);
+    assert.doesNotMatch(sitemap, /404/);
+    const missing = readFileSync("dist/404.html", "utf8");
+    assert.match(missing, /<meta name="robots" content="noindex"/);
+    assert.doesNotMatch(
+      missing,
+      /rel="canonical"|og:url|application\/ld\+json/,
     );
+    assert.equal((missing.match(/<h1\b/g) || []).length, 1);
     const headers = readFileSync("dist/_headers", "utf8");
     assert.doesNotMatch(headers, /noindex/);
     assert.match(

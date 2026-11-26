@@ -9,6 +9,7 @@ Built with Astro and TypeScript for Cloudflare Workers Static Assets. Browser-lo
 - `/`: personal homepage and featured work.
 - `/notes/`: engineering decisions and technical depth.
 - `/experiments/`: interactive models and the Internet atlas.
+- Any other path: a styled, non-indexed 404 page.
 
 ## Local development
 

@@ -441,6 +441,16 @@ test("bounded-start protection is separate from general read ingress", async (t)
       method: "POST",
       headers: { origin },
     });
+  // Cross-site and wrong-method calls are rejected before spending a start.
+  for (const [path, init] of [
+    ["/api/triage?scenario=latency", { method: "POST" }],
+    ["/api/stream", { method: "POST", headers: { origin: "https://x.test" } }],
+    ["/api/stream", { method: "GET", headers: { origin } }],
+    ["/api/coordination", { headers: { origin: "https://x.test" } }],
+  ])
+    assert.ok(
+      [403, 405].includes((await mf.dispatchFetch(origin + path, init)).status),
+    );
   assert.equal((await invoke()).status, 403);
   assert.equal((await invoke()).status, 429);
   assert.equal((await mf.dispatchFetch(origin + "/api/edge")).status, 200);
