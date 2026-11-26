@@ -99,11 +99,21 @@ export default {
             .success
         )
           return protect(apiJson({ error: "rate_limited" }, 429));
-        if (
-          ["/api/triage", "/api/coordination", "/api/stream"].includes(path) &&
-          !(await env.EXPERIMENT_STARTS.limit({ key: path })).success
-        )
-          return protect(apiJson({ error: "rate_limited" }, 429));
+        const starts: Record<string, string> = {
+          "/api/triage": "POST",
+          "/api/stream": "POST",
+          "/api/coordination": "GET",
+        };
+        if (starts[path]) {
+          // Reject requests that can never start before spending the bounded
+          // start allowance, so cross-site or malformed calls cannot drain it.
+          if (request.method !== starts[path])
+            return protect(apiJson({ error: "method_not_allowed" }, 405));
+          if (!sameOrigin(request))
+            return protect(apiJson({ error: "origin_not_allowed" }, 403));
+          if (!(await env.EXPERIMENT_STARTS.limit({ key: path })).success)
+            return protect(apiJson({ error: "rate_limited" }, 429));
+        }
         if (path === "/api/triage") return protect(await triage(request, env));
         if (path === "/api/triage-config")
           return protect(triageConfiguration(request, env));

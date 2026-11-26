@@ -30,6 +30,12 @@ test("every primary route serves the same self-contained SVG favicon", async ({
     expect(content.paths).toBe(2);
     expect(content.externalOrDynamic).toBe(0);
   }
+  // Unlinked fallback for clients that request /favicon.ico directly.
+  const fallback = await page.request.get("/favicon.ico");
+  expect(fallback.status()).toBe(200);
+  expect((await fallback.body()).subarray(0, 4)).toEqual(
+    Buffer.from([0, 0, 1, 0]),
+  );
 });
 
 for (const theme of ["light", "dark"] as const) {
